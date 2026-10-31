@@ -370,10 +370,10 @@ marked; they never appear in logs or in client bundles.
 | `DATABASE_URL` | api, worker | none | **yes** | `postgresql+psycopg://…` |
 | `DB_POOL_SIZE`, `DB_MAX_OVERFLOW` | api, worker | `10`, `10` | no | Keep api + worker connections under the managed database's limit |
 | `DB_STATEMENT_TIMEOUT_MS` | api | `15000` | no | Guards against runaway queries in request handlers |
-| `SECRET_KEY` | api | none | **yes** | HMAC key for session-bound CSRF tokens (ADR-0004). Session tokens do not depend on it |
+| `SESSION_SECRET` | api | none | **yes** (at least 32 characters in production) | HMAC key for session-bound CSRF tokens (ADR-0004). Session tokens do not depend on it |
 | `SESSION_IDLE_TIMEOUT_HOURS`, `SESSION_ABSOLUTE_TIMEOUT_DAYS` | api | `12`, `7` | no | |
 | `COOKIE_SECURE` | api | `true` when `APP_ENV=production` | no | |
-| `FORWARDED_ALLOW_IPS` | api (uvicorn) | none | no | Peers trusted to set `X-Forwarded-For` (the Next.js container) |
+| `TRUST_PROXY_HEADERS` | api | `false` | no | Read the client IP from `X-Forwarded-For`. Safe only behind an edge proxy that appends the client address, with the API unreachable from outside (SECURITY.md §5) |
 | `RATE_LIMIT_ENABLED` | api | `true` | no | Disabled only in tests that do not test limits |
 | `DEMO_MODE_ENABLED` | api | `false` | no | Enables `POST /api/v1/auth/demo` |
 | `LLM_PROVIDER` | api | unset | no | `deterministic`, `gemini`, `openai_compatible` (ADR-0010). Unset: `gemini` when `GEMINI_API_KEY` is set, otherwise `deterministic`. A live provider without its key logs a startup warning and runs as `deterministic` |

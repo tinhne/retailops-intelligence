@@ -275,6 +275,7 @@ the preview and the row is still applied.
 | `FILE_TYPE` | FILE | all | Not a `.csv` file, or binary content (for example an `.xlsx` renamed to `.csv`) | Save or export as CSV |
 | `FILE_ENCODING` | FILE | all | Not valid UTF-8 (typical: a spreadsheet saved as Windows-1252, so "Café" breaks) | Save as "CSV UTF-8" |
 | `TOO_MANY_ROWS` | FILE | all | More than 20,000 data rows | Split the file |
+| `TOO_MANY_COLUMNS` | FILE | all | More than 100 header columns (security hardening, T-082) | Keep only the template's columns |
 | `MISSING_COLUMNS` | FILE | all | One or more required headers are absent. The message lists them and, if the headers fit another type, names it | Start from the downloadable template, or choose the right type |
 | `REQUIRED` | ERROR | all | A required value (or a conditionally required one) is empty | Fill the value in the source export |
 | `VALUE_TOO_LONG` | ERROR | all | Text longer than the column limit | Shorten in the source |

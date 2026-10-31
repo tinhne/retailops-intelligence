@@ -50,7 +50,7 @@ flowchart TB
 | From → To | Protocol | Port | Authentication | Notes |
 |---|---|---|---|---|
 | Browser → `web` | HTTPS (TLS terminated by the host in production; plain HTTP on localhost in development) | 443 public, 3000 in the container | `ro_session` cookie, `ro_csrf` cookie + `X-CSRF-Token` header | The only publicly exposed port |
-| `web` → `api` | HTTP/1.1 on the private compose or host network | 8000 | Cookies passed through; the API authenticates every request itself | `web` is not trusted to authenticate users. `FORWARDED_ALLOW_IPS` lists the `web` peer so the API can read the client IP from `X-Forwarded-For` |
+| `web` → `api` | HTTP/1.1 on the private compose or host network | 8000 | Cookies passed through; the API authenticates every request itself | `web` is not trusted to authenticate users. The Next.js rewrite forwards the browser's `X-Forwarded-For` unchanged, so the API trusts it only with `TRUST_PROXY_HEADERS=true` behind an edge proxy that appends the client address (SECURITY.md §5) |
 | `api`, `worker` → `db` | PostgreSQL wire protocol (psycopg 3), TLS required by the managed provider in production | 5432 | Database user and password from `DATABASE_URL` | The application role owns its schema; no superuser at runtime |
 | `api` → LLM provider | HTTPS | 443 | `GEMINI_API_KEY` or `LLM_API_KEY`, server-side only | Only when `LLM_PROVIDER` resolves to a live provider; request timeout, automatic fallback to deterministic on 429, timeout or outage |
 
@@ -59,9 +59,9 @@ flowchart TB
 | Service | Build / image | Command | Published port | Depends on | Health check | Key environment |
 |---|---|---|---|---|---|---|
 | `db` | Official `postgres:16` image, named volume for data | default | 5432 in development only | none | `pg_isready` | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` |
-| `api` | `apps/api` multi-stage Dockerfile, non-root user | `alembic upgrade head`, then `uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --proxy-headers` | 8000 in development only (OpenAPI at `/api/docs` is also reachable through `web`) | `db` healthy | `GET /api/v1/health/ready` | `DATABASE_URL`, `SECRET_KEY`, `APP_ENV`, `LLM_PROVIDER`, `GEMINI_API_KEY`, `LLM_MODEL`, `LLM_BASE_URL`, `LLM_API_KEY`, `DEMO_MODE_ENABLED`, `FORWARDED_ALLOW_IPS` |
-| `worker` | Same image as `api` | `python -m app.workers.scheduler` | none | `api` healthy (so migrations have run) | Proposed: the worker touches a heartbeat file every tick and the check fails if it is older than 3 ticks | `DATABASE_URL`, `APP_ENV`, `SCHEDULER_TICK_SECONDS` |
-| `web` | `apps/web` multi-stage Dockerfile (Next.js standalone output), non-root user | `node server.js` | 3000 | `api` healthy | `GET /` returns 200 | `API_INTERNAL_URL=http://api:8000` |
+| `api` | `apps/api` multi-stage Dockerfile, non-root user | `alembic upgrade head`, then `uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --no-proxy-headers` | 8000 in development only (OpenAPI at `/api/docs` is also reachable through `web`) | `db` healthy | `GET /api/v1/health/ready` | `DATABASE_URL`, `SESSION_SECRET`, `APP_ENV`, the LLM provider variables (`.env.example`), `DEMO_MODE_ENABLED`, `TRUST_PROXY_HEADERS` |
+| `worker` | Same image as `api` | `python -m app.workers.scheduler` | none | `api` healthy (so migrations have run) | The scheduler touches a heartbeat file every tick (`--heartbeat`); the check fails when it is stale | `DATABASE_URL`, `APP_ENV`, `SCHEDULER_TICK_SECONDS` |
+| `web` | `apps/web` multi-stage Dockerfile (Next.js standalone output), non-root user | `node server.js` | 3000 | `api` healthy | `GET /login` returns 200 | `API_INTERNAL_URL=http://api:8000` (a build argument: the rewrite is compiled into the build) |
 
 Notes:
 

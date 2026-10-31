@@ -194,8 +194,8 @@ exception is rejected as an invalid transition, not duplicated) or protected by 
 - Exceeding a limit returns `429 RATE_LIMITED` with `Retry-After`.
 - The limiter is an in-process sliding window. **Limitation:** limits are per API process and reset
   on restart; v1 runs one API process. Scaling out needs a shared store such as Redis.
-- The client IP comes from `X-Forwarded-For` only when the immediate peer is in
-  `FORWARDED_ALLOW_IPS` (the `web` container).
+- The client IP comes from `X-Forwarded-For` only with `TRUST_PROXY_HEADERS=true`, which is safe
+  only behind an edge proxy that appends the client address (SECURITY.md §5).
 - "Principal" is the user id. For demo visitors it depends on the demo identity decision in
   ADR-0011 (per-visitor identity recommended, otherwise the session id).
 - A 429 **from the LLM provider** is not an API error: the copilot falls back to the deterministic

@@ -371,6 +371,7 @@ export const importIssueMeta: Record<string, { level: IssueLevel; fix: string }>
   FILE_TYPE: { level: "FILE", fix: "Save or export the file as CSV." },
   FILE_ENCODING: { level: "FILE", fix: "Save the file as \"CSV UTF-8\"." },
   TOO_MANY_ROWS: { level: "FILE", fix: "Split the file into parts of at most 20,000 rows." },
+  TOO_MANY_COLUMNS: { level: "FILE", fix: "Keep only the template's columns; a file may have at most 100." },
   MISSING_COLUMNS: { level: "FILE", fix: "Start from the downloadable template, or choose the right import type." },
   REQUIRED: { level: "ERROR", fix: "Fill in the value in the source export." },
   VALUE_TOO_LONG: { level: "ERROR", fix: "Shorten the value in the source." },
