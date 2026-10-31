@@ -1194,6 +1194,11 @@ export interface components {
             };
             category: components["schemas"]["ExceptionCategory"];
             /**
+             * Closed At
+             * @description When it was resolved or dismissed; null while active or reopened.
+             */
+            closed_at: string | null;
+            /**
              * Created At
              * Format: date-time
              */
@@ -1205,6 +1210,7 @@ export interface components {
             /** Detection Count */
             detection_count: number;
             dismissal: components["schemas"]["DismissalOut"] | null;
+            dismissed_reason: components["schemas"]["DismissalReason"] | null;
             /**
              * Due At
              * Format: date-time
@@ -1257,6 +1263,8 @@ export interface components {
             /** Reopen Count */
             reopen_count: number;
             resolution: components["schemas"]["ResolutionOut"] | null;
+            /** @description RESOLVED only. With verified_at it decides the four resolved forms. */
+            resolution_code: components["schemas"]["ResolutionCode"] | null;
             /** Rule Id */
             rule_id: string;
             severity: components["schemas"]["Severity"];
@@ -1271,6 +1279,11 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /**
+             * Verified At
+             * @description Set when the next evaluation confirms a manual resolution.
+             */
+            verified_at: string | null;
             /** Version */
             version: number;
         };
@@ -1311,10 +1324,16 @@ export interface components {
             age_hours: number;
             assignee: components["schemas"]["UserRef"] | null;
             category: components["schemas"]["ExceptionCategory"];
+            /**
+             * Closed At
+             * @description When it was resolved or dismissed; null while active or reopened.
+             */
+            closed_at: string | null;
             /** Deadline At */
             deadline_at: string | null;
             /** Detection Count */
             detection_count: number;
+            dismissed_reason: components["schemas"]["DismissalReason"] | null;
             /**
              * Due At
              * Format: date-time
@@ -1353,10 +1372,17 @@ export interface components {
             reference: string;
             /** Reopen Count */
             reopen_count: number;
+            /** @description RESOLVED only. With verified_at it decides the four resolved forms. */
+            resolution_code: components["schemas"]["ResolutionCode"] | null;
             severity: components["schemas"]["Severity"];
             status: components["schemas"]["ExceptionStatus"];
             /** Title */
             title: string;
+            /**
+             * Verified At
+             * @description Set when the next evaluation confirms a manual resolution.
+             */
+            verified_at: string | null;
             /** Version */
             version: number;
         };
@@ -3321,6 +3347,8 @@ export interface operations {
                 order_id?: string | null;
                 /** @description Reference or title contains */
                 q?: string | null;
+                /** @description Only exceptions due at or before this instant (with a time zone) */
+                due_to?: string | null;
                 /** @description priority_score, due_at, first_detected_at, last_detected_at; '-' = desc */
                 sort?: string;
                 page?: number;

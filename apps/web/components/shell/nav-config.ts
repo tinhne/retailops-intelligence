@@ -40,7 +40,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Operations",
     items: [
-      { label: "Exceptions", segment: "exceptions", icon: Inbox, permission: ["exceptions.read"], ready: false },
+      { label: "Exceptions", segment: "exceptions", icon: Inbox, permission: ["exceptions.read"], ready: true },
     ],
   },
   {

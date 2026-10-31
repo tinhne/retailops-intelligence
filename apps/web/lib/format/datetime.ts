@@ -132,3 +132,44 @@ export function formatDue(iso: string, now: Date = new Date()): DueState {
   }
   return { overdue: true, text: `Overdue ${formatDuration(-delta / HOUR)}` };
 }
+
+/** The UTC offset of a zone at an instant, in minutes (e.g. −240 for EDT). */
+function zoneOffsetMinutes(at: Date, timeZone: string): number {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
+      .formatToParts(at)
+      .map((part) => [part.type, part.value]),
+  );
+  const asUtc = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+  return Math.round((asUtc - at.getTime()) / 60_000);
+}
+
+/**
+ * The instant at which the wall-clock `date` (`YYYY-MM-DD`) and `time` (`HH:MM`) occur in the
+ * store zone. Used by inputs that take store-local times (C-59), never the browser's zone.
+ */
+export function zonedTimeToUtc(date: string, time: string, timeZone: string): Date {
+  const [year, month, day] = date.split("-").map(Number);
+  const [hour, minute] = time.split(":").map(Number);
+  const wall = Date.UTC(year, month - 1, day, hour, minute);
+  let guess = wall - zoneOffsetMinutes(new Date(wall), timeZone) * 60_000;
+  // A second pass corrects guesses that land on the other side of a DST change.
+  guess = wall - zoneOffsetMinutes(new Date(guess), timeZone) * 60_000;
+  return new Date(guess);
+}
+
+/** `{ date: "YYYY-MM-DD", time: "HH:MM" }` of an instant in the store zone, for input defaults. */
+export function utcToZonedInputs(iso: string, timeZone: string): { date: string; time: string } {
+  const at = new Date(iso);
+  const time = new Intl.DateTimeFormat("en-GB", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(at);
+  return { date: localDateKey(at, timeZone), time };
+}

@@ -60,7 +60,10 @@ describe("OverviewScreen (S-02)", () => {
     expect(within(attention).getByRole("img", { name: "Priority P1, score 72 of 100" })).toBeInTheDocument();
     expect(within(attention).getByText(/^Overdue/)).toBeInTheDocument();
     expect(within(attention).getByText("Marcus Lee")).toBeInTheDocument();
-    expect(await screen.findByText("2 awaiting triage")).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Open triage queue (2)" })).toHaveAttribute(
+      "href",
+      "/s/f0da0f22-b9e0-4483-b144-e9f0f8703d13/exceptions?view=triage",
+    );
   });
 
   it("shows value at risk per category only, with no total, and none for data quality (BR-404)", async () => {
@@ -76,12 +79,18 @@ describe("OverviewScreen (S-02)", () => {
     expect(screen.getByText(/Not a measure of loss/)).toBeInTheDocument();
   });
 
-  it("never links to a screen that is not built yet", async () => {
+  it("links to built screens only", async () => {
     routes();
     renderInStore(<OverviewScreen />, testStore({ permissions: VIEWER }));
     await screen.findByText("Needs attention");
-    const hrefs = screen.queryAllByRole("link").map((link) => link.getAttribute("href"));
-    expect(hrefs.filter((href) => href?.includes("/exceptions") || href?.includes("/orders"))).toEqual([]);
+    const hrefs = screen.queryAllByRole("link").map((link) => link.getAttribute("href") ?? "");
+    // Exceptions exist (T-062); orders and inventory are not built yet.
+    expect(hrefs.filter((href) => href.includes("/orders") || href.includes("/inventory"))).toEqual([]);
+    expect(hrefs).toContain("/s/f0da0f22-b9e0-4483-b144-e9f0f8703d13/exceptions?view=active");
+    expect(screen.getByRole("link", { name: /EXC-1010, Order KHK-12023/ })).toHaveAttribute(
+      "href",
+      "/s/f0da0f22-b9e0-4483-b144-e9f0f8703d13/exceptions/e1",
+    );
   });
 
   it("says when nothing needs attention", async () => {

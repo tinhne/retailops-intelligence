@@ -17,13 +17,15 @@ worker (T-055). `make check` gives 627 tests green. The GitHub repo exists and i
 client (CSRF header, `ApiError`), QueryClient policy (retries, 401 → sign-in), `/api` rewrite,
 `proxy.ts` sign-in redirect, S-01 sign-in and `/demo`, session gate, store resolution and the app
 shell. **Overview (T-061):** the S-02 dashboard with formatters, status maps and atoms, KPI cards,
-chart frame and Run analysis; the dashboard API gained `exposure_by_category`. 90 vitest tests.
-See `PROJECT_STATE.md`.
+chart frame and Run analysis; the dashboard API gained `exposure_by_category`. **Exceptions (T-062):**
+inbox and investigation with every lifecycle action; the list API gained `due_to` and closing fields.
+120 vitest tests. See `PROJECT_STATE.md`.
 
 ## 3. Currently being implemented
 Nothing is in flight. The working tree is clean. (An earlier handoff described uncommitted
 frontend and AI work; it was not in the tree on 2026-11-01, so T-071..T-074 start from scratch.)
-Next up: the exception inbox and investigation (T-062). T-063..T-065, T-071 and T-058 are also READY.
+Next up: orders list and detail (T-063). T-064, T-065, T-071 and T-058 are also READY; T-067 holds the
+deferred exceptions UI details.
 
 **Notes for the next frontend task:**
 - The sidebar lists only built pages, and `sectionHref` returns a link only for built pages the role
@@ -36,9 +38,10 @@ Next up: the exception inbox and investigation (T-062). T-063..T-065, T-071 and 
 - Every page component calls `useStore()` and renders `PermissionDenied` when its route
   permission is missing (see `features/overview/overview-screen.tsx`). Query keys start with
   `["store", storeId, …]` (IA §7).
-- Exception command endpoints in the API differ from SCREEN_SPECIFICATIONS §0.4: there is no
-  `/claim` or `/unassign`, and the due date is `/due-date`, not `/set-due-date`. Build T-062 against
-  `packages/contracts` and update the spec.
+- List screens: reuse `components/data/data-table.tsx` and `list-controls.tsx`, and copy the URL-state
+  pattern in `features/exceptions/inbox-params.ts` (parse, validate, serialize, `toApiQuery`).
+- Mutations on exceptions go through `features/exceptions/detail/use-exception-command.ts`; follow the
+  same shape (expected version, cache update, conflict toasts) for any other versioned resource.
 - Local launch: `make api-dev` and `pnpm web:dev` (http://localhost:3000). `make seed` with
   `DEMO_STAFF_PASSWORD` set makes the seeded staff accounts usable for sign-in.
 

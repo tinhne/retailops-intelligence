@@ -11,6 +11,8 @@ import {
   formatLongDate,
   formatRelative,
   localDateKey,
+  utcToZonedInputs,
+  zonedTimeToUtc,
 } from "./datetime";
 import {
   formatBytes,
@@ -113,5 +115,19 @@ describe("durations and deadlines", () => {
     expect(formatRelative("2026-11-01T07:00:00Z", ET, now)).toBe("5h ago");
     expect(formatRelative("2026-10-29T12:00:00Z", ET, now)).toBe("3d ago");
     expect(formatRelative("2026-10-01T12:00:00Z", ET, now)).toBe("Oct 1, 2026");
+  });
+});
+
+describe("store-local inputs", () => {
+  it("converts store wall-clock times to UTC on both sides of the DST change", () => {
+    expect(zonedTimeToUtc("2026-10-31", "09:00", ET).toISOString()).toBe("2026-10-31T13:00:00.000Z"); // EDT
+    expect(zonedTimeToUtc("2026-11-02", "09:00", ET).toISOString()).toBe("2026-11-02T14:00:00.000Z"); // EST
+    expect(zonedTimeToUtc("2026-11-01", "12:00", "UTC").toISOString()).toBe("2026-11-01T12:00:00.000Z");
+  });
+
+  it("round-trips an instant through the input fields", () => {
+    expect(utcToZonedInputs("2026-11-02T14:00:00Z", ET)).toEqual({ date: "2026-11-02", time: "09:00" });
+    const { date, time } = utcToZonedInputs("2026-10-31T13:30:00Z", ET);
+    expect(zonedTimeToUtc(date, time, ET).toISOString()).toBe("2026-10-31T13:30:00.000Z");
   });
 });

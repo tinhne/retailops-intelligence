@@ -1146,6 +1146,19 @@
           "category": {
             "$ref": "#/components/schemas/ExceptionCategory"
           },
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it was resolved or dismissed; null while active or reopened.",
+            "title": "Closed At"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -1175,6 +1188,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/DismissalOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dismissed_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DismissalReason"
               },
               {
                 "type": "null"
@@ -1276,6 +1299,17 @@
               }
             ]
           },
+          "resolution_code": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResolutionCode"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "RESOLVED only. With verified_at it decides the four resolved forms."
+          },
           "rule_id": {
             "title": "Rule Id",
             "type": "string"
@@ -1312,6 +1346,19 @@
             "title": "Updated At",
             "type": "string"
           },
+          "verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set when the next evaluation confirms a manual resolution.",
+            "title": "Verified At"
+          },
           "version": {
             "title": "Version",
             "type": "integer"
@@ -1341,6 +1388,10 @@
           "age_hours",
           "reopen_count",
           "version",
+          "resolution_code",
+          "verified_at",
+          "dismissed_reason",
+          "closed_at",
           "rule_id",
           "dedup_key",
           "priority_breakdown",
@@ -1482,6 +1533,19 @@
           "category": {
             "$ref": "#/components/schemas/ExceptionCategory"
           },
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it was resolved or dismissed; null while active or reopened.",
+            "title": "Closed At"
+          },
           "deadline_at": {
             "anyOf": [
               {
@@ -1497,6 +1561,16 @@
           "detection_count": {
             "title": "Detection Count",
             "type": "integer"
+          },
+          "dismissed_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DismissalReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "due_at": {
             "format": "date-time",
@@ -1552,6 +1626,17 @@
             "title": "Reopen Count",
             "type": "integer"
           },
+          "resolution_code": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResolutionCode"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "RESOLVED only. With verified_at it decides the four resolved forms."
+          },
           "severity": {
             "$ref": "#/components/schemas/Severity"
           },
@@ -1561,6 +1646,19 @@
           "title": {
             "title": "Title",
             "type": "string"
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set when the next evaluation confirms a manual resolution.",
+            "title": "Verified At"
           },
           "version": {
             "title": "Version",
@@ -1590,7 +1688,11 @@
           "detection_count",
           "age_hours",
           "reopen_count",
-          "version"
+          "version",
+          "resolution_code",
+          "verified_at",
+          "dismissed_reason",
+          "closed_at"
         ],
         "title": "ExceptionListItem",
         "type": "object"
@@ -6442,6 +6544,25 @@
               ],
               "description": "Reference or title contains",
               "title": "Q"
+            }
+          },
+          {
+            "description": "Only exceptions due at or before this instant (with a time zone)",
+            "in": "query",
+            "name": "due_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only exceptions due at or before this instant (with a time zone)",
+              "title": "Due To"
             }
           },
           {
