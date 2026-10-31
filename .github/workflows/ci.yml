@@ -76,8 +76,8 @@ jobs:
       - name: Python dependencies (pip-audit)
         working-directory: apps/api
         run: |
-          uv export --frozen --no-dev --format requirements-txt --no-hashes > /tmp/requirements.txt
-          uvx pip-audit --strict -r /tmp/requirements.txt
+          uv export --frozen --no-dev --format requirements-txt > /tmp/requirements.txt
+          uvx pip-audit --strict --disable-pip --require-hashes -r /tmp/requirements.txt
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
