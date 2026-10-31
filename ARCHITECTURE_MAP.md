@@ -23,7 +23,7 @@ dependencies, data flows and owners. Details live in
 | catalog | `apps/api/app/domains/catalog/` | `apps/web/features/inventory/` (products) | `/stores/{id}/products`, `/stores/{id}/suppliers`, `/stores/{id}/categories` | BE | API done · products list and detail UI done |
 | orders | `apps/api/app/domains/orders/` | `apps/web/features/orders/` | `/stores/{id}/orders` | BE | API done · list and detail UI done |
 | inventory | `apps/api/app/domains/inventory/` | `apps/web/features/inventory/` | `/stores/{id}/inventory/*` | BE | API done · positions and ledger UI done |
-| imports | `apps/api/app/domains/imports/` | `apps/web/features/imports/` | `/stores/{id}/imports`, `/stores/{id}/imports/templates/{import_type}` | BE | API done · UI planned |
+| imports | `apps/api/app/domains/imports/` | `apps/web/features/imports/` | `/stores/{id}/imports`, `/stores/{id}/imports/templates/{import_type}` | BE | API done · list, wizard and detail UI done |
 | exceptions | `apps/api/app/domains/exceptions/` | `apps/web/features/exceptions/` | `/stores/{id}/exceptions`, `/stores/{id}/evaluations` | BE | API done · inbox and investigation UI done |
 | audit | `apps/api/app/domains/audit/` | `apps/web/features/admin/` (audit viewer) | `/stores/{id}/audit-logs` | BE | API done · UI planned |
 | ai | `apps/api/app/domains/ai/` | `apps/web/features/copilot/` | `/stores/{id}/copilot/*` | AI (backend), FE (UI) | planned (models only) |
@@ -72,6 +72,7 @@ dependencies, data flows and owners. Details live in
 | `apps/web/features/orders/` | Orders URL state with store-local date presets, list, detail (axes, lines, totals, linked exceptions, history) | T-063 | done |
 | `apps/web/lib/list-params.ts`, `lib/hooks/use-list-state.ts` | Declarative URL state for list screens (field specs → parse, validate, serialize) bound to the router | T-064 | done |
 | `apps/web/features/inventory/` | Products list and detail (stock arithmetic, data-issue callout), inventory positions with the health summary bar, movements ledger | T-064 | done |
+| `apps/web/features/imports/` | Import history, upload with client checks, preview (expected changes, warnings, issue table), apply with mode and consent, outcome and record views, template and issues CSV downloads | T-065 | done |
 | `apps/web/tests/e2e/` | Playwright critical journey | T-081 | planned |
 | `docker-compose.yml`, `infra/docker/` | `db`, `api`, `worker`, `web` (only `db` and the API image exist) | T-090 | in progress |
 | `.github/workflows/ci.yml` | Lint, types, tests, builds, dependency audit (no contract diff check yet) | T-091 | done |

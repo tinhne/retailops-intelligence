@@ -248,3 +248,39 @@ add a correction entry instead.
 - **Deferred to T-067:** ledger product combobox and custom range, Import filter and column, exact
   order-line links, import actions in the empty states (with T-065).
 - **Tests:** web lint, typecheck and build green; vitest **151 passed**. Backend unchanged.
+
+## 2026-11-01 (UTC+7): Orchestrator: CSV imports UI (T-065)
+
+- **Imports list (S-11):** history with type and status filters, live refresh while a row is
+  validating or applying, uploader names, stacked rows below 768 px, the template menu in the
+  recommended order and New import (disabled with the reason for roles without `imports.run`).
+- **New import (S-12 step 1):** type cards with template links and dependency hints, the column
+  reference from IMPORT_PIPELINE §5, a CSV drop zone with the client checks (type, `.csv`, 5 MB),
+  upload-and-validate, then the import's own page.
+- **Preview and apply (S-12 steps 2–4):** stepper, count tiles, warning callouts (duplicate file,
+  unknown columns, assumed time zones, already-applied references), expected changes, the issue
+  table (severity tabs, code filter, fix text, issues CSV), discard with confirmation, and the apply
+  step: strict by default and blocked while rows have errors, valid-rows-only with consent to the
+  exact skipped count, an Idempotency-Key per attempt, and copy for each apply error code.
+- **Record (S-13):** outcome banners for completed, partly completed, rejected (code, message and
+  fix), failed and discarded (expired or manual) imports, applied counts, the analysis the import
+  triggered, details with the SHA-256, and Import another file in the recommended order.
+- **Elsewhere:** Imports is live in the nav. Empty states on Overview, Orders, Products, Inventory
+  and Movements offer the matching import to people who can run one, and Overview's recent imports
+  link to their records. `Section` and `StatTile` moved to `components/data/section.tsx`.
+- **Fixes found while building:** list pagination offered 25 rows on Inventory and Movements, whose
+  URL state accepts only 50 and 100, so choosing it reset the page with an "unrecognised filters"
+  toast; `Pagination` now takes the list's page sizes. Page header actions no longer wrap under a
+  long subtitle.
+- **Found in the browser:** the expected-changes title claimed "first 1 rows" for a 3-row file
+  because the API lists only rows that change or fail; the title and a note now say so. Issue codes
+  broke mid-word; file names in the list broke mid-word; ten list columns overflowed at 1440 px
+  (Mode and Rows with warnings now from 1536 px).
+- **Verified as manager** against the local API with a test file copied from two existing products
+  plus one invalid row: preview, strict block, valid-rows-only apply (2 unchanged, 1 skipped, so no
+  data changed), the duplicate-file warning on a second upload, discard, and a rejected file. As the
+  demo viewer: New import disabled with the demo reason. 1440 and 375 px, no console errors.
+- **Spec synced:** S-11 single status filter and column breakpoints; S-12 expected-changes scope,
+  indeterminate upload progress, single code filter, "View exceptions to triage"; S-13 discard copy
+  without a name. Deferred items are in T-067.
+- **Tests:** web lint, typecheck and build green; vitest **165 passed**. Backend unchanged.

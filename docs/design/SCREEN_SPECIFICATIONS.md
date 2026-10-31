@@ -991,11 +991,11 @@ references the ones before it (IMPORT_PIPELINE §10)." FilterBar → DataTable �
 | File | `original_filename` (link to S-12/S-13) | left | never |
 | Type | `import_type` → Products / Orders / Order items / Inventory adjustments | left | md |
 | Status | `status` → `ImportStatusPill` | left | never |
-| Mode | `mode` → Strict / Valid rows only / "—" before apply | left | xl |
+| Mode | `mode` → Strict / Valid rows only / "—" before apply | left | 2xl (1536 px; at 1280–1535 px ten columns overflow. S-13 shows it) |
 | Rows | `summary.rows_total` | right | md |
 | Create · Update | `summary.creates`, `summary.updates` (after apply: `summary.applied.creates`, `.updates`) | right | lg |
 | Rows with errors | `summary.rows_with_errors`, danger text when > 0 | right | md |
-| Rows with warnings | `summary.rows_with_warnings` | right | xl |
+| Rows with warnings | `summary.rows_with_warnings` | right | 2xl (as Mode) |
 | Uploaded by | `created_by` → name via `GET /stores/{id}/members` ("Former member" if absent) | left | lg |
 | Uploaded (ET) | `created_at` | left | never |
 
@@ -1007,8 +1007,8 @@ references the ones before it (IMPORT_PIPELINE §10)." FilterBar → DataTable �
 | Download template | `imports.read` | none |
 | Open import | `imports.read` | none |
 
-**Filters / sort / search.** Type (`import_type`), Status (`status`, repeatable). The endpoint has
-no text search, so there is no search box. Sort: newest first. **Pagination:** 25. **Live
+**Filters / sort / search.** Type (`import_type`), Status (`status`; the API takes one value, so
+the filter is single-select). The endpoint has no text search, so there is no search box. Sort: newest first. **Pagination:** 25. **Live
 status:** upload validation and apply run inside their requests, so rows are rarely mid-flight.
 If a visible row is `UPLOADED`, `VALIDATING` or `APPLYING`, refetch every 2 s until none are.
 
@@ -1107,7 +1107,9 @@ Issues                         [All 17] [Errors 14] [Warnings 3]       [Download
   `UNKNOWN_COLUMN` (lists the ignored headers), `ALREADY_APPLIED` (count, adjustments only).
 - The expiry countdown ("Preview expires in 23h 58m") comes from `expires_at`.
 - **Expected changes** table (IMPORT_PIPELINE §3.2 step 7) from `summary.preview[] {row_number,
-  key, action, changed_fields}`: Row, Key (SKU, order number, order number + line, or reference),
+  key, action, changed_fields}`. The API lists only rows that create, update or have errors (action
+  `SKIP`), at most 50, so the title reads "first 50 of N" when more change and a note says unchanged
+  rows are not listed. Columns: Row, Key (SKU, order number, order number + line, or reference),
   Action (Create / Update / Unchanged / Error, as text with icon), Changed fields (comma list). A
   filter by action. Rows with errors link to their issues.
 - Then the `IssueTable`.
@@ -1164,8 +1166,9 @@ Applying runs in one transaction. If anything fails, nothing changes.
   applied, 14 skipped with your confirmation."
 - Tiles from `summary.applied {mode, creates, updates, unchanged, skipped}`.
 - **Evaluation run** panel (`evaluation_run_id` → `GET /stores/{id}/evaluations/{rid}`):
-  `SUCCEEDED` → "3 new exceptions · 6 refreshed · 1 resolved · 0 reopened" with **View new
-  exceptions** (IA Q-IA-6). `SKIPPED` → info "Another analysis was running, so this import's
+  `SUCCEEDED` → "3 new exceptions · 6 refreshed · 1 resolved · 0 reopened" with **View exceptions
+  to triage** (the inbox's triage view; a filter by evaluation run would be needed for "new" only,
+  IA Q-IA-6). Shown with `exceptions.read`, which reads evaluation runs. `SKIPPED` → info "Another analysis was running, so this import's
   analysis was skipped. The next scheduled run, within 15 minutes, will evaluate the new data."
   `FAILED`, or `summary.evaluation_error` set → warning "The import is complete, but its analysis
   failed. No exceptions were changed by it, and the next scheduled run will catch up." A missing
@@ -1199,7 +1202,7 @@ message, raw_value}`.
 | Initial loading | `/imports/{id}`: header skeleton + stepper + tiles skeleton. |
 | Empty | Step 1 has no data state. Preview with 0 issues: "No issues found. All 1,240 rows are valid." (success tone). |
 | Populated | As above. |
-| Search results / filtered | Issue table: filter by severity tabs, code (multi, from `issue_counts_by_code`), row number (exact). No match: "No issues match these filters". Expected-changes table: filter by action. |
+| Search results / filtered | Issue table: filter by severity tabs, code (single, from `issue_counts_by_code`; the API takes one). Row-number search waits for an API filter (T-067). No match: "No issues match these filters". Expected-changes table: filter by action. |
 | Validation error (client) | No type: "Choose what you're importing." No file: "Choose a CSV file." Wrong extension: "Only .csv files can be imported." Too large: "This file is 7.2 MB. The limit is 5 MB. Split it into smaller files." |
 | Validation error (file-level, server) | `REJECTED`: a danger alert per `file_issues[]` item showing the code, the API `message` (for `MISSING_COLUMNS` it lists the missing headers and may say "this looks like an orders file") and the "How to fix" text from IMPORT_PIPELINE §6. **Upload a corrected file** → `/imports/new?type={type}`. |
 | API error with retry | Upload network failure: "Upload failed. Check your connection and try again." (the file stays selected). Apply 5xx: an inline error in step 3 with **Try again** (same Idempotency-Key). |
@@ -1207,7 +1210,7 @@ message, raw_value}`.
 | Preview expired | `DISCARDED` by expiry: muted "This preview expired after 24 hours, because store data may have changed since validation. Upload the file again." + **Upload again**. |
 | Permission denied | `/imports/new` without `imports.run`: standard PermissionDenied. On a record, actions are disabled per the table. |
 | Success toast | Discard → "Import discarded". Apply completes → none (the summary step is the confirmation). |
-| Pending action | "Uploading and validating… 64%" (upload progress, then an indeterminate "Validating 1,240 rows…" until the response), "Applying 1,226 rows…". |
+| Pending action | "Uploading and validating…" (indeterminate; a percentage needs an XHR upload, T-067), "Applying 1,226 rows…". |
 | Confirmation dialog | Discard. Apply uses the inline step 3 confirmation. |
 | Disabled action | Per the step 3 reasons. |
 | Responsive | < 768: tiles in 2 columns. The stepper shows "Step 2 of 4 · Preview". The issue and expected-changes tables scroll horizontally with Row pinned. Step 3 buttons are full width and stacked. |
@@ -1238,7 +1241,7 @@ and what the import triggered. **Personas.** Manager, Staff, Analyst.
    - `COMPLETED_WITH_ERRORS`: warning "14 rows were skipped with your confirmation. They are listed below and in the issues CSV."
    - `REJECTED`: danger, one block per `file_issues[]` item (code, message, fix text) + **Upload a corrected file**.
    - `FAILED`: danger "Apply failed and was rolled back. No data was changed." + `failure_reason` + **Validate again** (`POST …/revalidate`, API_CONVENTIONS, not implemented yet. Until it exists the button is not rendered and the copy says "Upload the file again"). After revalidation the stepper takes over.
-   - `DISCARDED`: muted "Discarded on {date} by {name}" or "Discarded automatically: the preview expired after 24 hours."
+   - `DISCARDED`: muted "Discarded on {date}" (the API records no discarding user, so no name) or the expiry copy. The UI treats a record whose `updated_at` is at or after `expires_at` as expired.
 3. **Details** (DescriptionList): Type, Mode, Uploaded by / at, Validated at, Applied by / at, Size,
    Rows, SHA-256 (first 12 characters, mono, copy full).
 4. **Summary tiles**: as S-12 step 4 for applied imports, as step 2 otherwise.
