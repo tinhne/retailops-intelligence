@@ -326,9 +326,23 @@ nothing was written when the file is rejected. Rule ids: BR-601..608, `SM-IMPORT
 
 ## 10. E2E critical journey (Playwright)
 
-> The project directive's §12 (referenced by T-081) is not in the repository. The 12 steps below are
-> reconstructed from the product scope in `AGENTS.md`, `TASKS.md`, and the domain docs. They must be
-> reconciled with the directive before T-081 starts.
+The product owner's required end-to-end scenarios are listed first. The suite below must cover
+every one of them:
+
+| # | Required scenario | Covered by |
+|---|---|---|
+| 1 | Create or initialize a demo organization | seeded stack (`make seed`) + j01 |
+| 2 | Import products | j02 (`products.csv` plus `inventory_adjustments.csv` that leave one SKU below its reorder point and one oversold) |
+| 3 | Import orders | j02–j03 (`orders.csv`, `order_items.csv`) |
+| 4 | Run operational analysis | j03 (import-triggered run) and j11 ("Run analysis") |
+| 5 | Detect low stock | j04 (`INVENTORY_BELOW_REORDER_POINT` listed for the imported SKU) |
+| 6 | Detect overselling | j04 (`INVENTORY_OVERSOLD` listed with affected orders) |
+| 7 | Open an exception | j05 |
+| 8 | Assign an owner | j09 |
+| 9 | Add an investigation note | j08 (AI draft accepted) and j10 (manual note) |
+| 10 | Resolve an exception | j10 |
+| 11 | Review audit history | j12 |
+| 12 | Ask the AI Copilot to summarize the situation | j07 |
 
 The journey runs as one serial suite (`test.describe.serial`) on a freshly seeded stack, because
 later steps depend on earlier ones. CSV fixtures are generated at run time (§3.3).
@@ -438,4 +452,4 @@ release notes report test status only from a CI run on the released commit.
 | 4 | `ORDER_REFUND_PENDING` CRITICAL after "3 × `refund_overdue_hours`": measured from `cancelled_at` or from the refund deadline? | `EXCEPTION_CATALOG.md` | Severity boundary test |
 | 5 | `INVENTORY_BELOW_REORDER_POINT` severity when velocity is 0 (days of cover undefined) or no supplier lead time exists | `EXCEPTION_CATALOG.md` | Severity branch tests |
 | 6 | Where are file-level rejection codes and the `DUPLICATE_FILE` warning stored, given `ImportRowIssue` is row-based? | `DOMAIN_MODEL.md` | Assertions on rejected imports |
-| 7 | The 12-step journey of directive §12 | not in the repository | §10 must be reconciled |
+| 7 | The owner's 12 required E2E scenarios | listed in §10 | covered by specs j01–j12 |
