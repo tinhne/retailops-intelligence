@@ -84,8 +84,9 @@ describe("OverviewScreen (S-02)", () => {
     renderInStore(<OverviewScreen />, testStore({ permissions: VIEWER }));
     await screen.findByText("Needs attention");
     const hrefs = screen.queryAllByRole("link").map((link) => link.getAttribute("href") ?? "");
-    // Exceptions (T-062) and orders (T-063) exist; inventory is not built yet.
-    expect(hrefs.filter((href) => href.includes("/inventory"))).toEqual([]);
+    // Imports (T-065) is not built yet, so nothing links there.
+    expect(hrefs.filter((href) => href.includes("/imports"))).toEqual([]);
+    expect(hrefs).toContain("/s/f0da0f22-b9e0-4483-b144-e9f0f8703d13/inventory?health=OVERSOLD");
     expect(hrefs).toContain("/s/f0da0f22-b9e0-4483-b144-e9f0f8703d13/orders?overdue=true&sort=ship_by");
     expect(hrefs).toContain("/s/f0da0f22-b9e0-4483-b144-e9f0f8703d13/exceptions?view=active");
     expect(screen.getByRole("link", { name: /EXC-1010, Order KHK-12023/ })).toHaveAttribute(

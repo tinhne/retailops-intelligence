@@ -7,6 +7,7 @@ import {
   fulfillmentStatusMeta,
   orderStatusMeta,
   paymentStatusMeta,
+  productStatusMeta,
   importStatusMeta,
   priorityBandLabels,
   resolvedMeta,
@@ -17,6 +18,7 @@ import {
   type ImportStatus,
   type OrderStatus,
   type PaymentStatus,
+  type ProductStatus,
   type StockHealth,
   type PriorityBand,
   type ResolutionCode,
@@ -150,4 +152,10 @@ export function HealthBadge({ health, onHand, size }: { health: StockHealth | nu
       <StatusPill tone={meta.tone} label={meta.label} icon={meta.icon} size={size} srPrefix="Stock:" />
     </span>
   );
+}
+
+/** Product status as a plain tag; it is not a state colour (S-07). */
+export function ProductStatusTag({ status }: { status: ProductStatus }) {
+  const meta = productStatusMeta[status];
+  return <StatusPill tone={meta.tone} label={meta.label} srPrefix="Product status:" />;
 }

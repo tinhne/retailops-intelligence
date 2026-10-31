@@ -1,5 +1,5 @@
 import type { QueryParams } from "@/lib/api/client";
-import { localDateKey, zonedTimeToUtc } from "@/lib/format/datetime";
+import { storeMidnight } from "@/lib/format/datetime";
 import type { FulfillmentStatus, OrderStatus, PaymentStatus, SalesChannel } from "@/lib/status-maps";
 
 // URL state for the orders list (S-05, IA §9), parsed and validated like the exceptions inbox.
@@ -109,13 +109,6 @@ export function serializeOrderParams(params: OrderParams): URLSearchParams {
 }
 
 const PRESET_DAYS: Record<Placed, number> = { today: 0, "7d": 6, "30d": 29, "60d": 59 };
-
-/** Midnight in the store zone, `daysBack` store-local days before today (BR-501). */
-export function storeMidnight(now: Date, timeZone: string, daysBack: number): Date {
-  const [year, month, day] = localDateKey(now, timeZone).split("-").map(Number);
-  const start = new Date(Date.UTC(year, month - 1, day - daysBack));
-  return zonedTimeToUtc(start.toISOString().slice(0, 10), "00:00", timeZone);
-}
 
 export function toOrderQuery(params: OrderParams, now: Date, timeZone: string): QueryParams {
   return {

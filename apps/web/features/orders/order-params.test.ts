@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { parseOrderParams, serializeOrderParams, storeMidnight, toOrderQuery, updateOrderParams } from "./order-params";
+import { storeMidnight } from "@/lib/format/datetime";
+
+import { parseOrderParams, serializeOrderParams, toOrderQuery, updateOrderParams } from "./order-params";
 
 const ET = "America/New_York";
 const parse = (query: string) => parseOrderParams(new URLSearchParams(query));

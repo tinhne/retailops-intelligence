@@ -3,7 +3,8 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
-// COMPONENT_INVENTORY §4: tones info / success / warning / danger / neutral, 20 px icon.
+// COMPONENT_INVENTORY §4: tones info / success / warning / danger / neutral (plus attention for
+// BR-402a data issues), 20 px icon.
 // `role="alert"` only for danger alerts shown in response to a user action; status otherwise.
 const alertVariants = cva(
   "relative grid w-full grid-cols-[0_1fr] items-start gap-y-0.5 rounded-lg border px-4 py-3 text-body has-[>svg]:grid-cols-[20px_1fr] has-[>svg]:gap-x-3 [&>svg]:size-5 [&>svg]:text-current",
@@ -14,6 +15,7 @@ const alertVariants = cva(
         info: "border-tone-info-border bg-tone-info-bg text-tone-info-fg",
         success: "border-tone-success-border bg-tone-success-bg text-tone-success-fg",
         warning: "border-tone-warning-border bg-tone-warning-bg text-tone-warning-fg",
+        attention: "border-tone-attention-border bg-tone-attention-bg text-tone-attention-fg",
         danger: "border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg",
       },
     },

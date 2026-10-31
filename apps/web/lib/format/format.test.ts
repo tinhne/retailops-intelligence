@@ -17,6 +17,7 @@ import {
 import {
   formatBytes,
   formatCount,
+  formatDelta,
   formatMoney,
   formatMoneyCompact,
   formatMoneyForSpeech,
@@ -62,6 +63,7 @@ describe("numbers", () => {
     expect(formatPercentValue("0.8")).toBe("0.8%");
     expect(formatBytes(1_800_000)).toBe("1.8 MB");
     expect(formatBytes(512)).toBe("512 B");
+    expect([formatDelta(40), formatDelta(-3), formatDelta(0)]).toEqual(["+40", "\u22123", "0"]);
   });
 });
 
