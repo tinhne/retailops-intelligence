@@ -82,3 +82,27 @@ def require_permission(*required: Permission) -> Callable[..., identity.StoreCon
         return ctx
 
     return dependency
+
+
+def require_org_permission(*required: Permission) -> Callable[..., identity.OrganizationContext]:
+    """Dependency factory for organization-scoped routes (path parameter ``organization_id``).
+
+    404 when the caller has no membership in the organization (its existence is not revealed),
+    403 when the membership role lacks a required permission.
+    """
+
+    def dependency(
+        organization_id: uuid.UUID,
+        principal: Principal = Depends(get_principal),
+        db: Session = Depends(get_db),
+    ) -> identity.OrganizationContext:
+        ctx = identity.organization_context(db, principal.user, organization_id)
+        missing = [p.value for p in required if p not in ctx.permissions]
+        if missing:
+            raise PermissionDeniedError(
+                "Your role does not allow this action.",
+                details=[{"missing_permission": p} for p in missing],
+            )
+        return ctx
+
+    return dependency
