@@ -12,6 +12,7 @@ Several rows sit just before or after a local midnight to pin the bucketing (BR-
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from typing import Any
 
 import pytest
@@ -127,10 +128,12 @@ def _seed_exceptions(db: Session, store: Store) -> None:
     rows: list[tuple[ExceptionType, Product | Order, dict[str, Any]]] = [
         (kind.INVENTORY_OVERSOLD, p["Q"], dict(
             severity=Severity.CRITICAL, priority_score=81, first_detected_at=utc(11, 3, 15),
-            due_at=utc(11, 3, 19), assignee=store.manager, title="Q-OVERSOLD oversold by 1")),
+            due_at=utc(11, 3, 19), assignee=store.manager, title="Q-OVERSOLD oversold by 1",
+            exposure_amount=Decimal("45.50"))),
         (kind.ORDER_FULFILLMENT_OVERDUE, o["T-11"], dict(
             severity=Severity.HIGH, priority_score=62, status=ExceptionStatus.IN_PROGRESS,
-            first_detected_at=utc(11, 1, 4, 30), due_at=utc(11, 2, 4, 30))),
+            first_detected_at=utc(11, 1, 4, 30), due_at=utc(11, 2, 4, 30),
+            exposure_amount=Decimal("70.00"))),
         (kind.INVENTORY_BELOW_REORDER_POINT, p["S"], dict(
             severity=Severity.MEDIUM, priority_score=26, status=ExceptionStatus.REOPENED,
             first_detected_at=utc(10, 29, 3), due_at=utc(11, 1, 3),
@@ -145,9 +148,11 @@ def _seed_exceptions(db: Session, store: Store) -> None:
         (kind.INVENTORY_OUT_OF_STOCK, p["R"], dict(
             status=ExceptionStatus.RESOLVED, first_detected_at=utc(10, 29, 16),
             resolved_at=utc(10, 30, 22), resolution_code=ResolutionCode.CONDITION_CLEARED)),
+        # Closed exceptions carry exposure too, but only active ones count.
         (kind.ORDER_REFUND_PENDING, o["T-05"], dict(
             status=ExceptionStatus.RESOLVED, first_detected_at=utc(10, 29, 16),
-            resolved_at=utc(11, 2, 4), resolution_code=ResolutionCode.REFUND_ISSUED)),
+            resolved_at=utc(11, 2, 4), resolution_code=ResolutionCode.REFUND_ISSUED,
+            exposure_amount=Decimal("30.00"))),
         (kind.INVENTORY_OUT_OF_STOCK, p["X"], dict(
             status=ExceptionStatus.RESOLVED, first_detected_at=utc(11, 2, 16),
             resolved_at=utc(11, 3, 15), resolution_code=ResolutionCode.SUPERSEDED)),
@@ -206,6 +211,13 @@ def test_dashboard_numbers_reconcile_with_seeded_rows(client: TestClient, store:
         "by_severity": {"CRITICAL": 1, "HIGH": 1, "MEDIUM": 1, "LOW": 1},
         "by_band": {"P1": 1, "P2": 1, "P3": 1, "P4": 1},
         "by_category": {"INVENTORY": 2, "FULFILLMENT": 1, "PAYMENT": 0, "DATA_QUALITY": 1},
+        # Per category only; never totalled (BR-404).
+        "exposure_by_category": {
+            "INVENTORY": "45.50",
+            "FULFILLMENT": "70.00",
+            "PAYMENT": "0.00",
+            "DATA_QUALITY": "0.00",
+        },
         "unassigned": 3,
         "past_due": 2,  # due Nov 2 04:30 and Nov 1 03:00
         "reopened": 1,

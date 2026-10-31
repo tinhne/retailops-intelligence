@@ -27,7 +27,7 @@ dependencies, data flows and owners. Details live in
 | exceptions | `apps/api/app/domains/exceptions/` | `apps/web/features/exceptions/` | `/stores/{id}/exceptions`, `/stores/{id}/evaluations` | BE | API done · UI planned |
 | audit | `apps/api/app/domains/audit/` | `apps/web/features/admin/` (audit viewer) | `/stores/{id}/audit-logs` | BE | API done · UI planned |
 | ai | `apps/api/app/domains/ai/` | `apps/web/features/copilot/` | `/stores/{id}/copilot/*` | AI (backend), FE (UI) | planned (models only) |
-| analytics | `apps/api/app/domains/analytics/` | `apps/web/features/overview/` | `/stores/{id}/analytics/*` (dashboard, trends, exceptions-breakdown) | BE | API done · UI in progress |
+| analytics | `apps/api/app/domains/analytics/` | `apps/web/features/overview/` | `/stores/{id}/analytics/*` (dashboard, trends, exceptions-breakdown) | BE | API done · Overview UI done |
 | worker | `apps/api/app/workers/scheduler.py` | none | none | BE | done (not yet in compose) |
 | demo | `apps/api/app/demo/` | `components/shell/demo-banner.tsx`, `/demo` entry | `/auth/demo` (via identity) | BE | seed and banner done · reset job planned |
 
@@ -66,6 +66,7 @@ dependencies, data flows and owners. Details live in
 | `apps/web/app/(public)/`, `features/auth/` | Sign-in and demo entry (S-01) | T-060 | done |
 | `apps/web/proxy.ts`, `apps/web/next.config.ts` | Optimistic sign-in redirect; `/api/*` rewrite to FastAPI (ADR-0004) | T-060 | done |
 | `apps/web/styles/tokens.css`, `app/globals.css`, `components/ui/` | Design tokens, Tailwind theme mapping, restyled shadcn/ui primitives | T-060 | done |
+| `apps/web/lib/format/`, `lib/status-maps.ts`, `components/status/`, `components/data/`, `components/charts/` | Formatters, enum labels and tones, status pills, money and time atoms, KPI card, chart frame | T-061 | done |
 | `apps/web/tests/e2e/` | Playwright critical journey | T-081 | planned |
 | `docker-compose.yml`, `infra/docker/` | `db`, `api`, `worker`, `web` (only `db` and the API image exist) | T-090 | in progress |
 | `.github/workflows/ci.yml` | Lint, types, tests, builds, dependency audit (no contract diff check yet) | T-091 | done |

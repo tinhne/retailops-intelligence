@@ -120,3 +120,31 @@ add a correction entry instead.
   ErrorState). `pnpm audit --prod --audit-level high`: no known vulnerabilities. Browser check
   against the seeded API: password and demo sign-in, `next` redirect, invalid credentials, session
   expiry, sign-out, unknown store, and the 375, 768 and 1280 px layouts.
+
+## 2026-11-01 (UTC+7): Orchestrator: Overview dashboard (T-061)
+
+- **API (5a108e5):** `ActiveExceptionSummary.exposure_by_category`, the sum of `exposure_amount` of
+  active exceptions per category (gross value at risk, BR-404). Per category only, never totalled.
+  Integration test updated (closed exceptions with exposure are excluded). Contracts regenerated.
+- **Web:** S-02 Overview. Formatters (`lib/format`: money from decimal strings with U+2212, store-zone
+  date and time with per-instant EDT/EST, deadlines, durations), `status-maps.ts` (labels, tones and
+  icons for severity, status including the four RESOLVED forms, health, import status), status atoms
+  (StatusPill, SeverityBadge, ExceptionStatusPill, PriorityIndicator, ImportStatusPill), Money,
+  DateTime and DueLabel on one shared minute ticker, KpiCard, ChartFrame with a Chart/Table toggle,
+  EmptyState, ActionButton (disabled with a focusable reason) and RunAnalysisButton (Idempotency-Key
+  reused on retry; SUCCEEDED, SKIPPED, FAILED and RUNNING outcomes).
+- **Overview regions:** freshness strip, six KPIs, Needs attention (top 8), active exceptions and value
+  at risk per category, stock health, shipments per day (stacked, store-local days, partial day
+  marked), recent imports. States: loading skeletons, no data (with CSV template links), nothing needs
+  attention, dashboard error with retry, independent chart and imports errors, permission denied.
+- **Links:** KPI cards and rows link only to built pages the role may open (`sectionHref`), so they are
+  plain text until T-062..T-065 land.
+- **Found:** the demo store has no CSV imports (the seed writes rows directly), so "no data" is
+  detected from products, active exceptions and imports together. Products with negative on-hand
+  count as Oversold in stock health; BR-402a wants a separate data-issue row. Recorded as T-058.
+- **Spec synced:** S-02 data table now matches the API (`days=30` trends, `assignee=unassigned`,
+  `exposure_by_category`).
+- **Tests:** web lint, typecheck and build green; vitest **90 passed**. Mutation checks: breaking the
+  key reuse or the data-quality "—" rule fails the suite. Browser check against the seeded API as the
+  demo viewer (Run analysis read-only) and as a manager (Run analysis completes, freshness updates),
+  at 1440 and 375 px.

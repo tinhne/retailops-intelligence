@@ -163,12 +163,14 @@ def _active_summary(db: Session, store_id: uuid.UUID, as_of: datetime) -> Active
     by_severity = dict.fromkeys(Severity, 0)
     by_band = dict.fromkeys(PriorityBand, 0)
     by_category = dict.fromkeys(ExceptionCategory, 0)
+    exposure_by_category = dict.fromkeys(ExceptionCategory, Decimal("0"))
     total = unassigned = past_due = reopened = 0
     for group in queries.active_exception_groups(db, store_id, as_of=as_of):
         total += group.count
         by_severity[group.severity] += group.count
         by_band[group.band] += group.count
         by_category[group.category] += group.count
+        exposure_by_category[group.category] += group.exposure
         unassigned += group.count if group.unassigned else 0
         past_due += group.count if group.past_due else 0
         reopened += group.count if group.reopened else 0
@@ -177,6 +179,9 @@ def _active_summary(db: Session, store_id: uuid.UUID, as_of: datetime) -> Active
         by_severity=by_severity,
         by_band=by_band,
         by_category=by_category,
+        exposure_by_category={
+            category: _money(amount) for category, amount in exposure_by_category.items()
+        },
         unassigned=unassigned,
         past_due=past_due,
         reopened=reopened,
