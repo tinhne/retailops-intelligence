@@ -826,7 +826,9 @@ the next import, or after 24 h (grace rule, STATE_MACHINES §3.3–3.4). It link
 the first `RESOLVED` exception with `verified_at` set and a manual resolution code
 (`GET exceptions?status=RESOLVED&page_size=25`, picked client-side), and the first `REOPENED` one
 (`?status=REOPENED&page_size=1`). The demo seed guarantees both exist. Outside the demo a link is
-hidden when no example is found. **Used by.** S-04 (VIEWER),
+hidden when no example is found. Implemented in `features/exceptions/detail/lifecycle-explainer.tsx`
+without props: the examples are fetched when the popover opens, with loading ("Looking for
+examples in this store…"), error ("Examples couldn't be loaded.") and none-found copy. **Used by.** S-04 (VIEWER),
 C-93.
 
 ---
@@ -895,8 +897,8 @@ warnings. "Rows with errors" and "Skipped" use the danger and warning tones when
 ```ts
 type IssueTableProps = { importId: string; counts: { error: number; warning: number } };
 ```
-Uses C-30 (compact, server-paginated, `GET …/imports/{id}/issues?severity&code`). Tabs: All,
-Errors, Warnings. Filters: code (multi, options from `summary.issue_counts_by_code`), row number.
+Uses C-30 (compact, server-paginated, `GET …/imports/{id}/issues?severity&code&row_number`). Tabs: All,
+Errors, Warnings. Filters: code (single, options from `summary.issue_counts_by_code`; the API takes one), row number (digits, exact).
 Columns: Row, Column, Code (mono, with the "How to fix" tooltip from `importIssueMeta`, which
 mirrors IMPORT_PIPELINE §6, including `STALE_CYCLE_COUNT`), Severity (pill), Message (API text),
 Value (`raw_value`, mono, truncated at 40 characters, full value in the tooltip, rendered as text,

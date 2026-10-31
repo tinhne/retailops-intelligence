@@ -56,6 +56,8 @@ export type InboxParams = {
   /** "me", "unassigned" or a member id. Only used in views that don't fix the assignee. */
   assignee: string | null;
   due: Due | null;
+  /** Hidden filter set by links from an import's analysis (S-13): exceptions this run detected. */
+  evaluation_run_id: string | null;
   sort: Sort;
   page: number;
   page_size: PageSize;
@@ -99,6 +101,8 @@ export function parseInboxParams(search: URLSearchParams, defaultView: View = "a
   const pageSize = Number(search.get("page_size") ?? "25");
   if (search.has("page") && !(Number.isInteger(page) && page >= 1)) invalid.push("page");
   if (search.has("page_size") && !(PAGE_SIZES as readonly number[]).includes(pageSize)) invalid.push("page_size");
+  const runRaw = search.get("evaluation_run_id");
+  if (runRaw && !UUID.test(runRaw)) invalid.push("evaluation_run_id");
 
   const params: InboxParams = {
     view,
@@ -110,6 +114,7 @@ export function parseInboxParams(search: URLSearchParams, defaultView: View = "a
     exception_type: pickAll(search.getAll("exception_type"), TYPES, invalid, "exception_type"),
     assignee: view === "mine" || view === "unassigned" ? null : assignee,
     due: pickOne(search.get("due"), DUES, invalid, "due"),
+    evaluation_run_id: runRaw && UUID.test(runRaw) ? runRaw : null,
     sort: pickOne(search.get("sort"), SORTS, invalid, "sort") ?? VIEW_DEFAULT_SORT[view],
     page: Number.isInteger(page) && page >= 1 ? page : 1,
     page_size: (PAGE_SIZES as readonly number[]).includes(pageSize) ? (pageSize as PageSize) : 25,
@@ -127,6 +132,7 @@ export function serializeInboxParams(params: InboxParams): URLSearchParams {
   }
   if (params.assignee) search.set("assignee", params.assignee);
   if (params.due) search.set("due", params.due);
+  if (params.evaluation_run_id) search.set("evaluation_run_id", params.evaluation_run_id);
   if (params.sort !== VIEW_DEFAULT_SORT[params.view]) search.set("sort", params.sort);
   if (params.page !== 1) search.set("page", String(params.page));
   if (params.page_size !== 25) search.set("page_size", String(params.page_size));
@@ -149,6 +155,7 @@ export function toApiQuery(params: InboxParams, now: Date): QueryParams {
   if (params.view === "mine") query.assignee = "me";
   else if (params.view === "unassigned") query.assignee = "unassigned";
   else if (params.assignee) query.assignee = params.assignee;
+  if (params.evaluation_run_id) query.evaluation_run_id = params.evaluation_run_id;
   if (params.due === "overdue") query.due_to = now.toISOString();
   if (params.due === "24h") query.due_to = new Date(now.getTime() + 24 * 3_600_000).toISOString();
   return query;
@@ -164,7 +171,8 @@ export function isFiltered(params: InboxParams): boolean {
       params.category.length ||
       params.exception_type.length ||
       params.assignee ||
-      params.due,
+      params.due ||
+      params.evaluation_run_id,
   );
 }
 
@@ -179,6 +187,19 @@ export function updateParams(params: InboxParams, patch: Partial<InboxParams>): 
   }
   return next;
 }
+
+/** Every filter back to its default; the view and sort stay (S-03 "Clear all"). */
+export const CLEARED_FILTERS: Partial<InboxParams> = {
+  q: "",
+  severity: [],
+  priority_band: [],
+  status: [],
+  category: [],
+  exception_type: [],
+  assignee: null,
+  due: null,
+  evaluation_run_id: null,
+};
 
 /** "EXC-1042" or "1042": an exact reference typed into the search box. */
 export function exactReference(q: string): string | null {

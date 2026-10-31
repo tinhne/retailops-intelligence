@@ -19,18 +19,22 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { userMessage } from "@/lib/api/errors";
 import { exceptionKeys, exceptionsApi, type ExceptionDetail } from "@/lib/api/exceptions-api";
 import { formatDateTime, utcToZonedInputs, zonedTimeToUtc } from "@/lib/format/datetime";
+import { useMediaQuery } from "@/lib/hooks/browser";
 import type { Gate } from "@/lib/permissions";
 import { roleLabels } from "@/lib/permissions";
 import { categoryLabels, exceptionTypeLabels } from "@/lib/status-maps";
 import { useStore } from "@/lib/store/store-context";
+import { cn } from "@/lib/utils";
 
 import { getExceptionActions, gateFor, type ActionItem, type BarAction } from "./actions";
 import { DismissDialog, ReopenDialog, ResolveDialog } from "./lifecycle-dialogs";
+import { LifecycleExplainer } from "./lifecycle-explainer";
 import { useExceptionCommand } from "./use-exception-command";
 
 const BUSY: Gate = { allowed: false, reason: "Another action is in progress." };
@@ -219,6 +223,8 @@ function ActionBar({ exception }: { exception: ExceptionDetail }) {
   const command = useExceptionCommand(exception);
   const [dialog, setDialog] = useState<"resolve" | "dismiss" | "reopen" | null>(null);
   const [pendingKind, setPendingKind] = useState<BarAction | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const wide = useMediaQuery("(min-width: 768px)");
   const layout = getExceptionActions(exception, store.organization.isDemo);
 
   const runDirect = async (kind: BarAction) => {
@@ -243,66 +249,148 @@ function ActionBar({ exception }: { exception: ExceptionDetail }) {
     else void runDirect(item.kind);
   };
   const gateOf = (item: ActionItem): Gate => (pendingKind && pendingKind !== item.kind ? BUSY : item.gate);
+  const explainer = store.role === "VIEWER" ? <LifecycleExplainer /> : null;
 
-  if (!layout.primary && layout.secondary.length === 0 && layout.more.length === 0) return null;
+  if (!layout.primary && layout.secondary.length === 0 && layout.more.length === 0) return explainer;
 
-  return (
+  const dialogs = (
     <>
-      <div role="toolbar" aria-label="Exception actions" className="flex flex-wrap items-center gap-2">
-        {layout.primary ? (
-          <ActionButton
-            gate={gateOf(layout.primary)}
-            type="button"
-            pending={pendingKind === layout.primary.kind}
-            pendingLabel={`${layout.primary.label.replace("…", "")}…`}
-            onClick={() => layout.primary && trigger(layout.primary)}
-          >
-            {layout.primary.label}
-          </ActionButton>
-        ) : null}
-        {layout.secondary.map((item) => (
-          <ActionButton
-            key={item.kind}
-            gate={gateOf(item)}
-            type="button"
-            variant="secondary"
-            pending={pendingKind === item.kind}
-            pendingLabel={`${item.label.replace("…", "")}…`}
-            onClick={() => trigger(item)}
-          >
-            {item.label}
-          </ActionButton>
-        ))}
-        {layout.more.length > 0 ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button type="button" variant="secondary" aria-label="More actions">
-                More
-                <MoreHorizontal aria-hidden />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-72">
-              {layout.more.map((item) => {
-                const gate = gateOf(item);
-                return (
-                  <DropdownMenuItem
-                    key={item.kind}
-                    disabled={!gate.allowed}
-                    onSelect={() => trigger(item)}
-                    className="flex-col items-start gap-0.5"
-                  >
-                    <span>{item.label}</span>
-                    {!gate.allowed ? <span className="text-xs font-normal text-muted-foreground">{gate.reason}</span> : null}
-                  </DropdownMenuItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : null}
-      </div>
       <ResolveDialog exception={exception} open={dialog === "resolve"} onOpenChange={(open) => setDialog(open ? "resolve" : null)} />
       <DismissDialog exception={exception} open={dialog === "dismiss"} onOpenChange={(open) => setDialog(open ? "dismiss" : null)} />
       <ReopenDialog exception={exception} open={dialog === "reopen"} onOpenChange={(open) => setDialog(open ? "reopen" : null)} />
+    </>
+  );
+
+  // Below 768 px the actions sit in a bar fixed to the bottom of the screen (S-04 "Responsive"):
+  // the primary action, and More opening a sheet with the others and their disabled reasons.
+  if (!wide) {
+    const others = [...layout.secondary, ...layout.more];
+    return (
+      <>
+        {explainer}
+        <div
+          role="toolbar"
+          aria-label="Exception actions"
+          className="fixed inset-x-0 bottom-0 z-(--z-sticky-bar) flex h-16 items-center gap-2 border-t bg-card px-4"
+        >
+          {layout.primary ? (
+            <ActionButton
+              gate={gateOf(layout.primary)}
+              type="button"
+              size="lg"
+              className="min-w-0 flex-1"
+              pending={pendingKind === layout.primary.kind}
+              pendingLabel={`${layout.primary.label.replace("…", "")}…`}
+              onClick={() => layout.primary && trigger(layout.primary)}
+            >
+              {layout.primary.label}
+            </ActionButton>
+          ) : null}
+          {others.length > 0 ? (
+            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+              <SheetTrigger asChild>
+                <Button type="button" variant="secondary" size="lg" className={cn(!layout.primary && "flex-1")} aria-label="More actions">
+                  More
+                  <MoreHorizontal aria-hidden />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="gap-0 rounded-t-lg">
+                <SheetHeader className="border-b">
+                  <SheetTitle>Actions</SheetTitle>
+                  <SheetDescription>{exception.reference}</SheetDescription>
+                </SheetHeader>
+                <ul className="flex flex-col gap-1 p-2">
+                  {others.map((item) => {
+                    const gate = gateOf(item);
+                    return (
+                      <li key={item.kind}>
+                        <button
+                          type="button"
+                          aria-disabled={gate.allowed ? undefined : true}
+                          onClick={() => {
+                            if (!gate.allowed) return;
+                            setSheetOpen(false);
+                            trigger(item);
+                          }}
+                          className={cn(
+                            "flex min-h-12 w-full flex-col items-start justify-center gap-0.5 rounded-md px-3 py-2 text-left text-body",
+                            gate.allowed ? "hover:bg-accent" : "cursor-not-allowed text-text-disabled",
+                          )}
+                        >
+                          <span className="font-medium">{item.label}</span>
+                          {!gate.allowed ? <span className="text-xs text-muted-foreground">{gate.reason}</span> : null}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </SheetContent>
+            </Sheet>
+          ) : null}
+        </div>
+        {dialogs}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-2">
+        <div role="toolbar" aria-label="Exception actions" className="flex flex-wrap items-center gap-2">
+          {layout.primary ? (
+            <ActionButton
+              gate={gateOf(layout.primary)}
+              type="button"
+              pending={pendingKind === layout.primary.kind}
+              pendingLabel={`${layout.primary.label.replace("…", "")}…`}
+              onClick={() => layout.primary && trigger(layout.primary)}
+            >
+              {layout.primary.label}
+            </ActionButton>
+          ) : null}
+          {layout.secondary.map((item) => (
+            <ActionButton
+              key={item.kind}
+              gate={gateOf(item)}
+              type="button"
+              variant="secondary"
+              pending={pendingKind === item.kind}
+              pendingLabel={`${item.label.replace("…", "")}…`}
+              onClick={() => trigger(item)}
+            >
+              {item.label}
+            </ActionButton>
+          ))}
+          {layout.more.length > 0 ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" variant="secondary" aria-label="More actions">
+                  More
+                  <MoreHorizontal aria-hidden />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72">
+                {layout.more.map((item) => {
+                  const gate = gateOf(item);
+                  return (
+                    <DropdownMenuItem
+                      key={item.kind}
+                      disabled={!gate.allowed}
+                      onSelect={() => trigger(item)}
+                      className="flex-col items-start gap-0.5"
+                    >
+                      <span>{item.label}</span>
+                      {!gate.allowed ? <span className="text-xs font-normal text-muted-foreground">{gate.reason}</span> : null}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
+        </div>
+        {explainer}
+      </div>
+      {dialogs}
     </>
   );
 }

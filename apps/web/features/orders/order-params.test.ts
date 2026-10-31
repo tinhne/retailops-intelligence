@@ -53,3 +53,33 @@ describe("placed presets use store-local days (BR-501)", () => {
     });
   });
 });
+
+describe("custom placed range (S-05)", () => {
+  it("keeps store-local days for the custom preset only", () => {
+    const { params, invalid } = parse("placed=custom&placed_from=2026-10-01&placed_to=2026-10-31");
+    expect(invalid).toEqual([]);
+    expect(params).toMatchObject({ placed: "custom", placed_from: "2026-10-01", placed_to: "2026-10-31" });
+    expect(serializeOrderParams(params).toString()).toBe("placed=custom&placed_from=2026-10-01&placed_to=2026-10-31");
+    expect(parse("placed=7d&placed_from=2026-10-01").invalid).toEqual(["placed_from"]);
+  });
+
+  it("drops malformed days and a reversed range from a link", () => {
+    expect(parse("placed=custom&placed_from=2026-02-30").invalid).toEqual(["placed_from"]);
+    const reversed = parse("placed=custom&placed_from=2026-10-31&placed_to=2026-10-01");
+    expect(reversed.invalid).toEqual(["placed_to"]);
+    expect(reversed.params).toMatchObject({ placed_from: "2026-10-31", placed_to: null });
+  });
+
+  it("sends the start day's midnight and the midnight after the end day", () => {
+    const { params } = parse("placed=custom&placed_from=2026-10-30&placed_to=2026-11-01");
+    expect(toOrderQuery(params, new Date("2026-11-05T12:00:00Z"), ET)).toMatchObject({
+      placed_from: "2026-10-30T04:00:00.000Z", // EDT
+      placed_to: "2026-11-02T05:00:00.000Z", // EST, after the DST change
+    });
+  });
+
+  it("clears the range when another preset is picked", () => {
+    const { params } = parse("placed=custom&placed_from=2026-10-01");
+    expect(updateOrderParams(params, { placed: "7d" })).toMatchObject({ placed: "7d", placed_from: null, placed_to: null });
+  });
+});

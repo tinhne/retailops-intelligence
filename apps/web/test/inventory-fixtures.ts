@@ -90,6 +90,8 @@ export function movementFixture(overrides: Partial<Movement> = {}): Movement {
     reference: "PO-2291",
     note: null,
     import_id: "imp-1",
+    import_filename: "inventory_adjustments_2026-10-28.csv",
+    order_id: null,
     created_by: null,
     occurred_at: "2026-10-28T14:00:00Z",
     recorded_at: "2026-10-28T14:05:00Z",

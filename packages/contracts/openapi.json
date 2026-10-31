@@ -1954,6 +1954,11 @@
             ],
             "title": "Applied By"
           },
+          "can_revalidate": {
+            "description": "FAILED with the file bytes still stored (until the preview's expiry), so POST \u2026/revalidate can validate it again. Otherwise the file must be uploaded again.",
+            "title": "Can Revalidate",
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -2097,6 +2102,7 @@
           "applied_by",
           "evaluation_run_id",
           "failure_reason",
+          "can_revalidate",
           "file_issues"
         ],
         "title": "ImportDetailOut",
@@ -2250,6 +2256,11 @@
             ],
             "title": "Applied By"
           },
+          "can_revalidate": {
+            "description": "FAILED with the file bytes still stored (until the preview's expiry), so POST \u2026/revalidate can validate it again. Otherwise the file must be uploaded again.",
+            "title": "Can Revalidate",
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -2385,7 +2396,8 @@
           "created_by",
           "applied_by",
           "evaluation_run_id",
-          "failure_reason"
+          "failure_reason",
+          "can_revalidate"
         ],
         "title": "ImportOut",
         "type": "object"
@@ -3006,6 +3018,18 @@
             "title": "Id",
             "type": "string"
           },
+          "import_filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "original_filename of the import, if any.",
+            "title": "Import Filename"
+          },
           "import_id": {
             "anyOf": [
               {
@@ -3052,6 +3076,19 @@
           "on_hand_delta": {
             "title": "On Hand Delta",
             "type": "integer"
+          },
+          "order_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The order a SHIPMENT belongs to, from its order_item:{id} reference (BR-131).",
+            "title": "Order Id"
           },
           "product_id": {
             "format": "uuid",
@@ -3101,6 +3138,8 @@
           "source",
           "reference",
           "import_id",
+          "import_filename",
+          "order_id",
           "note",
           "created_by"
         ],
@@ -3550,6 +3589,18 @@
             "title": "Id",
             "type": "string"
           },
+          "import_filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "original_filename of the import that made the change, if any.",
+            "title": "Import Filename"
+          },
           "import_id": {
             "anyOf": [
               {
@@ -3593,6 +3644,7 @@
           "fulfillment_status",
           "source",
           "import_id",
+          "import_filename",
           "actor_user_id",
           "occurred_at"
         ],
@@ -6936,6 +6988,25 @@
             }
           },
           {
+            "description": "Only exceptions this evaluation run detected (created)",
+            "in": "query",
+            "name": "evaluation_run_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only exceptions this evaluation run detected (created)",
+              "title": "Evaluation Run Id"
+            }
+          },
+          {
             "description": "Reference or title contains",
             "in": "query",
             "name": "q",
@@ -7793,18 +7864,23 @@
             }
           },
           {
+            "description": "Repeatable.",
             "in": "query",
             "name": "status",
             "required": false,
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/ImportStatus"
+                  "items": {
+                    "$ref": "#/components/schemas/ImportStatus"
+                  },
+                  "type": "array"
                 },
                 {
                   "type": "null"
                 }
               ],
+              "description": "Repeatable.",
               "title": "Status"
             }
           },
@@ -8225,6 +8301,25 @@
             }
           },
           {
+            "description": "Issues of this CSV row only.",
+            "in": "query",
+            "name": "row_number",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Issues of this CSV row only.",
+              "title": "Row Number"
+            }
+          },
+          {
             "in": "query",
             "name": "sort",
             "required": false,
@@ -8344,6 +8439,60 @@
         ]
       }
     },
+    "/api/v1/stores/{store_id}/imports/{import_id}/revalidate": {
+      "post": {
+        "description": "FAILED -> VALIDATING -> VALIDATED | REJECTED, using the bytes a failed apply keeps.",
+        "operationId": "revalidate_import_api_v1_stores__store_id__imports__import_id__revalidate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "import_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Import Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "store_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Store Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revalidate Import",
+        "tags": [
+          "imports"
+        ]
+      }
+    },
     "/api/v1/stores/{store_id}/inventory/movements": {
       "get": {
         "operationId": "list_movements_api_v1_stores__store_id__inventory_movements_get",
@@ -8410,6 +8559,25 @@
                 }
               ],
               "title": "Source"
+            }
+          },
+          {
+            "description": "Rows written by this import.",
+            "in": "query",
+            "name": "import_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Rows written by this import.",
+              "title": "Import Id"
             }
           },
           {

@@ -45,3 +45,29 @@ describe("defineListParams (IA §9)", () => {
     expect(list.update(params, { page: 5 }).page).toBe(5);
   });
 });
+
+describe("date fields and cross-field checks", () => {
+  const ranged = defineListParams(
+    { from: { kind: "date" }, to: { kind: "date" } },
+    {
+      sorts: ["-at"],
+      defaultSort: "-at",
+      pageSizes: [50],
+      defaultPageSize: 50,
+      refine: (params) => (params.from && params.to && String(params.to) < String(params.from) ? ["to"] : []),
+    },
+  );
+
+  it("keeps real days and drops malformed ones", () => {
+    const { params, invalid } = ranged.parse(new URLSearchParams("from=2026-10-01&to=2026-10-32"));
+    expect(params).toMatchObject({ from: "2026-10-01", to: null });
+    expect(invalid).toEqual(["to"]);
+    expect(ranged.serialize(params).toString()).toBe("from=2026-10-01");
+  });
+
+  it("drops what the refinement rejects", () => {
+    const { params, invalid } = ranged.parse(new URLSearchParams("from=2026-10-31&to=2026-10-01"));
+    expect(params).toMatchObject({ from: "2026-10-31", to: null });
+    expect(invalid).toEqual(["to"]);
+  });
+});

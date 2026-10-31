@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -6,6 +6,7 @@ import type { Permission } from "@/lib/api/auth";
 import { listItemFixture } from "@/test/exception-fixtures";
 import { jsonResponse, routeFetch } from "@/test/fetch";
 import { dashboardFixture } from "@/test/fixtures";
+import { importFixture } from "@/test/import-fixtures";
 import { movementFixture, positionFixture, productDetailFixture, productListItemFixture } from "@/test/inventory-fixtures";
 import { renderInStore, testStore } from "@/test/render";
 
@@ -254,6 +255,101 @@ describe("MovementsScreen (S-10)", () => {
     expect(url).toContain(`product_id=${productId}`);
     expect(url).toMatch(/from=\d{4}-\d{2}-\d{2}T/);
     expect(url).toContain("sort=-occurred_at");
+  });
+
+  it("links a shipment to its exact order and a row to the import that wrote it", async () => {
+    routeFetch({
+      "/inventory/movements": jsonResponse(
+        page([
+          movementFixture(),
+          movementFixture({
+            id: "m2",
+            movement_type: "SHIPMENT",
+            source: "ORDER",
+            reference: "order_item:9b1",
+            note: "Order KHK-12023",
+            import_id: null,
+            import_filename: null,
+            order_id: "o7",
+          }),
+        ]),
+      ),
+      "/members": jsonResponse({ items: [] }),
+    });
+    renderInStore(<MovementsScreen />, testStore({ permissions: [...VIEWER, "imports.read"] }));
+    const table = await screen.findByRole("table");
+    expect(await within(table).findByRole("link", { name: "Order KHK-12023" })).toHaveAttribute("href", `${STORE}/orders/o7`);
+    expect(within(table).getByRole("columnheader", { name: "Import" })).toBeInTheDocument();
+    expect(within(table).getByRole("link", { name: "inventory_adjustments_2026-10-28.csv" })).toHaveAttribute("href", `${STORE}/imports/imp-1`);
+  });
+
+  it("shows the import file name as text without imports.read", async () => {
+    routeFetch({ "/inventory/movements": jsonResponse(page([movementFixture()])), "/members": jsonResponse({ items: [] }) });
+    renderInStore(<MovementsScreen />, testStore({ permissions: VIEWER }));
+    const table = await screen.findByRole("table");
+    expect(await within(table).findByText("inventory_adjustments_2026-10-28.csv")).toBeInTheDocument();
+    expect(within(table).queryByRole("link", { name: "inventory_adjustments_2026-10-28.csv" })).not.toBeInTheDocument();
+  });
+
+  it("filters by an import from a link and names its file in a chip", async () => {
+    const importId = "5f1d2c3b-4a59-4e6f-8a7b-9c0d1e2f3a4b";
+    search = new URLSearchParams(`import_id=${importId}`);
+    const fetchMock = routeFetch({
+      "/inventory/movements": jsonResponse(page([movementFixture({ import_id: importId })])),
+      [`/imports/${importId}`]: jsonResponse(importFixture({ id: importId, original_filename: "counts-october.csv" })),
+      "/members": jsonResponse({ items: [] }),
+    });
+    renderInStore(<MovementsScreen />, testStore({ permissions: [...VIEWER, "imports.read"] }));
+    expect(await screen.findByText("Import: counts-october.csv")).toBeInTheDocument();
+    const url = fetchMock.mock.calls.map((call) => String(call[0])).find((u) => u.includes("/inventory/movements")) ?? "";
+    expect(url).toContain(`import_id=${importId}`);
+    await userEvent.click(screen.getByRole("button", { name: "Remove filter Import: counts-october.csv" }));
+    expect(replace).toHaveBeenLastCalledWith(`${STORE}/inventory/movements`, { scroll: false });
+  });
+
+  it("picks a product from a server-side search", async () => {
+    const productId = "0b9c3f1e-2a4d-4c6b-8e7f-1a2b3c4d5e6f";
+    const fetchMock = routeFetch({
+      "/inventory/movements": jsonResponse(page([movementFixture()])),
+      "/inventory/positions": jsonResponse(page([positionFixture({ product_id: productId, sku: "KHK-BW-012", name: "Bamboo cutting board, large" })])),
+      "/members": jsonResponse({ items: [] }),
+    });
+    const user = userEvent.setup();
+    renderInStore(<MovementsScreen />, testStore({ permissions: VIEWER }));
+    await user.click(await screen.findByRole("button", { name: "Product" }));
+    const input = screen.getByRole("combobox", { name: "Search product" });
+    await user.type(input, "bamboo");
+    const option = await screen.findByRole("option", { name: /KHK-BW-012/ });
+    await waitFor(() => {
+      const urls = fetchMock.mock.calls.map((call) => String(call[0])).filter((u) => u.includes("/inventory/positions"));
+      expect(urls.at(-1)).toContain("q=bamboo");
+    });
+    expect(option).toHaveTextContent("Bamboo cutting board, large");
+    await user.keyboard("{Enter}");
+    expect(replace).toHaveBeenLastCalledWith(`${STORE}/inventory/movements?product_id=${productId}`, { scroll: false });
+  });
+
+  it("applies a custom occurred range in store days and refuses a reversed one", async () => {
+    search = new URLSearchParams("occurred=custom&occurred_from=2026-10-01&occurred_to=2026-10-31");
+    const fetchMock = routeFetch({ "/inventory/movements": jsonResponse(page([movementFixture()])), "/members": jsonResponse({ items: [] }) });
+    renderInStore(<MovementsScreen />, testStore({ permissions: VIEWER }));
+    expect(await screen.findByText("Occurred: Oct 1 – Oct 31")).toBeInTheDocument();
+    const url = fetchMock.mock.calls.map((call) => String(call[0])).find((u) => u.includes("/inventory/movements")) ?? "";
+    expect(url).toContain(`from=${encodeURIComponent("2026-10-01T04:00:00.000Z")}`);
+    expect(url).toContain(`to=${encodeURIComponent("2026-11-01T04:00:00.000Z")}`);
+
+    fireEvent.change(screen.getByLabelText("Occurred from"), { target: { value: "2026-11-02" } });
+    expect(screen.getByRole("alert")).toHaveTextContent("End date must be on or after start date.");
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("drops a reversed range from a shared link", async () => {
+    search = new URLSearchParams("occurred=custom&occurred_from=2026-10-31&occurred_to=2026-10-01");
+    routeFetch({ "/inventory/movements": jsonResponse(page([])), "/members": jsonResponse({ items: [] }) });
+    renderInStore(<MovementsScreen />, testStore({ permissions: VIEWER }));
+    await waitFor(() =>
+      expect(replace).toHaveBeenCalledWith(`${STORE}/inventory/movements?occurred=custom&occurred_from=2026-10-31`, { scroll: false }),
+    );
   });
 
   it("drops an unknown movement type from a shared link", async () => {

@@ -21,7 +21,7 @@ from app.domains.inventory import queries as inventory_queries
 from app.domains.inventory import service as inventory
 from app.domains.inventory.calculations import avg_daily_units, days_of_cover
 from app.domains.inventory.models import MovementType
-from app.domains.orders.models import OrderStatus
+from app.domains.orders.models import Order, OrderStatus
 from tests.factories import Tenant, create_tenant, create_user, login
 from tests.factories_commerce import (
     Line,
@@ -217,7 +217,9 @@ def test_br402a_negative_on_hand_is_a_data_issue_in_positions_and_filters(
     assert _positions(client, stock, health=["OVERSOLD", "DATA_ISSUE"])["total"] == 2
 
 
-def test_movements_list_ledger_rows_with_filters(client: TestClient, stock: Stock) -> None:
+def test_movements_list_ledger_rows_with_filters(
+    client: TestClient, db: Session, stock: Stock
+) -> None:
     store_id = stock.tenant.store.id
     url = f"/api/v1/stores/{store_id}/inventory/movements"
     product_a = str(stock.products["A"].id)
@@ -249,6 +251,14 @@ def test_movements_list_ledger_rows_with_filters(client: TestClient, stock: Stoc
         ("A-MUG", -14),
     ]
     assert from_orders["total"] == 2
+    # A shipment's order_item:{id} reference resolves to its order; other rows have no order.
+    order_ids = dict(db.execute(select(Order.order_number, Order.id)).all())
+    assert [m["order_id"] for m in shipments["items"]] == [
+        str(order_ids["S-4"]),
+        str(order_ids["S-1"]),
+    ]
+    assert {m["order_id"] for m in newest["items"][1:]} == {None}
+    assert {m["import_filename"] for m in newest["items"]} == {None}
     # Six counts at the window start (inclusive); the incoming movement is 2 days ago (excluded).
     assert window["total"] == 6
     assert {m["movement_type"] for m in window["items"]} == {"CYCLE_COUNT"}

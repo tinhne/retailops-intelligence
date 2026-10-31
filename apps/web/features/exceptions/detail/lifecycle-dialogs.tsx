@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CircleAlert, Info } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
@@ -15,6 +16,7 @@ import { exceptionsApi, type ExceptionDetail } from "@/lib/api/exceptions-api";
 import { dismissalReasonLabels, manualResolutionLabels, type DismissalReason, type ManualResolutionCode } from "@/lib/status-maps";
 import { useStore } from "@/lib/store/store-context";
 
+import { useQueueNeighbours } from "../queue";
 import { commandErrorMessage, useExceptionCommand } from "./use-exception-command";
 
 // Closing notes need at least 10 non-whitespace characters, as the API counts them
@@ -85,9 +87,16 @@ function ServerError({ message }: { message?: string }) {
   );
 }
 
-/** Closes on success or when the action is no longer possible; stays open on a stale version. */
-function useDialogSubmit(exception: ExceptionDetail, onOpenChange: (open: boolean) => void) {
+/**
+ * Closes on success or when the action is no longer possible; stays open on a stale version.
+ * Closing actions offer "Next in queue" on their toast when the person came from a list (S-04).
+ */
+function useDialogSubmit(exception: ExceptionDetail, onOpenChange: (open: boolean) => void, options: { nextInQueue?: boolean } = {}) {
+  const store = useStore();
+  const router = useRouter();
   const command = useExceptionCommand(exception);
+  const next = useQueueNeighbours(store.id, exception.id)?.next;
+  const nextHref = options.nextInQueue && next ? `/s/${store.id}/exceptions/${next.id}` : undefined;
   return {
     pending: command.pending,
     submit: async (
@@ -96,7 +105,10 @@ function useDialogSubmit(exception: ExceptionDetail, onOpenChange: (open: boolea
       setError: (error: unknown) => void,
     ) => {
       setError(null);
-      const result = await command.run(run, { successMessage: message });
+      const result = await command.run(run, {
+        successMessage: message,
+        successAction: nextHref ? { label: "Next in queue", onClick: () => router.push(nextHref) } : undefined,
+      });
       if (result.outcome === "done" || result.outcome === "conflict") onOpenChange(false);
       else if (result.outcome === "failed") setError(result.error);
     },
@@ -110,7 +122,7 @@ export function ResolveDialog({ exception, open, onOpenChange }: DialogProps) {
     mode: "onTouched",
     defaultValues: { resolution_note: "" },
   });
-  const { pending, submit } = useDialogSubmit(exception, onOpenChange);
+  const { pending, submit } = useDialogSubmit(exception, onOpenChange, { nextInQueue: true });
   const serverError = form.formState.errors.root?.serverError;
   const setError = (error: unknown) =>
     error ? form.setError("root.serverError", { message: commandErrorMessage(error) }) : form.clearErrors("root.serverError");
@@ -201,7 +213,7 @@ export function DismissDialog({ exception, open, onOpenChange }: DialogProps) {
     mode: "onTouched",
     defaultValues: { note: "" },
   });
-  const { pending, submit } = useDialogSubmit(exception, onOpenChange);
+  const { pending, submit } = useDialogSubmit(exception, onOpenChange, { nextInQueue: true });
   const serverError = form.formState.errors.root?.serverError;
   const setError = (error: unknown) =>
     error ? form.setError("root.serverError", { message: commandErrorMessage(error) }) : form.clearErrors("root.serverError");

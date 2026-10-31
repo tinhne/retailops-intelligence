@@ -1,12 +1,16 @@
 // URL state for list screens (IA §9): parse and validate search params, drop unknown values, and
 // write them back without defaults. One definition per screen describes its fields.
 
+import { isDateKey } from "@/lib/date-range";
+
 export type FieldSpec =
   | { kind: "text"; max: number }
   | { kind: "one"; values: readonly string[]; fallback?: string }
   | { kind: "many"; values: readonly string[] }
   | { kind: "flag" }
-  | { kind: "id" };
+  | { kind: "id" }
+  /** A store-local calendar day, `YYYY-MM-DD` (custom date ranges). */
+  | { kind: "date" };
 
 type FieldValue<S extends FieldSpec> = S extends { kind: "text" }
   ? string
@@ -22,7 +26,17 @@ export type ListParams<F extends Record<string, FieldSpec>> = { [K in keyof F]: 
   page_size: number;
 };
 
-type Options = { sorts: readonly string[]; defaultSort: string; pageSizes: readonly number[]; defaultPageSize: number };
+type Options = {
+  sorts: readonly string[];
+  defaultSort: string;
+  pageSizes: readonly number[];
+  defaultPageSize: number;
+  /**
+   * Cross-field checks after each field is parsed on its own, e.g. a reversed date range.
+   * Returns the keys to drop; they are reset to their defaults and reported as invalid.
+   */
+  refine?: (params: Record<string, unknown>) => string[];
+};
 
 export type ListDefinition<F extends Record<string, FieldSpec>> = {
   parse(search: URLSearchParams): { params: ListParams<F>; invalid: string[] };
@@ -55,6 +69,10 @@ export function defineListParams<F extends Record<string, FieldSpec>>(fields: F,
           if (raw && !UUID.test(raw)) invalid.push(key);
           out[key] = raw && UUID.test(raw) ? raw : null;
           break;
+        case "date":
+          if (raw && !isDateKey(raw)) invalid.push(key);
+          out[key] = raw && isDateKey(raw) ? raw : null;
+          break;
         case "one":
           if (raw && !spec.values.includes(raw)) invalid.push(key);
           out[key] = raw && spec.values.includes(raw) ? raw : (spec.fallback ?? null);
@@ -69,6 +87,11 @@ export function defineListParams<F extends Record<string, FieldSpec>>(fields: F,
           break;
         }
       }
+    }
+    for (const key of options.refine?.(out) ?? []) {
+      invalid.push(key);
+      const spec = fields[key];
+      out[key] = spec.kind === "many" ? [] : spec.kind === "text" ? "" : spec.kind === "flag" ? false : spec.kind === "one" ? (spec.fallback ?? null) : null;
     }
     const sort = search.get("sort");
     if (sort && !options.sorts.includes(sort)) invalid.push("sort");

@@ -76,7 +76,9 @@ def create_import(
 @router.get("", response_model=Page[ImportOut])
 def list_imports(
     import_type: ImportType | None = None,
-    import_status: ImportStatus | None = Query(None, alias="status"),
+    import_status: list[ImportStatus] | None = Query(
+        None, alias="status", description="Repeatable."
+    ),
     sort: ImportSort = "-created_at",
     paging: PageParams = Depends(page_params),
     ctx: StoreContext = Depends(require_permission(Permission.IMPORTS_READ)),
@@ -86,7 +88,7 @@ def list_imports(
         db,
         ctx,
         import_type=import_type,
-        status=import_status,
+        statuses=import_status,
         sort=sort,
         offset=paging.offset,
         limit=paging.page_size,
@@ -136,6 +138,7 @@ def list_issues(
     import_id: uuid.UUID,
     severity: IssueSeverity | None = None,
     code: str | None = Query(None, max_length=64),
+    row_number: int | None = Query(None, ge=1, description="Issues of this CSV row only."),
     sort: IssueSort = "row_number",
     paging: PageParams = Depends(page_params),
     ctx: StoreContext = Depends(require_permission(Permission.IMPORTS_READ)),
@@ -147,6 +150,7 @@ def list_issues(
         import_id,
         severity=severity,
         code=code,
+        row_number=row_number,
         sort=sort,
         offset=paging.offset,
         limit=paging.page_size,
@@ -184,3 +188,13 @@ def discard_import(
     db: Session = Depends(get_db),
 ) -> ImportDetailOut:
     return service.discard_import(db, ctx, import_id, now=utcnow())
+
+
+@router.post("/{import_id}/revalidate", response_model=ImportDetailOut)
+def revalidate_import(
+    import_id: uuid.UUID,
+    ctx: StoreContext = Depends(require_permission(Permission.IMPORTS_RUN)),
+    db: Session = Depends(get_db),
+) -> ImportDetailOut:
+    """FAILED -> VALIDATING -> VALIDATED | REJECTED, using the bytes a failed apply keeps."""
+    return service.revalidate_import(db, ctx, import_id, now=utcnow())

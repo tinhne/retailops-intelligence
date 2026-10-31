@@ -36,6 +36,7 @@ export function importFixture(overrides: Partial<ImportDetail> = {}): ImportDeta
     applied_by: null,
     evaluation_run_id: null,
     failure_reason: null,
+    can_revalidate: false,
     file_issues: [],
     ...overrides,
   };

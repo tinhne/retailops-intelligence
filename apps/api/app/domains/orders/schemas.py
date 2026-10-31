@@ -101,6 +101,9 @@ class OrderEventOut(BaseModel):
     fulfillment_status: FulfillmentStatus
     source: ChangeSource
     import_id: uuid.UUID | None
+    import_filename: str | None = Field(
+        description="original_filename of the import that made the change, if any."
+    )
     actor_user_id: uuid.UUID | None
     occurred_at: datetime
 

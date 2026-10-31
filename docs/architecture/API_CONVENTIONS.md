@@ -130,6 +130,7 @@ benchmark in T-053); a cursor-based list is the fallback if it is not.
 | `EXCEPTION_NEWER_OCCURRENCE_EXISTS` | 409 | Proposed: manual reopen of an occurrence when a newer active exception exists for the same dedup key |
 | (none) | 200 | A manual trigger while another run holds the store lock returns that request's run with status `SKIPPED`; it is not an error |
 | `IMPORT_NOT_APPLICABLE` | 409 | Apply, discard or revalidate called in a status that does not allow it |
+| `IMPORT_CONTENT_MISSING` | 409 | Revalidate (or apply) when the file bytes are no longer stored: a `FAILED` import keeps them only until its preview expiry |
 | `IMPORT_PREVIEW_EXPIRED` | 409 | Apply after the 24 h preview window |
 | `IMPORT_HAS_ERRORS` | 409 | Strict-mode apply of an import with error rows |
 | `IMPORT_PREVIEW_STALE` | 409 | Re-validation inside apply produced different error rows than the user confirmed |
@@ -276,21 +277,21 @@ Exceptions linked to an order use the exception list filter `order_id`.
 
 | Method | Path | Permission | Description |
 |---|---|---|---|
-| GET | `/stores/{store_id}/imports` | `imports.read` | Import history; filters `import_type`, `status` |
+| GET | `/stores/{store_id}/imports` | `imports.read` | Import history; filters `import_type`, `status` (repeatable). Items carry `can_revalidate` |
 | POST | `/stores/{store_id}/imports` | `imports.run` | Upload and validate (multipart); returns the import in `VALIDATED` or `REJECTED` |
 | GET | `/stores/{store_id}/imports/{import_id}` | `imports.read` | Preview summary: new, updated, unchanged, error and warning counts, duplicate-file flag, expiry |
-| GET | `/stores/{store_id}/imports/{import_id}/issues` | `imports.read` | Row issues; filters `severity`, `code`; sort `row_number` |
+| GET | `/stores/{store_id}/imports/{import_id}/issues` | `imports.read` | Row issues; filters `severity`, `code`, `row_number`; sort `row_number` |
 | GET | `/stores/{store_id}/imports/{import_id}/issues/export` | `imports.read` | Formula-safe CSV of the issues |
 | POST | `/stores/{store_id}/imports/{import_id}/apply` | `imports.run` | Body `mode`, `confirm_skipped_rows`; `Idempotency-Key`; runs the import-triggered evaluation afterwards |
 | POST | `/stores/{store_id}/imports/{import_id}/discard` | `imports.run` | `VALIDATED → DISCARDED` |
-| POST | `/stores/{store_id}/imports/{import_id}/revalidate` | `imports.run` | `FAILED → VALIDATING` using the stored bytes |
+| POST | `/stores/{store_id}/imports/{import_id}/revalidate` | `imports.run` | `FAILED → VALIDATING → VALIDATED \| REJECTED` using the stored bytes, synchronous like the upload. A failed apply keeps the bytes until the preview's expiry; afterwards `409 IMPORT_CONTENT_MISSING` |
 | GET | `/stores/{store_id}/import-templates/{import_type}` | `imports.read` | CSV template |
 
 ### 12.6 Exceptions and evaluations
 
 | Method | Path | Permission | Description |
 |---|---|---|---|
-| GET | `/stores/{store_id}/exceptions` | `exceptions.read` | Filters `status`, `active`, `exception_type`, `category`, `severity`, `priority_band`, `assignee_id` (uuid, `me`, `unassigned`), `product_id`, `order_id`, `due_to`; default sort `-priority_score`, also `due_at`, `-first_detected_at`, `severity` |
+| GET | `/stores/{store_id}/exceptions` | `exceptions.read` | Filters `status`, `active`, `exception_type`, `category`, `severity`, `priority_band`, `assignee_id` (uuid, `me`, `unassigned`), `product_id`, `order_id`, `evaluation_run_id` (exceptions that run detected), `due_to`; default sort `-priority_score`, also `due_at`, `-first_detected_at`, `severity` |
 | GET | `/stores/{store_id}/exceptions/{exception_id}` | `exceptions.read` | Evidence, calculation, priority breakdown, links, `version` |
 | GET | `/stores/{store_id}/exceptions/{exception_id}/events` | `exceptions.read` | Immutable history |
 | GET | `/stores/{store_id}/exceptions/{exception_id}/notes` | `exceptions.read` | Notes with source |

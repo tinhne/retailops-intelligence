@@ -14,6 +14,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { isApiError, userMessage } from "@/lib/api/errors";
 import { importKeys, importsApi } from "@/lib/api/imports-api";
+import type { UploadProgress } from "@/lib/api/upload";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { IMPORT_TYPES_IN_ORDER, importTypeLabels, type ImportType } from "@/lib/status-maps";
 import { useStore } from "@/lib/store/store-context";
@@ -42,6 +43,46 @@ function FieldError({ id, message }: { id: string; message: string | null }) {
       <CircleAlert aria-hidden className="size-4 shrink-0" />
       {message}
     </p>
+  );
+}
+
+const percent = (progress: UploadProgress) =>
+  progress.phase === "uploading" && progress.fraction !== null ? Math.min(100, Math.round(progress.fraction * 100)) : null;
+
+/** "Uploading 42%…" while the bytes go up, then "Validating…" while the API checks every row. */
+export function pendingText(progress: UploadProgress): string {
+  if (progress.phase === "processing") return "Validating…";
+  const value = percent(progress);
+  return value === null ? "Uploading…" : `Uploading ${value}%…`;
+}
+
+/**
+ * Upload progress (S-12 "Pending action"): a determinate bar while the file is sent, then an
+ * indeterminate one while the same request validates it. Only the phase is announced.
+ */
+function UploadStatus({ progress }: { progress: UploadProgress }) {
+  const value = percent(progress);
+  const validating = progress.phase === "processing";
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-baseline justify-between gap-2 text-sm">
+        <span role="status">{validating ? "Validating… Every row is checked against the store's data." : "Uploading…"}</span>
+        {value !== null ? <span className="text-muted-foreground tabular-nums">{value}%</span> : null}
+      </div>
+      <div
+        role="progressbar"
+        aria-label={validating ? "Validating the file" : "Upload progress"}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={value ?? undefined}
+        className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
+      >
+        <div
+          className={cn("h-full rounded-full bg-primary", value === null ? "w-full animate-skeleton opacity-60" : "transition-[width] duration-150")}
+          style={value === null ? undefined : { width: `${value}%` }}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -96,9 +137,13 @@ export function NewImportScreen() {
   const [submitted, setSubmitted] = useState(false);
   const { pending: templatePending, run: download } = useDownload();
   const ids = { type: useId(), file: useId(), fileError: useId(), typeError: useId() };
+  const [progress, setProgress] = useState<UploadProgress | null>(null);
 
   const upload = useMutation({
-    mutationFn: () => importsApi.upload(store.id, type as ImportType, file as File),
+    mutationFn: () => {
+      setProgress({ phase: "uploading", fraction: 0 });
+      return importsApi.upload(store.id, type as ImportType, file as File, setProgress);
+    },
     onSuccess: (created) => {
       queryClient.setQueryData(importKeys.detail(store.id, created.id), created);
       void queryClient.invalidateQueries({ queryKey: importKeys.all(store.id) });
@@ -252,6 +297,8 @@ export function NewImportScreen() {
           <FieldError id={ids.fileError} message={fileError} />
         </div>
 
+        {upload.isPending && progress ? <UploadStatus progress={progress} /> : null}
+
         {uploadError ? (
           <Alert tone="danger" role="alert">
             <CircleAlert aria-hidden />
@@ -265,7 +312,7 @@ export function NewImportScreen() {
           <Button asChild variant="secondary">
             <Link href={`/s/${store.id}/imports`}>Cancel</Link>
           </Button>
-          <Button type="submit" pending={upload.isPending} pendingLabel="Uploading and validating…">
+          <Button type="submit" pending={upload.isPending} pendingLabel={progress ? pendingText(progress) : "Uploading…"}>
             Upload and validate
           </Button>
         </div>

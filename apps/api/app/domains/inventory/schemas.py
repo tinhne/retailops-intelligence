@@ -55,6 +55,10 @@ class MovementOut(BaseModel):
     source: MovementSource
     reference: str | None
     import_id: uuid.UUID | None
+    import_filename: str | None = Field(description="original_filename of the import, if any.")
+    order_id: uuid.UUID | None = Field(
+        description="The order a SHIPMENT belongs to, from its order_item:{id} reference (BR-131)."
+    )
     note: str | None
     created_by: uuid.UUID | None
 

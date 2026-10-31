@@ -208,7 +208,8 @@ export function OrderScreen() {
     exceptions.find((item) => item.exception_type === "DATA_ORDER_TOTAL_MISMATCH");
   const refund = exceptions.find((item) => item.exception_type === "ORDER_REFUND_PENDING" && item.is_active);
   const productHref = sectionHref(store.id, "products", store.permissions);
-  const events = [...data.events].sort((a, b) => b.occurred_at.localeCompare(a.occurred_at));
+  const importsHref = sectionHref(store.id, "imports", store.permissions);
+  const events =[...data.events].sort((a, b) => b.occurred_at.localeCompare(a.occurred_at));
 
   return (
     <div className="flex flex-col gap-6">
@@ -334,6 +335,19 @@ export function OrderScreen() {
                 <li key={event.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t py-2 text-body first:border-t-0">
                   <span className="min-w-0 flex-1">{transitionText(event.from_status, event.to_status, event.skipped_statuses)}</span>
                   <span className="rounded-sm bg-tone-neutral-bg px-1.5 text-xs text-tone-neutral-fg">{changeSourceLabels[event.source]}</span>
+                  {event.import_id && event.import_filename ? (
+                    importsHref ? (
+                      <Link
+                        href={`${importsHref}/${event.import_id}`}
+                        aria-label={`Import ${event.import_filename}`}
+                        className="min-w-0 font-mono text-xs break-all text-link hover:underline"
+                      >
+                        {event.import_filename}
+                      </Link>
+                    ) : (
+                      <span className="min-w-0 font-mono text-xs break-all text-muted-foreground">{event.import_filename}</span>
+                    )
+                  ) : null}
                   <span className="text-sm text-muted-foreground">
                     <DateTime value={event.occurred_at} />
                   </span>

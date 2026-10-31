@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -51,6 +51,31 @@ describe("OrdersScreen (S-05)", () => {
     renderInStore(<OrdersScreen />, testStore({ permissions: VIEWER }));
     expect(await screen.findByText("No overdue orders")).toBeInTheDocument();
     expect(String(fetchMock.mock.calls[0][0])).toContain("overdue=true");
+  });
+
+  it("filters by a custom placed range in store days and refuses a reversed one", async () => {
+    search = new URLSearchParams("placed=custom&placed_from=2026-10-01&placed_to=2026-10-31");
+    const fetchMock = routeFetch({ "/orders": jsonResponse(page([orderListItemFixture()])) });
+    renderInStore(<OrdersScreen />, testStore({ permissions: VIEWER }));
+
+    await screen.findAllByRole("link", { name: "KHK-12023" });
+    const url = String(fetchMock.mock.calls[0][0]);
+    expect(url).toContain(`placed_from=${encodeURIComponent("2026-10-01T04:00:00.000Z")}`);
+    expect(url).toContain(`placed_to=${encodeURIComponent("2026-11-01T04:00:00.000Z")}`);
+    expect(screen.getByText("Placed: Oct 1 – Oct 31")).toBeInTheDocument();
+
+    const to = screen.getByLabelText("Placed to");
+    fireEvent.change(to, { target: { value: "2026-09-15" } });
+    expect(screen.getByRole("alert")).toHaveTextContent("End date must be on or after start date.");
+    expect(to).toHaveAttribute("aria-invalid", "true");
+    expect(replace).not.toHaveBeenCalled();
+
+    fireEvent.change(to, { target: { value: "2026-10-15" } });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(replace).toHaveBeenLastCalledWith(
+      "/s/f0da0f22-b9e0-4483-b144-e9f0f8703d13/orders?placed=custom&placed_from=2026-10-01&placed_to=2026-10-15",
+      { scroll: false },
+    );
   });
 
   it("drops unknown filters from a shared link", async () => {
@@ -115,6 +140,23 @@ describe("OrderScreen (S-06)", () => {
     expect(screen.queryByRole("columnheader", { name: "Stock" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Exceptions" })).not.toBeInTheDocument();
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/inventory/positions"))).toBe(false);
+  });
+
+  it("links status changes to the import file that made them", async () => {
+    const order = orderDetailFixture();
+    order.events = order.events.map((event) => ({ ...event, import_id: "imp-9", import_filename: "orders_2026-10-28.csv" }));
+    routes(order);
+    const { unmount } = renderInStore(<OrderScreen />, testStore({ permissions: [...VIEWER, "imports.read"] }));
+    const links = await screen.findAllByRole("link", { name: "Import orders_2026-10-28.csv" });
+    expect(links).toHaveLength(2);
+    expect(links[0]).toHaveAttribute("href", "/s/f0da0f22-b9e0-4483-b144-e9f0f8703d13/imports/imp-9");
+    unmount();
+
+    // Without imports.read the file name stays as text.
+    routes(order);
+    renderInStore(<OrderScreen />, testStore({ permissions: VIEWER }));
+    expect(await screen.findAllByText("orders_2026-10-28.csv")).toHaveLength(2);
+    expect(screen.queryByRole("link", { name: /orders_2026-10-28\.csv/ })).not.toBeInTheDocument();
   });
 
   it("words imported status jumps", () => {

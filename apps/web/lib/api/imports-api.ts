@@ -1,6 +1,7 @@
 import type { Schema } from "@retailops/contracts";
 
 import { apiFetch, type QueryParams } from "./client";
+import { uploadForm, type UploadProgress } from "./upload";
 
 export type ImportItem = Schema<"ImportOut">;
 export type ImportDetail = Schema<"ImportDetailOut">;
@@ -19,12 +20,16 @@ export const importsApi = {
     apiFetch<ImportDetail>(`${base(storeId)}/${importId}`, { signal }),
   issues: (storeId: string, importId: string, query: QueryParams, signal?: AbortSignal) =>
     apiFetch<Schema<"Page_ImportIssueOut_">>(`${base(storeId)}/${importId}/issues`, { query, signal }),
-  upload: (storeId: string, importType: string, file: File) => {
+  /** Uploads and validates in one request; `onProgress` reports the upload, then "processing". */
+  upload: (storeId: string, importType: string, file: File, onProgress: (progress: UploadProgress) => void = () => {}) => {
     const form = new FormData();
     form.append("import_type", importType);
     form.append("file", file);
-    return apiFetch<ImportDetail>(base(storeId), { method: "POST", body: form });
+    return uploadForm<ImportDetail>(base(storeId), form, onProgress);
   },
+  /** `FAILED → VALIDATING → VALIDATED | REJECTED` from the stored bytes (when `can_revalidate`). */
+  revalidate: (storeId: string, importId: string) =>
+    apiFetch<ImportDetail>(`${base(storeId)}/${importId}/revalidate`, { method: "POST", body: {} }),
   /** The key is reused when the same attempt is retried, so a retry never applies twice. */
   apply: (storeId: string, importId: string, body: ApplyImportRequest, idempotencyKey: string) =>
     apiFetch<ImportDetail>(`${base(storeId)}/${importId}/apply`, {

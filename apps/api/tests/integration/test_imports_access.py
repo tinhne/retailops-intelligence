@@ -33,6 +33,7 @@ def _endpoints(base: str, import_id: str) -> list[tuple[str, str]]:
         ("GET", f"{base}/{import_id}/issues.csv"),
         ("POST", f"{base}/{import_id}/apply"),
         ("POST", f"{base}/{import_id}/discard"),
+        ("POST", f"{base}/{import_id}/revalidate"),
     ]
 
 
@@ -51,8 +52,9 @@ def test_read_only_roles_can_read_but_not_run_imports(
     upload = api.upload("products", GOOD)
     apply = api.apply(body["id"])
     discard = api.discard(body["id"])
+    revalidate = api.revalidate(body["id"])
 
-    for response in (upload, apply, discard):
+    for response in (upload, apply, discard, revalidate):
         assert response.status_code == 403
         assert response.json()["error"]["details"] == [{"missing_permission": "imports.run"}]
     for method, url in _endpoints(api.base, body["id"])[:5]:
@@ -126,6 +128,25 @@ def test_list_filters_sorts_and_paginates(client: TestClient, db: Session) -> No
     assert [i["id"] for i in rejected["items"]] == [second["id"]]
     assert bad_sort.status_code == 422
     assert "content" not in default["items"][0]
+    assert default["items"][0]["can_revalidate"] is False
+
+
+def test_list_filters_by_several_statuses(client: TestClient, db: Session) -> None:
+    _, api = manager_api(client, db)
+    completed = api.run("products", GOOD)
+    rejected = api.validated("orders", b"")
+    validated = api.validated("products", csv_bytes(PRODUCT_HEADER, product_row("KHK-2")))
+
+    def ids(*statuses: str) -> set[str]:
+        response = client.get(api.base, params=[("status", status) for status in statuses])
+        assert response.status_code == 200, response.text
+        return {item["id"] for item in response.json()["items"]}
+
+    assert ids("REJECTED", "VALIDATED") == {rejected["id"], validated["id"]}
+    assert ids("COMPLETED") == {completed["id"]}
+    assert ids("COMPLETED", "COMPLETED_WITH_ERRORS", "FAILED") == {completed["id"]}
+    assert ids() == {completed["id"], rejected["id"], validated["id"]}
+    assert client.get(api.base, params={"status": "LOST"}).status_code == 422
 
 
 def test_issues_are_paginated_and_filterable(client: TestClient, db: Session) -> None:
@@ -145,7 +166,13 @@ def test_issues_are_paginated_and_filterable(client: TestClient, db: Session) ->
     errors = client.get(url, params={"severity": "ERROR"}).json()
     by_code = client.get(url, params={"code": "price_zero"}).json()
     descending = client.get(url, params={"sort": "-row_number"}).json()
+    row_three = client.get(url, params={"row_number": 3}).json()
+    row_absent = client.get(url, params={"row_number": 99}).json()
+    row_invalid = client.get(url, params={"row_number": 0})
 
+    assert [(i["row_number"], i["code"]) for i in row_three["items"]] == [(3, "NEGATIVE_VALUE")]
+    assert row_absent["total"] == 0
+    assert row_invalid.status_code == 422
     assert page["total"] == 4
     assert len(page["items"]) == 2
     assert page["items"][0]["code"] == "UNKNOWN_COLUMN"  # file-level issues first
