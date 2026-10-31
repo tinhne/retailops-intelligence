@@ -65,18 +65,35 @@ analytics, audit, AI) with explicit module boundaries. See [`ARCHITECTURE_MAP.md
 
 ## Run it locally
 
+### The whole stack in containers
+
+Requirements: Docker with Compose v2.
+
+```bash
+docker compose up --build   # db, api (migrations on start), worker, web; seeds the demo once
+```
+
+Open <http://localhost:3000> and choose **Explore the demo**. The first start seeds the fictional
+store, its exception history and two CSV imports; later starts keep your data. To restore the demo
+story: `make stack-demo-reset`. Ports, health checks, configuration and troubleshooting:
+[`docs/operations/RUNBOOK.md`](docs/operations/RUNBOOK.md).
+
+### Development workflow
+
 Requirements: Docker, [uv](https://docs.astral.sh/uv/), Node.js 22+, and pnpm.
 
 ```bash
 make setup     # install backend dependencies (Python 3.12)
 make migrate   # start PostgreSQL in Docker and apply migrations
-make seed      # generate the demo store "Kestrel Home & Kitchen" (fictional data)
+make seed      # generate (or reset) the demo store "Kestrel Home & Kitchen" (fictional data)
 make api-dev   # API on http://localhost:8000. Interactive docs at /api/docs
+pnpm install && pnpm web:dev   # web on http://localhost:3000 (proxies /api to :8000)
 make check     # lint, strict type check, and the full test suite
 ```
 
 Configuration is environment-based. See [`.env.example`](.env.example) and
-[`ENVIRONMENT_STATUS.md`](ENVIRONMENT_STATUS.md). Never commit a `.env` file.
+[`ENVIRONMENT_STATUS.md`](ENVIRONMENT_STATUS.md). Never commit a `.env` file. Security model,
+controls and deployment checklist: [`SECURITY.md`](SECURITY.md).
 
 ## Documentation
 
