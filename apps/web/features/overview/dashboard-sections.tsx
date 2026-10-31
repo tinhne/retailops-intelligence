@@ -97,13 +97,23 @@ export function KpiRow({ dashboard }: { dashboard: Dashboard }) {
   );
 }
 
-function AttentionRow({ item }: { item: AttentionItem }) {
+function AttentionRow({ item, href }: { item: AttentionItem; href?: string }) {
   return (
-    <li className="flex flex-col gap-1 border-b px-4 py-3 last:border-b-0 md:px-5">
+    <li className="relative flex flex-col gap-1 border-b px-4 py-3 last:border-b-0 hover:bg-surface-hover md:px-5">
       <div className="flex flex-wrap items-center gap-2">
         <PriorityIndicator band={item.priority_band} score={item.priority_score} />
         <SeverityBadge severity={item.severity} />
-        <span className="min-w-0 flex-1 basis-60 text-body-strong">{item.title}</span>
+        {href ? (
+          <Link
+            href={href}
+            aria-label={`${item.reference}, ${item.title}`}
+            className="min-w-0 flex-1 basis-60 text-body-strong outline-offset-[-2px] after:absolute after:inset-0 hover:underline"
+          >
+            {item.title}
+          </Link>
+        ) : (
+          <span className="min-w-0 flex-1 basis-60 text-body-strong">{item.title}</span>
+        )}
       </div>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
         <span className="font-medium text-foreground">{item.reference}</span>
@@ -152,7 +162,11 @@ export function AttentionList({ dashboard }: { dashboard: Dashboard }) {
         <>
           <ol aria-label="Active exceptions by priority">
             {dashboard.attention.map((item) => (
-              <AttentionRow key={item.id} item={item} />
+              <AttentionRow
+                key={item.id}
+                item={item}
+                href={allHref ? `/s/${store.id}/exceptions/${item.id}` : undefined}
+              />
             ))}
           </ol>
           {allHref ? (

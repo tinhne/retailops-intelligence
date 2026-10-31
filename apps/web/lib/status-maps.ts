@@ -147,3 +147,66 @@ export const toneClasses: Record<Tone, string> = {
   danger: "border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg",
   "danger-solid": "border-tone-danger-solid-border bg-tone-danger-solid-bg text-tone-danger-solid-fg",
 };
+
+export type ExceptionType = Schema<"ExceptionType">;
+export type ManualResolutionCode = Schema<"ManualResolutionCode">;
+export type DismissalReason = Schema<"DismissalReason">;
+
+/** Short labels for the nine catalog rules (EXCEPTION_CATALOG, S-03 Type filter). */
+export const exceptionTypeLabels: Record<ExceptionType, string> = {
+  INVENTORY_OVERSOLD: "Oversold",
+  INVENTORY_OVERSELL_RISK: "Oversell risk",
+  INVENTORY_OUT_OF_STOCK: "Out of stock",
+  INVENTORY_BELOW_REORDER_POINT: "Below reorder point",
+  ORDER_FULFILLMENT_OVERDUE: "Fulfillment overdue",
+  ORDER_STALLED_AFTER_PAYMENT: "Stalled after payment",
+  ORDER_REFUND_PENDING: "Refund pending",
+  DATA_ORDER_TOTAL_MISMATCH: "Order total mismatch",
+  DATA_NEGATIVE_ON_HAND: "Negative on-hand",
+};
+
+export const exceptionTypeCategory: Record<ExceptionType, ExceptionCategory> = {
+  INVENTORY_OVERSOLD: "INVENTORY",
+  INVENTORY_OVERSELL_RISK: "INVENTORY",
+  INVENTORY_OUT_OF_STOCK: "INVENTORY",
+  INVENTORY_BELOW_REORDER_POINT: "INVENTORY",
+  ORDER_FULFILLMENT_OVERDUE: "FULFILLMENT",
+  ORDER_STALLED_AFTER_PAYMENT: "FULFILLMENT",
+  ORDER_REFUND_PENDING: "PAYMENT",
+  DATA_ORDER_TOTAL_MISMATCH: "DATA_QUALITY",
+  DATA_NEGATIVE_ON_HAND: "DATA_QUALITY",
+};
+
+/** The codes a person may choose when resolving (STATE_MACHINES §3.2). */
+export const manualResolutionLabels: Record<ManualResolutionCode, string> = {
+  STOCK_REPLENISHED: "Stock replenished",
+  ORDER_FULFILLED: "Order fulfilled",
+  REFUND_ISSUED: "Refund issued",
+  DATA_CORRECTED: "Data corrected",
+  CUSTOMER_CONTACTED: "Customer contacted",
+  FIXED_IN_SOURCE_SYSTEM: "Fixed in source system",
+  OTHER: "Other",
+};
+
+export const resolutionCodeLabels: Record<ResolutionCode, string> = {
+  ...manualResolutionLabels,
+  CONDITION_CLEARED: "Condition cleared",
+  SUPERSEDED: "Superseded",
+};
+
+export const dismissalReasonLabels: Record<DismissalReason, { label: string; description: string }> = {
+  FALSE_POSITIVE: { label: "False positive", description: "The condition isn't real" },
+  ACCEPTED_RISK: { label: "Accepted risk", description: "We know and accept it" },
+  DUPLICATE: { label: "Duplicate", description: "Tracked elsewhere" },
+  NOT_ACTIONABLE: { label: "Not actionable", description: "Nothing we can do" },
+};
+
+/** Labels for any exception status in prose ("changed status from Open to In progress"). */
+export const exceptionStatusLabels: Record<ExceptionStatus, string> = {
+  OPEN: "Open",
+  ACKNOWLEDGED: "Acknowledged",
+  IN_PROGRESS: "In progress",
+  REOPENED: "Reopened",
+  RESOLVED: "Resolved",
+  DISMISSED: "Dismissed",
+};
