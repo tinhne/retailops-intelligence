@@ -33,6 +33,15 @@ def test_csrf_token_is_bound_to_session_and_secret() -> None:
     assert not security.csrf_matches(a, None)
 
 
+def test_csrf_comparison_rejects_non_ascii_and_empty_values_without_raising() -> None:
+    token = security.new_csrf_token()
+    assert len(token) >= 43
+    assert token != security.new_csrf_token()
+    assert not security.csrf_matches(token, "é" + token)
+    assert not security.csrf_matches("", "")
+    assert security.csrf_matches(token, token)
+
+
 def test_rate_limiter_blocks_after_limit_and_recovers_after_window() -> None:
     limiter = SlidingWindowRateLimiter(max_events=2, window_seconds=60)
     limiter.hit("k", now=0)

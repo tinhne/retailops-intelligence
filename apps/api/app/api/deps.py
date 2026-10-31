@@ -39,6 +39,18 @@ def login_limiter(request: Request) -> SlidingWindowRateLimiter:
     return limiter
 
 
+def require_pre_session_csrf(request: Request) -> None:
+    """Double-submit check for the sign-in endpoints, which run before a session exists.
+
+    The ``X-CSRF-Token`` header must equal the ``ro_csrf`` cookie issued by ``GET /auth/csrf``
+    (ADR-0004). A cross-site page can neither read that cookie nor send a custom header without
+    a CORS preflight, which the API never grants, so login CSRF is blocked.
+    """
+    cookie = request.cookies.get(CSRF_COOKIE)
+    if not cookie or not csrf_matches(cookie, request.headers.get(CSRF_HEADER)):
+        raise PermissionDeniedError("Missing or invalid CSRF token.", code="CSRF_FAILED")
+
+
 def get_principal(
     request: Request,
     db: Session = Depends(get_db),
