@@ -6,10 +6,10 @@
 |---|---|
 | Project | RetailOps Intelligence: E-commerce Operations & Decision Intelligence Platform |
 | Owner | Lê Văn Trung Tính (GitHub `tinhne`) |
-| Current milestone | **M5 core operational workflows: backend complete.** Next: M6 frontend, M7 AI |
-| Current phase | Backend core integrated and verified. Frontend scaffold exists, screens not built |
-| Overall completion | M0–M3 documented and tagged. Backend M4–M5 implemented and tested. No UI screens, no copilot, not deployed |
-| Last verified commit | `main` after merging `feat/exception-engine` plus contracts: `make check` green, 625 tests |
+| Current milestone | **M6 frontend: foundation done (T-060).** Next: T-061 Overview, then T-062..T-065, M7 AI |
+| Current phase | Backend core complete. Web foundation, sign-in and app shell built and verified. Data screens not built |
+| Overall completion | M0–M3 documented and tagged. Backend M4–M5 implemented and tested. Web shell and sign-in done. No data screens, no copilot, not deployed |
+| Last verified commit | `main` after merging `feat/web-foundation`: backend `make check` green (627 tests), web lint, typecheck, 57 tests and build green |
 | Remote | https://github.com/tinhne/retailops-intelligence (public). The first CI run passed |
 | Architecture version | v1 (modular monolith; `docs/domain/*`, ADR-0001..0013) |
 | Last update | 2026-11-01 (UTC+7) |
@@ -28,24 +28,27 @@
   grace, reopen, recurrence, supersede), priority and due dates, lifecycle API, evaluations API.
 - **Read side:** products, orders, inventory positions and movements, dashboard, trends, exception
   breakdown, store settings, members.
-- **Demo dataset:** `make seed` generates the fictional "Kestrel Home & Kitchen" store. The engine
-  produces 18 exceptions across all 9 types.
+- **Worker:** `python -m app.workers.scheduler` evaluates each store on its interval under the
+  engine's advisory lock (T-055). Not yet in the compose stack.
+- **Demo dataset:** `make seed` generates the fictional "Kestrel Home & Kitchen" store (114 products,
+  1,549 orders, 8 suppliers, 60 days). The engine produces 18 exceptions across all 9 types.
+- **Contracts:** OpenAPI → TypeScript. Identity schemas expose the `Role` and `Permission` enums.
+- **Web foundation (T-060):** tokens and Tailwind theme, restyled shadcn/ui primitives, API client
+  (CSRF header, `ApiError`), QueryClient policy (retries; 401 → sign-in), `/api` rewrite to FastAPI,
+  `proxy.ts` optimistic sign-in redirect, S-01 sign-in and `/demo`, session gate, store resolution,
+  app shell (demo banner, sidebar with rail and drawer, account menu, offline notice). The Overview
+  route shows only its header until T-061.
 - **Delivery:** API Dockerfile (non-root, builds), CI workflow (passed on GitHub), OpenAPI → TS contracts.
 
 ## In progress / next
 
 | Task | Notes |
 |---|---|
-| T-060..T-066 Frontend | Next.js 16 scaffold and libraries installed. Screens are specified in `docs/design/*` |
-| T-071..T-073 AI copilot | Docs complete. Needs migration 0003 (session-scoped demo conversations, tool-call result refs, cache key) |
-| T-055 Scheduled evaluation worker | **Done**: `app/workers/scheduler.py` with 2 tests. Not yet in the compose stack |
+| T-061 Overview dashboard | READY. Replace the header-only page with S-02 (KPIs, attention list, trends) |
+| T-062..T-065 Frontend screens | READY. Flip `ready: true` in `components/shell/nav-config.ts` as each page lands |
+| T-071..T-073 AI copilot | T-071 READY. Needs migration 0003 (session-scoped demo conversations, tool-call result refs, cache key) |
 | T-056 Demo seed history | Add exception history (assigned, in progress, resolved and verified, reopened, dismissed) via the lifecycle service |
-| T-090 Compose stack | Add `api`, `worker`, `web` services and the web Dockerfile |
-
-## Uncommitted partial work (2026-11-01)
-
-The frontend (apps/web) and AI copilot (apps/api/app/domains/ai) agents were stopped mid-task on a usage
-limit. Their files are in the working tree, uncommitted and unverified. See HANDOFF.md §3.
+| T-090 Compose stack | Add `api`, `worker`, `web` services and the web Dockerfile. The web image needs `API_INTERNAL_URL` at build time |
 
 ## Blocked
 
@@ -59,11 +62,24 @@ limit. Their files are in the working tree, uncommitted and unverified. See HAND
   SYSTEM_ARCHITECTURE §8–9 describes REPEATABLE READ plus retry (documented deviation, acceptable at MVP scale).
 - Evaluation and import idempotency keys are stored in audit details or import summary JSON (no dedicated column yet).
 - Import validation and apply run row by row. A 20,000-row performance check has not been run.
+- **Doc/code gap (for T-082):** ADR-0004 describes `GET /auth/csrf` issuing a pre-login CSRF token for
+  the sign-in form. That endpoint does not exist and `POST /auth/login` is not CSRF-checked. Login CSRF
+  is currently mitigated only because the endpoint accepts JSON bodies alone, which a cross-site form
+  cannot send without a CORS preflight. Decide in the security review: implement it or amend the ADR.
+- **Doc/code gap (for T-062):** SCREEN_SPECIFICATIONS §0.4 lists `/claim`, `/unassign` and
+  `/set-due-date` exception commands. The API has `/assign`, `/start` and `/due-date`, and no claim or unassign.
+- The demo banner and `/demo` page omit the spec's "periodically reset" wording until the reset job exists (T-094).
+- Behind the Next.js proxy, the API sees the proxy's IP unless `TRUST_PROXY_HEADERS=true`, so the demo
+  sign-in limiter would be shared by all visitors. Set it in the deployed configuration (T-090, T-093).
 
 ## Latest test results
 
-`make check` (2026-11-01): ruff OK, ruff format OK, mypy --strict OK, pytest **625 passed** (~73 s).
-GitHub Actions run 41216596429: success.
+- `make check` (2026-11-01, after the contracts change): ruff OK, ruff format OK, mypy --strict OK, pytest **627 passed**.
+- Web (2026-11-01): `pnpm --filter @retailops/web lint`, `typecheck`, `build` green; vitest **57 passed**.
+  `pnpm audit --prod --audit-level high`: no known vulnerabilities.
+- Browser check against the seeded local API: password and demo sign-in, `next` redirect, invalid
+  credentials, session expiry, sign-out, unknown store, and the 375, 768 and 1280 px layouts.
+- GitHub Actions run 41216596429 (4f38073): success. CI has not run on the new web code yet (not pushed).
 
 ## Owner decisions log
 
@@ -73,9 +89,8 @@ GitHub Actions run 41216596429: success.
 
 ## Next three highest-priority actions
 
-1. Frontend core (T-060..T-065): app shell, login and demo entry, overview, exception inbox and
-   investigation, orders, inventory, imports, built from `docs/design/*` against `packages/contracts`.
-2. Scheduled evaluation worker (T-055) and the full compose stack with the web image (T-090), plus
-   demo exception history (T-056).
-3. AI copilot (T-071..T-073): migration 0003, tool registry, Gemini / OpenAI-compatible /
-   deterministic providers with fallback, copilot UI.
+1. Overview dashboard (T-061), then the exception inbox and investigation (T-062), built from
+   `docs/design/*` against `packages/contracts`.
+2. Orders, products and inventory, and imports screens (T-063..T-065).
+3. Compose stack with the web image (T-090) and demo exception history (T-056), then the AI copilot
+   (T-071..T-073).

@@ -85,3 +85,38 @@ add a correction entry instead.
   SIGTERM. 2 integration tests pass. ruff and mypy are clean.
 - The frontend and AI copilot agents were stopped mid-task on a usage limit. Their work is uncommitted
   and unverified in the working tree (see HANDOFF.md §3).
+
+## 2026-11-01 (UTC+7): Orchestrator: session resume and web foundation (T-060)
+
+- **Resume check:** `git status` was clean on `main` at 932df62. The "uncommitted partial work"
+  in `apps/web` and `apps/api/app/domains/ai` that HANDOFF.md described was **not present**: the web
+  app was still the unmodified scaffold and the AI domain held only `models.py`. Docs corrected.
+  Baseline `make check`: ruff, format and mypy OK, pytest **627 passed** (625 plus 2 worker tests).
+- **Contracts (747441b):** `MembershipOut`, `RolePermissionsOut` and `MemberOut` type `role` and
+  `permissions` with the `Role` and `Permission` enums, so `packages/contracts` exports the exact
+  unions. The JSON is unchanged. Contracts regenerated.
+- **Web foundation (T-060):** design tokens (`styles/tokens.css`, light plus ready dark values),
+  Tailwind v4 theme mapping, Inter, shadcn/ui primitives restyled to the tokens (button with
+  pending state and `aria-disabled`, input, label, card, alert tones, skeleton, tooltip, dropdown,
+  sheet, avatar, toaster). API client with the CSRF double-submit header and `ApiError` from the
+  error envelope. QueryClient defaults (2 retries for network and 5xx only, 1 s/3 s; any 401 clears
+  the cache and goes to sign-in, with `reason=expired` for `SESSION_EXPIRED`). `/api/*` rewrite to
+  FastAPI, `proxy.ts` optimistic redirect, `/s/{id}` redirect. S-01 sign-in and `/demo` entry.
+  Session gate, store resolution (unknown store = not found), app shell (skip link, demo banner,
+  sidebar with persisted collapse, icon rail at 768–1023 px, mobile drawer, top bar, account menu
+  with sign-out, offline notice), permission gates and state components. The sidebar shows only
+  built pages, so it currently lists Overview, whose dashboard content is T-061.
+- **Copy honesty:** the spec's "periodically reset" was left out of the demo banner and `/demo`
+  page because the reset job does not exist yet (T-094).
+- **Dev validation:** Cache Components' instant-navigation check cannot render pages behind the
+  client-side session gate, so `experimental.instantInsights.validationLevel` is `manual-warning`
+  (segments opt in with `export const instant`).
+- **Docs synced:** ARCHITECTURE_MAP paths and statuses now match the code (several backend paths
+  had moved, e.g. `identity/security.py`, `api/deps.py`, `exceptions/engine.py`, `demo/seed.py`).
+  ENVIRONMENT_STATUS: added `TRUST_PROXY_HEADERS` and `DEMO_STAFF_PASSWORD`, removed the
+  unimplemented `CORS_ALLOWED_ORIGINS`, and the web uses the documented `API_INTERNAL_URL`.
+- **Tests:** web lint, typecheck and `next build` green. vitest **57 passed** (API client, retry and
+  401 policy, safe `next` redirects, nav and permission gating, class merging, login screen states,
+  ErrorState). `pnpm audit --prod --audit-level high`: no known vulnerabilities. Browser check
+  against the seeded API: password and demo sign-in, `next` redirect, invalid credentials, session
+  expiry, sign-out, unknown store, and the 375, 768 and 1280 px layouts.

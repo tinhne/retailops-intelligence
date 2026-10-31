@@ -11,22 +11,34 @@ deterministic, and AI is advisory only.
 ## 2. Completed
 Docs M0–M3 (tagged). Backend: auth, sessions, CSRF, permissions, tenancy, audit; schema
 (migrations 0001–0002); order FSM; inventory ledger and reservations; CSV import pipeline; exception
-engine and lifecycle API; read APIs and analytics; demo dataset generator. `make check` gives 625 tests
-green. The GitHub repo exists and its first CI run passed. See `PROJECT_STATE.md`.
+engine and lifecycle API; read APIs and analytics; demo dataset generator; scheduled evaluation
+worker (T-055). `make check` gives 627 tests green. The GitHub repo exists and its first CI run passed.
+**Web foundation (T-060, 2026-11-01):** tokens and theme, restyled shadcn/ui primitives, API
+client (CSRF header, `ApiError`), QueryClient policy (retries, 401 → sign-in), `/api` rewrite,
+`proxy.ts` sign-in redirect, S-01 sign-in and `/demo`, session gate, store resolution and the app
+shell. 57 vitest tests. See `PROJECT_STATE.md`.
 
 ## 3. Currently being implemented
-Done since the last update: the scheduled evaluation worker (T-055, `python -m app.workers.scheduler`).
+Nothing is in flight. The working tree is clean. (The previous handoff described uncommitted
+frontend and AI work; it was not in the tree on 2026-11-01, so T-071..T-074 start from scratch.)
+Next up: the Overview dashboard (T-061), which replaces the header-only Overview page that exists
+today. T-062..T-065 and T-071 are also READY.
 
-**Partial, uncommitted work in the working tree (session stopped on a usage limit, 2026-11-01):**
-- `apps/web/**`: frontend foundations and core screens (T-060..T-062), stopped mid-way. Treat
-  it as a draft. Re-run lint, typecheck, test and build, then finish or redo it from `docs/design/*`.
-- `apps/api/app/domains/ai/**` and possibly `app/core/config.py`, `app/api/router.py`, a migration
-  `0003`, `Makefile`: AI copilot backend (T-071..T-074), stopped mid-way. Not verified. Run
-  `make check` before keeping any of it; `git stash` or discard it if it is broken.
-Still to do: compose stack plus the web Dockerfile (T-090), demo exception history (T-056), and the copilot UI (T-073).
+**Notes for the next frontend task:**
+- The sidebar lists only built pages. Flip `ready: true` in `apps/web/components/shell/nav-config.ts`
+  when a page lands.
+- Every page component calls `useStore()` and renders `PermissionDenied` when its route
+  permission is missing (see `features/overview/overview-screen.tsx`). Query keys start with
+  `["store", storeId, …]` (IA §7).
+- Exception command endpoints in the API differ from SCREEN_SPECIFICATIONS §0.4: there is no
+  `/claim` or `/unassign`, and the due date is `/due-date`, not `/set-due-date`. Build T-062 against
+  `packages/contracts` and update the spec.
+- Local launch: `make api-dev` and `pnpm web:dev` (http://localhost:3000). `make seed` with
+  `DEMO_STAFF_PASSWORD` set makes the seeded staff accounts usable for sign-in.
 
 ## 4. Broken or blocked
-Nothing known broken. Hosting is not chosen (T-093).
+Nothing known broken. Hosting is not chosen (T-093). Open documentation gaps are listed under
+"Known bugs / limitations" in `PROJECT_STATE.md`.
 
 ## 5. Files that matter
 `docs/domain/*` (contracts) · `apps/api/app/domains/orders/state.py` (order FSM) ·
@@ -34,7 +46,9 @@ Nothing known broken. Hosting is not chosen (T-093).
 `apps/api/app/domains/exceptions/engine.py` (evaluation and reconciliation) ·
 `apps/api/app/domains/exceptions/rules/` (one pure module per rule) ·
 `apps/api/app/domains/imports/service.py` (import apply) · `packages/contracts/src/schema.ts` (generated API types) · `apps/api/app/api/deps.py`
-(auth/permission dependencies) · `apps/api/migrations/versions/`.
+(auth/permission dependencies) · `apps/api/migrations/versions/` · `apps/web/lib/api/client.ts` (fetch
+wrapper) · `apps/web/lib/query/query-client.ts` (retry and session-expiry policy) ·
+`apps/web/features/session/session-gate.tsx` (session and store guards) · `apps/web/components/shell/`.
 
 ## 6. Decisions that must be preserved
 Modular monolith · three order status axes and reachability import sync · `available = on_hand −
@@ -48,11 +62,14 @@ make setup      # backend deps (uv, Python 3.12)
 make migrate    # starts Postgres (docker) and applies migrations
 make seed       # demo store "Kestrel Home & Kitchen" plus a first evaluation run
 make api-dev    # http://localhost:8000/api/docs
+pnpm install && pnpm web:dev   # http://localhost:3000 (proxies /api to :8000)
 ```
 
 ## 8. Run tests
 ```bash
 make check      # ruff, format check, mypy --strict, pytest (needs docker Postgres)
+pnpm --filter @retailops/web lint && pnpm --filter @retailops/web typecheck
+pnpm --filter @retailops/web test && pnpm --filter @retailops/web build
 ```
 
 ## 9. What to do next

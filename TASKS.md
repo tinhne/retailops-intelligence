@@ -61,12 +61,12 @@ Agent roles: **ORCH** orchestrator · **PM** product/BA · **ARCH** architect ·
 
 | ID | Pri | Description | Deps | Agent | Status | Acceptance criteria | Files | Verification |
 |---|---|---|---|---|---|---|---|---|
-| T-060 | P0 | Web scaffold: Next.js, Tailwind tokens, shadcn/ui, app shell and navigation, login, `/api` proxy, generated contracts, query client | T-030, T-042 | FE | IN_PROGRESS | Login works against the API. The shell is responsive. Lint, typecheck, and build pass | `apps/web/*`, `packages/contracts` | `pnpm -C apps/web build` |
-| T-061 | P0 | Overview dashboard (prioritised attention list, KPIs from real data) | T-057, T-060 | FE | BACKLOG | All states. No hard-coded numbers | `apps/web/app/(app)/overview` | vitest plus manual check |
-| T-062 | P0 | Exception inbox and investigation detail (evidence, calculation, priority breakdown, history, notes, actions) | T-054, T-060 | FE | BACKLOG | Full lifecycle from the UI. Actions are hidden or disabled per permission, with a reason | `features/exceptions` | Playwright |
-| T-063 | P0 | Orders list and detail (axes, timeline, linked exceptions) | T-050, T-060 | FE | BACKLOG | Server-side filters and pagination | `features/orders` | vitest |
-| T-064 | P0 | Products, inventory positions (health), movement ledger | T-051, T-060 | FE | BACKLOG | Health badges match the backend | `features/inventory` | vitest |
-| T-065 | P0 | Imports: upload, preview, issues table, apply with consent, history, error CSV, templates | T-052, T-060 | FE | BACKLOG | Every failure path is visible | `features/imports` | Playwright |
+| T-060 | P0 | Web scaffold: Next.js, Tailwind tokens, shadcn/ui, app shell and navigation, login, `/api` proxy, generated contracts, query client | T-030, T-042 | FE | DONE | Login works against the API. The shell is responsive. Lint, typecheck, and build pass | `apps/web/*`, `packages/contracts` | 2026-11-01: lint, typecheck, `next build` green; vitest 57 passed; browser check of password and demo sign-in, `next` redirect, session expiry, sign-out, unknown store, 375/768/1280 px layouts |
+| T-061 | P0 | Overview dashboard (prioritised attention list, KPIs from real data) | T-057, T-060 | FE | READY | All states. No hard-coded numbers | `apps/web/app/(app)/overview` | vitest plus manual check |
+| T-062 | P0 | Exception inbox and investigation detail (evidence, calculation, priority breakdown, history, notes, actions) | T-054, T-060 | FE | READY | Full lifecycle from the UI. Actions are hidden or disabled per permission, with a reason | `features/exceptions` | Playwright |
+| T-063 | P0 | Orders list and detail (axes, timeline, linked exceptions) | T-050, T-060 | FE | READY | Server-side filters and pagination | `features/orders` | vitest |
+| T-064 | P0 | Products, inventory positions (health), movement ledger | T-051, T-060 | FE | READY | Health badges match the backend | `features/inventory` | vitest |
+| T-065 | P0 | Imports: upload, preview, issues table, apply with consent, history, error CSV, templates | T-052, T-060 | FE | READY | Every failure path is visible | `features/imports` | Playwright |
 | T-066 | P1 | Admin: users and roles, store settings (thresholds, weights), audit log viewer | T-043, T-060 | FE | BACKLOG | Settings validation. Audit is filterable | `features/admin` | vitest |
 
 ## M7: AI intelligence
@@ -74,7 +74,7 @@ Agent roles: **ORCH** orchestrator · **PM** product/BA · **ARCH** architect ·
 | ID | Pri | Description | Deps | Agent | Status | Acceptance criteria | Files | Verification |
 |---|---|---|---|---|---|---|---|---|
 | T-070 | P0 | AI docs: architecture, tool catalog, prompt design, evaluation strategy, safety and limitations | T-022 | AI | DONE | Grounding contract defined (facts / metrics / estimates / recommendations / references) | `docs/ai/*.md` | docs/ai/* |
-| T-071 | P0 | Tool registry (allowlisted, validated, permission-checked, store-scoped, size-limited, logged) | T-054, T-057 | AI | BACKLOG | Each tool has a permission test and a scope test | `domains/ai/tools/` | pytest |
+| T-071 | P0 | Tool registry (allowlisted, validated, permission-checked, store-scoped, size-limited, logged) | T-054, T-057 | AI | READY | Each tool has a permission test and a scope test | `domains/ai/tools/` | pytest |
 | T-072 | P0 | Provider abstraction with **free-tier providers only**: `gemini` (default live), `openai_compatible` (Groq/OpenRouter free models), and `deterministic` (no key). Automatic fallback to deterministic on 429/timeout/outage with a visible notice. Summary cache per exception evidence version | T-071 | AI | BACKLOG | The product works with no API key. A quota-exhausted provider never breaks the copilot | `domains/ai/providers/` | pytest with a mocked 429 |
 | T-073 | P0 | Copilot API and UI, exception investigation summary, note drafting (human accepts before save) | T-072, T-062 | AI/FE | BACKLOG | Answers show labelled sections and record references | `domains/ai`, `features/copilot` | Playwright |
 | T-074 | P1 | Evaluation dataset and runner (tool selection, factual correctness, attribution, unsupported-answer rate, permission enforcement, latency) | T-072 | AI | BACKLOG | Results stored with date and provider, never fabricated | `apps/api/evals/` | `make ai-eval` |
