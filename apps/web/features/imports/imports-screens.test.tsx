@@ -307,6 +307,30 @@ describe("ImportScreen (S-12 steps 2–4, S-13)", () => {
     expect(call?.[1]?.method).toBe("POST");
   });
 
+  it("after a failed apply, shows the failure and restarts at the preview when validated again", async () => {
+    const clean = importFixture({ summary: { ...importFixture().summary, rows_with_errors: 0, rows_valid: 120, issue_counts_by_code: {} } });
+    let current = clean;
+    routes(clean, {
+      "/imports/i1": () => jsonResponse(current),
+      "/imports/i1/apply": () => {
+        current = importFixture({ ...clean, status: "FAILED", mode: "STRICT", failure_reason: "IMPORT_DATA_CHANGED: The data changed.", can_revalidate: true });
+        return errorResponse(409, "IMPORT_DATA_CHANGED", "The data changed since this file was validated.");
+      },
+      "/imports/i1/revalidate": () => {
+        current = clean;
+        return jsonResponse(current);
+      },
+    });
+    renderInStore(<ImportScreen />, testStore({ permissions: MANAGER }));
+    await userEvent.click(await screen.findByRole("button", { name: /Continue to apply/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Apply 120 rows" }));
+
+    expect(await screen.findByText("IMPORT_DATA_CHANGED: The data changed.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Validate again" }));
+    expect(await screen.findByRole("button", { name: /Continue to apply/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Apply 120 rows" })).not.toBeInTheDocument();
+  });
+
   it("asks for a new upload once a failed import's file is gone", async () => {
     routes(importFixture({ status: "FAILED", mode: "STRICT", failure_reason: "IMPORT_APPLY_FAILED: No data was changed.", can_revalidate: false }));
     renderInStore(<ImportScreen />, testStore({ permissions: MANAGER }));

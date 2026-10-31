@@ -514,6 +514,14 @@ export function ImportScreen() {
   });
   useDocumentTitle(query.data?.original_filename ?? "Import");
 
+  // A failed apply validated again starts over at the preview, not at the apply step it left.
+  const status = query.data?.status;
+  const [seenStatus, setSeenStatus] = useState(status);
+  if (status !== seenStatus) {
+    setSeenStatus(status);
+    if (status !== "VALIDATED") setStep("preview");
+  }
+
   if (!canRead) return <PermissionDenied pageName="imports" permission="imports.read" />;
 
   const listHref = `/s/${store.id}/imports`;
