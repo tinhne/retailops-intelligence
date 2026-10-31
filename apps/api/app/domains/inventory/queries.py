@@ -32,6 +32,7 @@ from sqlalchemy.sql.elements import SQLCoreOperations
 
 from app.core.pagination import Page, PageParams
 from app.domains.catalog.models import Product, ProductStatus
+from app.domains.imports import service as imports_service
 from app.domains.inventory import service as inventory_service
 from app.domains.inventory.calculations import (
     StockHealth,
@@ -58,6 +59,8 @@ from app.domains.inventory.schemas import (
 )
 from app.domains.orders.models import Order, OrderItem
 from app.domains.orders.sql import counts_as_sale
+
+SHIPMENT_REFERENCE_PREFIX = "order_item:"  # inventory.service._ensure_shipment_movement
 
 # ---------------------------------------------------------------------------------------------
 # Building blocks shared with catalog and analytics queries
@@ -349,12 +352,17 @@ def list_movements(
     product_id: uuid.UUID | None,
     movement_types: Sequence[MovementType] | None,
     source: MovementSource | None,
+    import_id: uuid.UUID | None = None,
     occurred_from: datetime | None,
     occurred_to: datetime | None,
     sort: MovementSort,
     paging: PageParams,
 ) -> Page[MovementOut]:
-    """Ledger rows (BR-110), newest recorded first by default. ``occurred_to`` is exclusive."""
+    """Ledger rows (BR-110), newest recorded first by default. ``occurred_to`` is exclusive.
+
+    Each row carries the file name of the import that wrote it and, for shipments, the order of
+    the line its ``order_item:{id}`` reference names. Both are looked up for the page only.
+    """
     stmt = (
         select(InventoryMovement, Product.sku, Product.name)
         .join(Product, Product.id == InventoryMovement.product_id)
@@ -366,6 +374,8 @@ def list_movements(
         stmt = stmt.where(InventoryMovement.movement_type.in_(list(movement_types)))
     if source is not None:
         stmt = stmt.where(InventoryMovement.source == source)
+    if import_id is not None:
+        stmt = stmt.where(InventoryMovement.import_id == import_id)
     if occurred_from is not None:
         stmt = stmt.where(InventoryMovement.occurred_at >= occurred_from)
     if occurred_to is not None:
@@ -381,6 +391,8 @@ def list_movements(
     else:
         order = (column.asc(), InventoryMovement.occurred_at.asc(), InventoryMovement.id.asc())
     rows = db.execute(stmt.order_by(*order).offset(paging.offset).limit(paging.page_size)).all()
+    filenames = imports_service.filenames_by_id(db, store_id, [m.import_id for m, _, _ in rows])
+    shipment_orders = _shipment_orders(db, store_id, [m.reference for m, _, _ in rows])
     return Page[MovementOut](
         items=[
             MovementOut(
@@ -398,6 +410,8 @@ def list_movements(
                 source=m.source,
                 reference=m.reference,
                 import_id=m.import_id,
+                import_filename=filenames.get(m.import_id) if m.import_id else None,
+                order_id=shipment_orders.get(m.reference) if m.reference else None,
                 note=m.note,
                 created_by=m.created_by,
             )
@@ -407,6 +421,27 @@ def list_movements(
         page_size=paging.page_size,
         total=total,
     )
+
+
+def _shipment_orders(
+    db: Session, store_id: uuid.UUID, references: Sequence[str | None]
+) -> dict[str, uuid.UUID]:
+    """``order_item:{id}`` references → the order of that line (derived, nothing stored)."""
+    item_ids: dict[uuid.UUID, str] = {}
+    for reference in references:
+        if reference and reference.startswith(SHIPMENT_REFERENCE_PREFIX):
+            try:
+                item_ids[uuid.UUID(reference.removeprefix(SHIPMENT_REFERENCE_PREFIX))] = reference
+            except ValueError:
+                continue
+    if not item_ids:
+        return {}
+    rows = db.execute(
+        select(OrderItem.id, OrderItem.order_id).where(
+            OrderItem.store_id == store_id, OrderItem.id.in_(item_ids)
+        )
+    ).all()
+    return {item_ids[item_id]: order_id for item_id, order_id in rows}
 
 
 def reconciliation(db: Session, store_id: uuid.UUID, *, checked_at: datetime) -> ReconciliationOut:

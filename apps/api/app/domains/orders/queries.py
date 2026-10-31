@@ -24,6 +24,7 @@ from app.domains.exceptions.models import (
     ExceptionStatus,
     OperationalException,
 )
+from app.domains.imports import service as imports_service
 from app.domains.inventory import queries as inventory_queries
 from app.domains.orders.models import (
     FulfillmentStatus,
@@ -303,6 +304,7 @@ def get_order(
         # Events of one transaction share occurred_at; the creation event (no from_status) first.
         .order_by(OrderEvent.occurred_at, OrderEvent.from_status.is_not(None), OrderEvent.id)
     ).all()
+    filenames = imports_service.filenames_by_id(db, store_id, [e.import_id for e in events])
 
     overdue = is_overdue(order.status, order.ship_by, as_of)
     hours_overdue = None
@@ -354,6 +356,7 @@ def get_order(
                 fulfillment_status=e.fulfillment_status,
                 source=e.source,
                 import_id=e.import_id,
+                import_filename=filenames.get(e.import_id) if e.import_id else None,
                 actor_user_id=e.actor_user_id,
                 occurred_at=e.occurred_at,
             )
