@@ -90,8 +90,8 @@ export function orderDetailFixture(overrides: Partial<OrderDetail> = {}): OrderD
       has_total_mismatch: false,
     },
     events: [
-      { id: "ev1", from_status: null, to_status: "PAID", skipped_statuses: [], source: "IMPORT", import_id: null, actor_user_id: null, payment_status: "PAID", fulfillment_status: "UNFULFILLED", occurred_at: "2026-10-27T13:55:00Z" },
-      { id: "ev2", from_status: "PAID", to_status: "CANCELLED", skipped_statuses: ["PROCESSING"], source: "IMPORT", import_id: null, actor_user_id: null, payment_status: "PAID", fulfillment_status: "UNFULFILLED", occurred_at: "2026-10-28T09:47:00Z" },
+      { id: "ev1", from_status: null, to_status: "PAID", skipped_statuses: [], source: "IMPORT", import_id: null, import_filename: null, actor_user_id: null, payment_status: "PAID", fulfillment_status: "UNFULFILLED", occurred_at: "2026-10-27T13:55:00Z" },
+      { id: "ev2", from_status: "PAID", to_status: "CANCELLED", skipped_statuses: ["PROCESSING"], source: "IMPORT", import_id: null, import_filename: null, actor_user_id: null, payment_status: "PAID", fulfillment_status: "UNFULFILLED", occurred_at: "2026-10-28T09:47:00Z" },
     ],
     exceptions: [linkedExceptionFixture()],
     ...overrides,

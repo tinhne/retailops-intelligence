@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 
 import { DataTable, type Column } from "@/components/data/data-table";
+import { DateRangeFilter } from "@/components/data/date-range-filter";
 import { FilterChips, MultiSelectFilter, Pagination, SearchInput, SelectField, type Chip, type Option } from "@/components/data/list-controls";
 import { Money } from "@/components/data/values";
 import { PageHeader } from "@/components/shell/page-header";
@@ -18,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ImportLink } from "@/features/imports/import-actions";
 import { ordersApi, orderKeys, type OrderListItem } from "@/lib/api/orders-api";
+import { formatRange } from "@/lib/date-range";
 import { formatDateTimeShort, formatDue, zoneGenericName } from "@/lib/format/datetime";
 import { formatCount, formatQuantity } from "@/lib/format/number";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
@@ -39,7 +41,7 @@ import {
   type OrderParams,
 } from "./order-params";
 
-const PLACED_LABELS = { today: "Today", "7d": "Last 7 days", "30d": "Last 30 days", "60d": "Last 60 days" } as const;
+const PLACED_LABELS = { today: "Today", "7d": "Last 7 days", "30d": "Last 30 days", "60d": "Last 60 days", custom: "Custom range" } as const;
 const SORT_OPTIONS: Option[] = [
   { value: "-placed_at", label: "Placed, newest" },
   { value: "placed_at", label: "Placed, oldest" },
@@ -114,7 +116,15 @@ export function OrdersScreen() {
       ? [{ key: "fulfillment", label: `Fulfillment: ${fulfillmentStatusMeta[params.fulfillment_status].label}`, onRemove: () => update({ fulfillment_status: null }) }]
       : []),
     ...(params.channel ? [{ key: "channel", label: `Channel: ${channelLabels[params.channel]}`, onRemove: () => update({ channel: null }) }] : []),
-    ...(params.placed ? [{ key: "placed", label: `Placed: ${PLACED_LABELS[params.placed]}`, onRemove: () => update({ placed: null }) }] : []),
+    ...(params.placed && (params.placed !== "custom" || params.placed_from || params.placed_to)
+      ? [
+          {
+            key: "placed",
+            label: `Placed: ${params.placed === "custom" ? formatRange(params.placed_from, params.placed_to) : PLACED_LABELS[params.placed]}`,
+            onRemove: () => update({ placed: null }),
+          },
+        ]
+      : []),
     ...(params.overdue ? [{ key: "overdue", label: "Overdue only", onRemove: () => update({ overdue: false }) }] : []),
   ];
 
@@ -210,6 +220,15 @@ export function OrdersScreen() {
               {list.data ? formatCount(total, "order") : null}
             </p>
           </div>
+          {params.placed === "custom" ? (
+            <DateRangeFilter
+              label="Placed"
+              zone={zone}
+              from={params.placed_from}
+              to={params.placed_to}
+              onChange={(placed_from, placed_to) => update({ placed_from, placed_to })}
+            />
+          ) : null}
           <FilterChips chips={chips} onClearAll={clearAll} />
         </div>
         <DataTable
