@@ -79,7 +79,8 @@
   `pnpm audit --prod --audit-level high`: no known vulnerabilities.
 - Browser check against the seeded local API: password and demo sign-in, `next` redirect, invalid
   credentials, session expiry, sign-out, unknown store, and the 375, 768 and 1280 px layouts.
-- GitHub Actions run 41216596429 (4f38073): success. CI has not run on the new web code yet (not pushed).
+- GitHub Actions run 41227323682 (5e24711, first run with the web foundation): success. API, web,
+  dependency audit and Docker image jobs all passed.
 
 ## Owner decisions log
 
