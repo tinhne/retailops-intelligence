@@ -236,7 +236,7 @@ target customers (migrations and cost multiply per tenant).
 | Type | `.csv` extension (case-insensitive); the client's MIME type is ignored; content must decode as strict UTF-8 (a BOM is accepted and stripped) and contain no NUL bytes. No spreadsheet or archive formats, so no macro or decompression risks |
 | Parsing | Python `csv` module with an explicit dialect; bounded `csv.field_size_limit`; caps on rows (20,000) and columns; values stay strings until a validator converts them; nothing is ever evaluated |
 | Storage | Bytes are stored in PostgreSQL, never on disk; the original filename is metadata only (length-limited, never used as a path, rendered as text) |
-| Lifetime | Bytes are purged on apply, discard, rejection and expiry (24 h) |
+| Lifetime | Bytes are purged on apply, discard, rejection and expiry (24 h). A `FAILED` apply keeps them until that same preview expiry, so the file can be validated again |
 | Display | Raw values are rendered as text by React; `import_row_issue.raw_value` is truncated to a bounded length |
 | Idempotency | SHA-256 duplicate detection (BR-607); adjustment references unique per store (BR-112) |
 
