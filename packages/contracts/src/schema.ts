@@ -107,6 +107,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Members
+         * @description Members with email, role and status. Organizations are small, so there is no paging.
+         */
+        get: operations["list_members_api_v1_organizations__organization_id__members_get"];
+        put?: never;
+        /**
+         * Add Member
+         * @description Create an account with a temporary password shown once, audited as ``user.create``.
+         *
+         *     ``409 MEMBER_EXISTS`` when the email is already a member here, ``409 EMAIL_IN_USE`` when it
+         *     has an account in another organization (not supported in v1, open question O-35).
+         */
+        post: operations["add_member_api_v1_organizations__organization_id__members_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_id}/members/{membership_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Member
+         * @description Change the role and/or status. ``409 LAST_OWNER`` keeps one active owner; deactivation
+         *     revokes every session of the member. Members cannot change their own membership (403).
+         */
+        patch: operations["update_member_api_v1_organizations__organization_id__members__membership_id__patch"];
+        trace?: never;
+    };
     "/api/v1/roles": {
         parameters: {
             query?: never;
@@ -879,6 +927,11 @@ export interface components {
         AuditLogOut: {
             /** Action */
             action: string;
+            /**
+             * Actor Name
+             * @description Full name of the actor (no email). Null for system actions.
+             */
+            actor_name: string | null;
             /** Actor User Id */
             actor_user_id: string | null;
             /** Details */
@@ -1783,6 +1836,26 @@ export interface components {
             memberships: components["schemas"]["MembershipOut"][];
             user: components["schemas"]["UserOut"];
         };
+        /**
+         * MemberCreate
+         * @description Add a member by creating their account (§8.1). The email must not have an account yet.
+         */
+        MemberCreate: {
+            /** Email */
+            email: string;
+            /** Full Name */
+            full_name: string;
+            role: components["schemas"]["Role"];
+        };
+        /** MemberCreated */
+        MemberCreated: {
+            member: components["schemas"]["OrganizationMemberOut"];
+            /**
+             * Temporary Password
+             * @description Shown once so the owner can hand it over outside the product. Only its argon2id hash is stored; it is never logged or written to the audit log.
+             */
+            temporary_password: string;
+        };
         /** MemberList */
         MemberList: {
             /** Items */
@@ -1803,6 +1876,23 @@ export interface components {
              */
             id: string;
             role: components["schemas"]["Role"];
+        };
+        /**
+         * MemberStatus
+         * @description Account status of a member. v1 stores it on the user (``app_user.is_active``).
+         * @enum {string}
+         */
+        MemberStatus: "ACTIVE" | "DEACTIVATED";
+        /**
+         * MemberUpdate
+         * @description Change a member's role, deactivate or reactivate them (§8.2, §8.3).
+         *
+         *     Omitted fields keep their value; an explicit ``null`` is rejected, and at least one field is
+         *     required.
+         */
+        MemberUpdate: {
+            role?: components["schemas"]["Role"] | null;
+            status?: components["schemas"]["MemberStatus"] | null;
         };
         /** MembershipOut */
         MembershipOut: {
@@ -2143,6 +2233,42 @@ export interface components {
          * @enum {string}
          */
         OrderStatus: "CREATED" | "PAYMENT_PENDING" | "PAYMENT_FAILED" | "PAID" | "PROCESSING" | "READY_TO_SHIP" | "SHIPPED" | "DELIVERED" | "RETURN_REQUESTED" | "RETURNED" | "CANCELLED" | "REFUNDED";
+        /** OrganizationMemberList */
+        OrganizationMemberList: {
+            /** Items */
+            items: components["schemas"]["OrganizationMemberOut"][];
+        };
+        /**
+         * OrganizationMemberOut
+         * @description A member as shown on the Users & roles screen (``users.read``).
+         */
+        OrganizationMemberOut: {
+            /** Email */
+            email: string;
+            /** Full Name */
+            full_name: string;
+            /**
+             * Id
+             * Format: uuid
+             * @description Membership id, used in the member PATCH path.
+             */
+            id: string;
+            /**
+             * Joined At
+             * Format: date-time
+             * @description When the membership was created.
+             */
+            joined_at: string;
+            /** Last Login At */
+            last_login_at: string | null;
+            role: components["schemas"]["Role"];
+            status: components["schemas"]["MemberStatus"];
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+        };
         /** OrganizationOut */
         OrganizationOut: {
             /**
@@ -3000,6 +3126,108 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    list_members_api_v1_organizations__organization_id__members_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationMemberList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_member_api_v1_organizations__organization_id__members_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberCreated"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_member_api_v1_organizations__organization_id__members__membership_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                membership_id: string;
+                organization_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationMemberOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

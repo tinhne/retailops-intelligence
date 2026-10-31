@@ -265,6 +265,18 @@
             "title": "Action",
             "type": "string"
           },
+          "actor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Full name of the actor (no email). Null for system actions.",
+            "title": "Actor Name"
+          },
           "actor_user_id": {
             "anyOf": [
               {
@@ -343,6 +355,7 @@
           "occurred_at",
           "action",
           "actor_user_id",
+          "actor_name",
           "store_id",
           "target_type",
           "target_id",
@@ -2780,6 +2793,53 @@
         "title": "MeResponse",
         "type": "object"
       },
+      "MemberCreate": {
+        "additionalProperties": false,
+        "description": "Add a member by creating their account (\u00a78.1). The email must not have an account yet.",
+        "properties": {
+          "email": {
+            "maxLength": 254,
+            "minLength": 3,
+            "pattern": "^[^@\\s]+@[^@\\s]+$",
+            "title": "Email",
+            "type": "string"
+          },
+          "full_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Full Name",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          }
+        },
+        "required": [
+          "email",
+          "full_name",
+          "role"
+        ],
+        "title": "MemberCreate",
+        "type": "object"
+      },
+      "MemberCreated": {
+        "properties": {
+          "member": {
+            "$ref": "#/components/schemas/OrganizationMemberOut"
+          },
+          "temporary_password": {
+            "description": "Shown once so the owner can hand it over outside the product. Only its argon2id hash is stored; it is never logged or written to the audit log.",
+            "title": "Temporary Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "member",
+          "temporary_password"
+        ],
+        "title": "MemberCreated",
+        "type": "object"
+      },
       "MemberList": {
         "properties": {
           "items": {
@@ -2823,6 +2883,43 @@
           "can_work_exceptions"
         ],
         "title": "MemberOut",
+        "type": "object"
+      },
+      "MemberStatus": {
+        "description": "Account status of a member. v1 stores it on the user (``app_user.is_active``).",
+        "enum": [
+          "ACTIVE",
+          "DEACTIVATED"
+        ],
+        "title": "MemberStatus",
+        "type": "string"
+      },
+      "MemberUpdate": {
+        "additionalProperties": false,
+        "description": "Change a member's role, deactivate or reactivate them (\u00a78.2, \u00a78.3).\n\nOmitted fields keep their value; an explicit ``null`` is rejected, and at least one field is\nrequired.",
+        "properties": {
+          "role": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Role"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MemberStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "MemberUpdate",
         "type": "object"
       },
       "MembershipOut": {
@@ -3720,6 +3817,82 @@
         ],
         "title": "OrderStatus",
         "type": "string"
+      },
+      "OrganizationMemberList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OrganizationMemberOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "OrganizationMemberList",
+        "type": "object"
+      },
+      "OrganizationMemberOut": {
+        "description": "A member as shown on the Users & roles screen (``users.read``).",
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "id": {
+            "description": "Membership id, used in the member PATCH path.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "joined_at": {
+            "description": "When the membership was created.",
+            "format": "date-time",
+            "title": "Joined At",
+            "type": "string"
+          },
+          "last_login_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Login At"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MemberStatus"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "full_name",
+          "email",
+          "role",
+          "status",
+          "joined_at",
+          "last_login_at"
+        ],
+        "title": "OrganizationMemberOut",
+        "type": "object"
       },
       "OrganizationOut": {
         "properties": {
@@ -5735,6 +5908,166 @@
         "summary": "Ready",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organization_id}/members": {
+      "get": {
+        "description": "Members with email, role and status. Organizations are small, so there is no paging.",
+        "operationId": "list_members_api_v1_organizations__organization_id__members_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organization_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organization Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationMemberList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Members",
+        "tags": [
+          "members"
+        ]
+      },
+      "post": {
+        "description": "Create an account with a temporary password shown once, audited as ``user.create``.\n\n``409 MEMBER_EXISTS`` when the email is already a member here, ``409 EMAIL_IN_USE`` when it\nhas an account in another organization (not supported in v1, open question O-35).",
+        "operationId": "add_member_api_v1_organizations__organization_id__members_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organization_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organization Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Member",
+        "tags": [
+          "members"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organization_id}/members/{membership_id}": {
+      "patch": {
+        "description": "Change the role and/or status. ``409 LAST_OWNER`` keeps one active owner; deactivation\nrevokes every session of the member. Members cannot change their own membership (403).",
+        "operationId": "update_member_api_v1_organizations__organization_id__members__membership_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "membership_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Membership Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organization_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organization Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationMemberOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Member",
+        "tags": [
+          "members"
         ]
       }
     },
