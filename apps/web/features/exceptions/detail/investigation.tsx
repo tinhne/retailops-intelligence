@@ -200,7 +200,7 @@ export function RecordTable({ caption, rows, limit = 50 }: { caption: string; ro
   const shown = rows.slice(0, limit);
   return (
     <div className="flex flex-col gap-2">
-      <div className="overflow-x-auto rounded-md border">
+      <div className="relative overflow-x-auto rounded-md border">
         <table className="w-full text-sm">
           <caption className="sr-only">{caption}</caption>
           <thead className="bg-surface-subtle">
@@ -276,7 +276,7 @@ export function EvidenceTable({ exception }: { exception: ExceptionDetail }) {
       {facts.length === 0 ? (
         <p className="text-body text-muted-foreground">Evidence unavailable for this exception.</p>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full text-body">
             <caption className="sr-only">Evidence</caption>
             <thead>

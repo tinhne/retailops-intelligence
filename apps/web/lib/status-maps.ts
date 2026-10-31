@@ -1,6 +1,15 @@
 import type { Schema } from "@retailops/contracts";
 import {
   ArrowDownRight,
+  Ban,
+  Clock,
+  Database,
+  Minus,
+  Package,
+  PackageCheck,
+  Receipt,
+  Truck,
+  Undo2,
   Circle,
   CircleAlert,
   CircleCheck,
@@ -210,3 +219,71 @@ export const exceptionStatusLabels: Record<ExceptionStatus, string> = {
   RESOLVED: "Resolved",
   DISMISSED: "Dismissed",
 };
+
+export type OrderStatus = Schema<"OrderStatus">;
+export type PaymentStatus = Schema<"PaymentStatus">;
+export type FulfillmentStatus = Schema<"FulfillmentStatus">;
+export type SalesChannel = Schema<"SalesChannel">;
+export type ChangeSource = Schema<"ChangeSource">;
+export type ReservationStatus = Schema<"ReservationStatus">;
+
+/** Order lifecycle, toned by status group (DESIGN_SYSTEM §3.5, STATE_MACHINES §1). */
+export const orderStatusMeta: Record<OrderStatus, StatusMeta> = {
+  CREATED: { label: "Created", tone: "neutral", icon: Clock },
+  PAYMENT_PENDING: { label: "Payment pending", tone: "neutral", icon: Clock },
+  PAYMENT_FAILED: { label: "Payment failed", tone: "danger", icon: CircleX },
+  PAID: { label: "Paid", tone: "info", icon: Package },
+  PROCESSING: { label: "Processing", tone: "info", icon: Package },
+  READY_TO_SHIP: { label: "Ready to ship", tone: "info", icon: Package },
+  SHIPPED: { label: "Shipped", tone: "success", icon: Truck },
+  DELIVERED: { label: "Delivered", tone: "success", icon: PackageCheck },
+  RETURN_REQUESTED: { label: "Return requested", tone: "warning", icon: Undo2 },
+  RETURNED: { label: "Returned", tone: "warning", icon: Undo2 },
+  CANCELLED: { label: "Cancelled", tone: "outline", icon: Ban },
+  REFUNDED: { label: "Refunded", tone: "outline", icon: Receipt },
+};
+
+export const paymentStatusMeta: Record<PaymentStatus, StatusMeta> = {
+  PENDING: { label: "Pending", tone: "neutral", icon: Clock },
+  PAID: { label: "Paid", tone: "success", icon: CircleCheck },
+  FAILED: { label: "Failed", tone: "danger", icon: CircleX },
+  REFUNDED: { label: "Refunded", tone: "muted", icon: Receipt },
+};
+
+export const fulfillmentStatusMeta: Record<FulfillmentStatus, StatusMeta> = {
+  UNFULFILLED: { label: "Unfulfilled", tone: "neutral", icon: Circle },
+  IN_PROGRESS: { label: "In progress", tone: "info", icon: Package },
+  SHIPPED: { label: "Shipped", tone: "success", icon: Truck },
+  DELIVERED: { label: "Delivered", tone: "success", icon: PackageCheck },
+  RETURNED: { label: "Returned", tone: "warning", icon: Undo2 },
+};
+
+export const channelLabels: Record<SalesChannel, string> = {
+  WEB: "Web",
+  MARKETPLACE: "Marketplace",
+  POS: "POS",
+  OTHER: "Other",
+};
+
+export const changeSourceLabels: Record<ChangeSource, string> = { IMPORT: "Import", USER: "User", SYSTEM: "System" };
+
+export const reservationLabels: Record<ReservationStatus, string> = {
+  ACTIVE: "Reserved",
+  CONSUMED: "Shipped",
+  RELEASED: "Released",
+};
+
+/** Health shown to people: the API value, or a state the API does not express as health. */
+export type DisplayHealth = StockHealth | "DATA_ISSUE" | "NOT_TRACKED";
+
+export const displayHealthMeta: Record<DisplayHealth, StatusMeta & { description?: string }> = {
+  ...stockHealthMeta,
+  DATA_ISSUE: { label: "Data issue", tone: "attention", icon: Database },
+  NOT_TRACKED: { label: "Not tracked", tone: "muted", icon: Minus, description: "Stock health is computed for active products only." },
+};
+
+/** On-hand below zero is impossible stock, so it overrides any computed health (BR-402a). */
+export function displayHealth(health: StockHealth | null, onHand: number): DisplayHealth {
+  if (onHand < 0) return "DATA_ISSUE";
+  return health ?? "NOT_TRACKED";
+}

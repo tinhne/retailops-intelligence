@@ -84,7 +84,7 @@ export function DataTable<T>({
               ))}
         </ul>
       ) : null}
-      <div className={cn("overflow-x-auto", renderStackedRow && "hidden md:block")}>
+      <div className={cn("relative overflow-x-auto", renderStackedRow && "hidden md:block")}>
         <table className={cn("w-full border-collapse", density === "comfortable" ? "text-body" : "text-sm")}>
           <caption className="sr-only">{caption}</caption>
           <thead className="bg-surface-subtle">

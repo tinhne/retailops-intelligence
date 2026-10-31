@@ -201,7 +201,7 @@ export function InboxScreen() {
         actions={<RunAnalysisButton running={lastRun?.status === "RUNNING"} />}
       />
 
-      <nav aria-label="Exception views" className="-mx-(--page-gutter) overflow-x-auto px-(--page-gutter)">
+      <nav aria-label="Exception views" className="relative -mx-(--page-gutter) overflow-x-auto px-(--page-gutter)">
         <ul className="flex min-w-max gap-1 border-b">
           {views.map((view) => {
             const count = view === "triage" ? triageCount.data : view === "mine" ? mineCount.data : undefined;
