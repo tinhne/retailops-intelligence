@@ -550,6 +550,34 @@ def test_manager_resolves_any_exception(world: World) -> None:
     assert response.status_code == 200
 
 
+def test_closed_list_items_carry_resolution_form_and_closing_time(world: World) -> None:
+    manager, csrf = world.client(world.manager)
+    url = f"{world.base()}/exceptions"
+    resolved = manager.post(
+        f"{url}/{world.oos_id}/resolve",
+        json={"resolution_code": "STOCK_REPLENISHED", "resolution_note": "Stock counted again."},
+        headers=csrf,
+    ).json()
+    dismissed = manager.post(
+        f"{url}/{world.overdue_id}/dismiss",
+        json={"dismissal_reason": "DUPLICATE", "note": "Tracked in the carrier claim."},
+        headers=csrf,
+    ).json()
+
+    closed = manager.get(url, params=[("status", "RESOLVED"), ("status", "DISMISSED")]).json()
+    by_id = {item["id"]: item for item in closed["items"]}
+    # A manual resolution stays unverified until the next evaluation (STATE_MACHINES §3.4).
+    assert by_id[resolved["id"]]["resolution_code"] == "STOCK_REPLENISHED"
+    assert by_id[resolved["id"]]["verified_at"] is None
+    assert by_id[resolved["id"]]["closed_at"] == resolved["resolution"]["resolved_at"]
+    assert by_id[dismissed["id"]]["dismissed_reason"] == "DUPLICATE"
+    assert by_id[dismissed["id"]]["closed_at"] == dismissed["dismissal"]["dismissed_at"]
+    assert by_id[dismissed["id"]]["resolution_code"] is None
+
+    active = manager.get(url).json()["items"]
+    assert all(item["closed_at"] is None and item["resolution_code"] is None for item in active)
+
+
 def test_dismiss_and_reopen_need_manage_permission(world: World, db: Session) -> None:
     staff, staff_csrf = world.client(world.staff)
     manager, csrf = world.client(world.manager)

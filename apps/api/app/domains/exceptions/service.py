@@ -222,6 +222,7 @@ class _Labels:
     users: dict[uuid.UUID, str] = field(default_factory=dict)
     products: dict[uuid.UUID, tuple[str, str]] = field(default_factory=dict)
     orders: dict[uuid.UUID, str] = field(default_factory=dict)
+    dismissed_at: dict[uuid.UUID, datetime] = field(default_factory=dict)
 
     @classmethod
     def load(
@@ -241,10 +242,25 @@ class _Labels:
         user_ids: list[uuid.UUID | None] = [e.assignee_id for e in excs]
         user_ids += [e.resolved_by for e in excs]
         user_ids += list(extra_users)
+        dismissed_ids = [e.id for e in excs if e.status is ExceptionStatus.DISMISSED]
+        dismissed_at: dict[uuid.UUID, datetime] = {}
+        if dismissed_ids:
+            # Dismissal has no column of its own; its time is the latest DISMISSED transition.
+            rows = db.execute(
+                select(ExceptionEvent.exception_id, func.max(ExceptionEvent.occurred_at))
+                .where(
+                    ExceptionEvent.store_id == store_id,
+                    ExceptionEvent.exception_id.in_(dismissed_ids),
+                    ExceptionEvent.to_status == ExceptionStatus.DISMISSED,
+                )
+                .group_by(ExceptionEvent.exception_id)
+            ).all()
+            dismissed_at = {exception_id: at for exception_id, at in rows}
         return cls(
             users=repository.user_names(db, user_ids),
             products=repository.product_labels(db, store_id, product_ids),
             orders=repository.order_labels(db, store_id, order_ids),
+            dismissed_at=dismissed_at,
         )
 
     def user(self, user_id: uuid.UUID | None) -> UserRef | None:
@@ -291,6 +307,16 @@ def _list_item(exc: OperationalException, labels: _Labels, now: datetime) -> Exc
         age_hours=max(int((now - exc.first_detected_at).total_seconds() // 3600), 0),
         reopen_count=exc.reopen_count,
         version=exc.version,
+        resolution_code=exc.resolution_code if exc.status is ExceptionStatus.RESOLVED else None,
+        verified_at=exc.verified_at if exc.status is ExceptionStatus.RESOLVED else None,
+        dismissed_reason=exc.dismissed_reason if exc.status is ExceptionStatus.DISMISSED else None,
+        closed_at=(
+            exc.resolved_at
+            if exc.status is ExceptionStatus.RESOLVED
+            else labels.dismissed_at.get(exc.id)
+            if exc.status is ExceptionStatus.DISMISSED
+            else None
+        ),
     )
 
 

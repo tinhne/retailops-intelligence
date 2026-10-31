@@ -145,6 +145,16 @@ class ExceptionListItem(BaseModel):
     age_hours: int
     reopen_count: int
     version: int
+    resolution_code: ResolutionCode | None = Field(
+        description="RESOLVED only. With verified_at it decides the four resolved forms."
+    )
+    verified_at: datetime | None = Field(
+        description="Set when the next evaluation confirms a manual resolution."
+    )
+    dismissed_reason: DismissalReason | None
+    closed_at: datetime | None = Field(
+        description="When it was resolved or dismissed; null while active or reopened."
+    )
 
 
 class ExceptionDetail(ExceptionListItem):
