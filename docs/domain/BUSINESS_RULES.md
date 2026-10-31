@@ -115,7 +115,7 @@ The full rule definitions are in `EXCEPTION_CATALOG.md`. Summary:
 | ID | Rule |
 |---|---|
 | BR-401 | One inventory exception at most per product at a time, and it is the most severe: `OVERSOLD` > `OVERSELL_RISK` > `OUT_OF_STOCK` > `BELOW_REORDER_POINT`. When a more severe condition appears, the less severe exception is resolved with `SUPERSEDED` and its assignee carries over. |
-| BR-402a | If `on_hand < 0`, the stock figure is invalid input. Only `DATA_NEGATIVE_ON_HAND` is raised for that product, and every inventory rule is suppressed until on-hand is corrected. `INVENTORY_OVERSOLD` therefore always has `on_hand ≥ 0` and `reserved > on_hand`, so it always has affected orders. |
+| BR-402a | If `on_hand < 0`, the stock figure is invalid input. Only `DATA_NEGATIVE_ON_HAND` is raised for that product, and every inventory rule is suppressed until on-hand is corrected. An active inventory exception for that product is resolved as `SUPERSEDED` by the data-quality exception (not `CONDITION_CLEARED`), and its assignee carries over. `INVENTORY_OVERSOLD` therefore always has `on_hand ≥ 0` and `reserved > on_hand`, so it always has affected orders. |
 | BR-402 | Oversold: affected orders are found by allocating `on_hand` to committed order lines in FIFO order of `paid_at`. Lines that cannot be fully covered are affected. |
 | BR-403 | Oversell risk: `available ≥ 0` and `pending_demand > available`. Potential shortage = `pending_demand − available`. |
 | BR-404 | Exposure figures are **gross order-line value at risk**, not measured financial loss. They must never be labelled as "loss". |
