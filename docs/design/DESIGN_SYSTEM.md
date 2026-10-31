@@ -49,13 +49,13 @@ dark mode only has to redefine the tones.
 |---|---|---|
 | `neutral` | Informational, no judgement | LOW severity, awaiting payment, P3 |
 | `outline` | Default/new, not yet touched | OPEN status, closed orders |
-| `muted` | Finished, no longer relevant | DISMISSED, not-tracked health |
+| `muted` | Finished, no longer relevant | DISMISSED, Superseded, not-tracked health |
 | `primary` | Actively being worked | IN_PROGRESS |
-| `info` | Noted, in flight | ACKNOWLEDGED, orders to fulfil, import ready |
-| `success` | Good outcome | RESOLVED, HEALTHY, fulfilled orders, import completed |
+| `info` | Noted, in flight | ACKNOWLEDGED, Resolved — awaiting verification, orders to fulfil, import ready |
+| `success` | Good outcome | Verified, Resolved · condition cleared, HEALTHY, fulfilled orders, import completed |
 | `warning` | Needs attention soon | REOPENED, BELOW_REORDER_POINT, returns, completed with skipped rows |
 | `caution` | Early signal | MEDIUM severity, APPROACHING_REORDER_POINT |
-| `attention` | Serious | HIGH severity, P2 |
+| `attention` | Serious | HIGH severity, P2, "Data issue" stock health (BR-402a) |
 | `danger` | Problem now | OUT_OF_STOCK, payment failed, import failed/rejected, validation errors |
 | `danger-solid` | Worst case on screen | CRITICAL severity, OVERSOLD (filled pill, white text) |
 
@@ -227,6 +227,7 @@ Domain tokens alias tones (they resolve to the hex values shown in §3.5). Each 
   /* --health-approaching-reorder-{fg,bg,border}  = --tone-caution-{fg,bg,border} */
   /* --health-healthy-{fg,bg,border}              = --tone-success-{fg,bg,border} */
   /* --health-not-tracked-{fg,bg,border}          = --tone-muted-{fg,bg,border}   (non-ACTIVE products) */
+  /* --health-data-issue-{fg,bg,border}           = --tone-attention-{fg,bg,border} (on_hand < 0, BR-402a) */
 
   /* Order status groups (STATE_MACHINES §1) */
   /* --order-awaiting-payment-{fg,bg,border} = --tone-neutral-{fg,bg,border}   CREATED, PAYMENT_PENDING */
@@ -303,7 +304,10 @@ change. Domain tokens follow automatically, except priority bars.
 | | `ACKNOWLEDGED` | Acknowledged | `eye` | `#175CD3` | `#EFF8FF` | `#B2DDFF` |
 | | `IN_PROGRESS` | In progress | `circle-play` | `#3140A8` | `#EEF0FC` | `#C2CAF4` |
 | | `REOPENED` | Reopened | `rotate-ccw` | `#B54708` | `#FFFAEB` | `#FEDF89` |
-| | `RESOLVED` | Resolved | `circle-check` | `#067647` | `#ECFDF3` | `#ABEFC6` |
+| | `RESOLVED`, manual, `verified_at` null | Resolved — awaiting verification | `hourglass` | `#175CD3` | `#EFF8FF` | `#B2DDFF` |
+| | `RESOLVED`, `verified_at` set | Verified | `circle-check` | `#067647` | `#ECFDF3` | `#ABEFC6` |
+| | `RESOLVED`, `CONDITION_CLEARED` | Resolved · condition cleared | `circle-check` | `#067647` | `#ECFDF3` | `#ABEFC6` |
+| | `RESOLVED`, `SUPERSEDED` | Superseded | `corner-up-right` | `#555D66` | `#F1F3F5` | `#DEE2E6` |
 | | `DISMISSED` | Dismissed | `circle-slash` | `#555D66` | `#F1F3F5` | `#DEE2E6` |
 | Priority | `P1` (≥ 70) | P1 | 4 of 4 bars | `#B42318` | none | bars `#D92D20` |
 | | `P2` (50–69) | P2 | 3 of 4 bars | `#B93815` | none | bars `#E04F16` |
@@ -315,12 +319,26 @@ change. Domain tokens follow automatically, except priority bars.
 | | `APPROACHING_REORDER_POINT` | Approaching reorder point | `arrow-down-right` | `#A15C07` | `#FEFBE8` | `#FEEE95` |
 | | `HEALTHY` | Healthy | `circle-check` | `#067647` | `#ECFDF3` | `#ABEFC6` |
 | | (non-ACTIVE product) | Not tracked | `minus` | `#555D66` | `#F1F3F5` | `#DEE2E6` |
+| | (`on_hand < 0`, any status) | Data issue | `database` | `#B93815` | `#FEF6EE` | `#F9DBAF` |
 | Order status group | Awaiting payment (`CREATED`, `PAYMENT_PENDING`) | Created / Payment pending | `clock` | `#3F464E` | `#F1F3F5` | `#DEE2E6` |
 | | Payment failed (`PAYMENT_FAILED`) | Payment failed | `circle-x` | `#B42318` | `#FEF3F2` | `#FECDCA` |
 | | To fulfil (`PAID`, `PROCESSING`, `READY_TO_SHIP`) | Paid / Processing / Ready to ship | `package` | `#175CD3` | `#EFF8FF` | `#B2DDFF` |
 | | Fulfilled (`SHIPPED`, `DELIVERED`) | Shipped / Delivered | `truck` / `package-check` | `#067647` | `#ECFDF3` | `#ABEFC6` |
 | | Returns (`RETURN_REQUESTED`, `RETURNED`) | Return requested / Returned | `undo-2` | `#B54708` | `#FFFAEB` | `#FEDF89` |
 | | Closed (`CANCELLED`, `REFUNDED`) | Cancelled / Refunded | `ban` / `receipt` | `#2A3037` | `#FFFFFF` | `#CED4DA` |
+
+**`RESOLVED` is shown in four forms**, derived from `resolution_code` and `verified_at`
+(STATE_MACHINES §3.3–3.4). A manual resolution reads "Resolved — awaiting verification" (info
+tone, `hourglass`) until `verified_at` is set, then "Verified". The verification grace rule means
+a manual resolution can legitimately stay unverified until the next import completes or 24 h
+pass, so the label must not claim success early. Automatic resolutions read "Resolved · condition
+cleared", and supersessions read "Superseded".
+
+**"Data issue" overrides stock health.** When `on_hand < 0`, the stock figure is invalid input.
+Only `DATA_NEGATIVE_ON_HAND` is raised and every inventory rule is suppressed (BR-402a), so a
+health class computed from `available` would be misleading. `HealthBadge` shows "Data issue" for
+any product status, with the tooltip "On hand is negative (−3). That is physically impossible,
+so stock health can't be computed until a cycle count corrects it (BR-402a)."
 
 **Order secondary axes** (`payment_status`, `fulfillment_status`) use the same tones, shown as
 smaller text-only pills on the order detail page and as plain text in table columns:
@@ -378,10 +396,10 @@ body {
 ```
 
 **Numerals.** Tabular figures are set globally, so money, quantities, timestamps, scores and axis
-ticks align in columns and do not shift width when they refresh. Identifiers that mix letters and
-digits (`EXC-9B1C4E2A`, `request_id`, file SHA-256, raw CSV values) use `--font-mono` with
-`slashed-zero`. SKUs and order numbers stay in Inter (they are read more than compared), at
-weight 500.
+ticks align in columns and do not shift width when they refresh. Machine identifiers
+(`request_id`, file SHA-256, raw CSV values, rule IDs, issue codes) use `--font-mono` with
+`slashed-zero`. Human references (exception reference `EXC-1042`, SKUs, order numbers) stay in
+Inter at weight 500, because they are read and spoken more than compared.
 
 ### 4.2 Type scale
 
@@ -563,9 +581,18 @@ screen reader. The click handler is a no-op, and the reason is also exposed via
 pattern. The `disabled` attribute is used only while a form submission is in flight.
 
 **Pending mutations.** Optimistic updates are **not** used for lifecycle transitions: the server
-may reject them with 409 (state machine, `expected_version`). The button shows its pending state
-until the response arrives (typically < 500 ms), then the page data is invalidated and refetched.
-Notes may be optimistic (append-only, no state machine).
+may reject them with 409 (`EXCEPTION_TRANSITION_NOT_ALLOWED`, or `STALE_VERSION` when the sent
+`expected_version` differs from `operational_exception.version`). The button shows its pending
+state until the response arrives (typically < 500 ms), then the page data is invalidated and
+refetched. Notes may be optimistic (append-only, no state machine).
+
+**Stale version (409 `STALE_VERSION`).** Every exception command sends the `version` the user is
+looking at as `expected_version`. On a mismatch the UI (1) shows a warning toast "Someone else
+updated EXC-1042. The latest details are now shown. Review them and try again.", (2) refetches
+the exception, its events and notes, and (3) keeps any open dialog open with the user's input,
+so the next submit carries the new version. If the refetched status no longer allows the action
+(for example it is now `RESOLVED`), the dialog closes and the toast says "EXC-1042 is now
+Resolved — awaiting verification. No change was made."
 
 ---
 
@@ -697,7 +724,7 @@ Locale is `en-US` in v1. Formatters are pure functions with unit tests.
 | Relative (deadline) | `formatDue(iso, now)` | Future: "Due in 3h 12m" (minutes shown only under 24 h), "Due in 2d 4h". Past: "Overdue 30h" up to 72 h, then "Overdue 4d 6h". | `Due in 3h 12m` |
 | Duration | `formatDuration(hours)` | `h` under 72 h, then `d h` | `30h` · `4d 6h` |
 | Days of cover | `formatDaysOfCover(value \| null)` | 1 decimal + `days` + "est." label. Null → "Not enough sales history" (BR-151). | `6.5 days est.` |
-| Exception reference | `formatExceptionRef(uuid)` | `EXC-` + first 8 hex characters, upper-cased, mono (see IA Q-IA-1) | `EXC-9B1C4E2A` |
+| Exception reference | none (verbatim) | `operational_exception.reference` from the per-store sequence, shown as-is in Inter 500. The UUID is never shown outside "Technical details". | `EXC-1042` |
 | File size | `formatBytes` | Base 1,000, 1 decimal | `1.8 MB` |
 | Row counts in prose | `formatQuantity` + noun, pluralised | | `1 row` · `14 rows` |
 
@@ -719,7 +746,7 @@ each timestamp. Charts with daily buckets use store-local calendar days, and the
 | Field error | Replaces the helper text. `circle-alert` 14 px + message in `--tone-danger-fg`, `text-xs` 500. Control border is `--tone-danger-fg` and has `aria-invalid="true"`. The message says what to do: "Enter at least 10 characters (currently 6)." |
 | Form-level error | On submit with errors: focus moves to an `Alert` (danger tone) at the top of the form: "2 fields need attention", with links that focus each field. Server 422 errors map `error.details[].field` to fields. Unmapped details go into the alert. |
 | Server errors (non-422) | `Alert` inside the dialog or form, with the error message and `request_id` (mono, with a copy button). The form keeps its values. Retry is the same submit button. |
-| Conflict (409) | Alert: "This exception changed while you were working. Review the latest details, then try again." Button "Reload latest". The form values are kept. See SCREEN_SPECIFICATIONS state "API conflict". |
+| Conflict (409) | `STALE_VERSION`: warning toast "Someone else updated {reference}…" plus an automatic refetch. The form values are kept and the next submit sends the new version (§10). Other 409 codes (`EXCEPTION_TRANSITION_NOT_ALLOWED`, `LAST_OWNER`, `IMPORT_*`): an Alert inside the form with the API message, values kept. See SCREEN_SPECIFICATIONS §0.3 "Conflict". |
 | Submit button | Disabled (real `disabled`) only while submitting. Before that it is always enabled, so submit can reveal validation errors (never pre-disabled "until valid"). |
 | Character limits | Shown as "6 / 4,000" under textareas once 80% is reached, or immediately where a minimum applies ("6 / 10 minimum"). |
 | Zod schemas | Live next to the form (`schema.ts`). Min/max values mirror the backend Pydantic constraints. The contracts package is the source of truth for field names. |

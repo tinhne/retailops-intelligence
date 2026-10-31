@@ -25,7 +25,7 @@ Build top to bottom. Each phase unblocks the frontend tasks listed.
 | **5. Exceptions** | C-50 PriorityBreakdown · C-51 CalculationBlock · C-52 EvidenceTable · C-53 AffectedOrdersTable · C-54 Timeline · C-55 NoteComposer · C-56 ExceptionActionBar (+ `getExceptionActions`) · C-57 Resolve/Dismiss/Reopen dialogs · C-58 AssigneeControl · C-59 DueDateControl · C-60 ExceptionLifecycleBanner · C-61 RunAnalysisButton · C-62 ExceptionListItem · C-63 LifecycleExplainer | T-062 |
 | **6. Imports** | C-70 ImportTypePicker · C-71 ImportDropzone · C-72 ImportStepper · C-73 ImportStatusPanel · C-74 ImportSummaryTiles · C-75 IssueTable · C-76 ApplyPanel | T-065 |
 | **7. Copilot** | C-80 CopilotAnswer · C-81 ReferenceChip · C-82 ToolCallDisclosure · C-83 CopilotComposer · C-84 ConversationList · C-85 SuggestedQuestions · C-86 AIInvestigationPanel | T-073 |
-| **8. Admin and P1** | C-90 SettingsField + SettingsSaveBar · C-91 RoleMatrix · C-92 ChangeRoleDialog · C-93 DemoTourPanel (P1) | T-066, T-094 |
+| **8. Admin and P1** | C-90 SettingsField + SettingsSaveBar · C-91 RoleMatrix · C-92 ChangeRoleDialog (P1) · C-93 DemoTourPanel (P1) | T-066, T-094 |
 
 ---
 
@@ -42,6 +42,7 @@ export type Severity = S["Severity"];              // "CRITICAL" | "HIGH" | "MED
 export type ExceptionStatus = S["ExceptionStatus"];// "OPEN" | "ACKNOWLEDGED" | "IN_PROGRESS" | "REOPENED" | "RESOLVED" | "DISMISSED"
 export type PriorityBand = S["PriorityBand"];      // "P1" | "P2" | "P3" | "P4"
 export type StockHealth = S["StockHealth"];        // "OVERSOLD" | "OUT_OF_STOCK" | "BELOW_REORDER_POINT" | "APPROACHING_REORDER_POINT" | "HEALTHY"
+export type EvaluationStatus = S["EvaluationStatus"]; // "RUNNING" | "SUCCEEDED" | "FAILED" | "SKIPPED"
 export type OrderStatus = S["OrderStatus"];        // 12 values, STATE_MACHINES §1.1
 export type ImportStatus = S["ImportStatus"];      // UPLOADED … DISCARDED
 export type Permission = S["Permission"];          // "dashboard.read" | … | "users.manage"
@@ -52,6 +53,8 @@ export type IsoDateTime = string;                  // UTC ISO-8601 from the API
 export type Tone = "neutral" | "outline" | "muted" | "primary" | "info" | "success"
   | "warning" | "caution" | "attention" | "danger" | "danger-solid";
 export type Gate = { allowed: true } | { allowed: false; reason: string };
+// What HealthBadge shows: API health, or a UI state the API does not express as a health value
+export type DisplayHealth = StockHealth | "DATA_ISSUE" /* on_hand < 0, BR-402a */ | "NOT_TRACKED" /* health null */;
 export type ApiError = { status: number; code: string; message: string;
   details?: Array<{ field?: string; message: string }>; requestId?: string; retryAfterSeconds?: number };
 export type LoadStatus = "loading" | "error" | "success";
@@ -66,9 +69,9 @@ export type LoadStatus = "loading" | "error" | "success";
 | `useStore()` | `() => { id; name; code; currency; timezone; organization: { id; name; slug; isDemo }; role; permissions: Set<Permission> }` | From the `storeId` segment plus `/me`. Throws outside `StoreProvider`. |
 | `usePermission()` | `(p: Permission \| Permission[], extra?: () => Gate) => Gate` | `isDemo` and missing → "The public demo is read-only." Missing (non-demo) → "You need the {label} permission. Ask an owner or manager." `extra` adds contextual rules (assignee checks). |
 | `useListParams()` | `<T extends z.ZodTypeAny>(schema: T) => [z.infer<T>, (patch: Partial<z.infer<T>>) => void]` | Parses and validates URL search params, drops invalid values (SCREEN_SPECS §0.3 validation), resets `page` on filter or sort change, and writes with `router.replace` (no history spam for typing) or `push` (for page changes). |
-| `useApiMutation()` | wraps `useMutation` | Adds the `X-CSRF-Token` header (from the `ro_csrf` cookie), `expected_version`, `Idempotency-Key` where configured, maps the error envelope to `ApiError`, and maps 401 to the session-expired redirect. |
-| `lib/format/*` | `formatMoney`, `formatMoneyCompact`, `formatQuantity`, `formatDelta`, `formatPercent`, `formatPp`, `formatDateTime`, `formatDateTimeShort`, `formatDate`, `formatRelative`, `formatDue`, `formatDuration`, `formatDaysOfCover`, `formatExceptionRef`, `formatBytes` | Pure functions, rules in DESIGN_SYSTEM §13. Tests include an EDT→EST transition (Nov 1, 2026) and negative values. |
-| `lib/status-maps.ts` | `Record<Enum, { label: string; tone: Tone; icon: LucideIcon; description?: string }>` per enum | The single source of UI labels, tones and icons (DESIGN_SYSTEM §3.5). Includes `exceptionTypeLabels`, `resolutionCodeLabels`, `dismissalReasonLabels`, `movementTypeLabels`, `importTypeLabels`, `auditActionLabels`, `toolNameLabels`, `permissionLabels`. |
+| `useApiMutation()` | wraps `useMutation` | Adds the `X-CSRF-Token` header (from the `ro_csrf` cookie), `expected_version` (the exception `version` on screen), `Idempotency-Key` where configured, maps the error envelope to `ApiError`, and maps 401 to the session-expired redirect. On `409 STALE_VERSION` it shows the "Someone else updated {reference}…" warning toast and invalidates the exception, events and notes queries (SCREEN_SPECS §0.3). |
+| `lib/format/*` | `formatMoney`, `formatMoneyCompact`, `formatQuantity`, `formatDelta`, `formatPercent`, `formatPp`, `formatDateTime`, `formatDateTimeShort`, `formatDate`, `formatRelative`, `formatDue`, `formatDuration`, `formatDaysOfCover`, `formatBytes` | Pure functions, rules in DESIGN_SYSTEM §13. Tests include an EDT→EST transition (Nov 1, 2026) and negative values. |
+| `lib/status-maps.ts` | `Record<Enum, { label: string; tone: Tone; icon: LucideIcon; description?: string }>` per enum | The single source of UI labels, tones and icons (DESIGN_SYSTEM §3.5). Includes `exceptionTypeLabels`, `resolutionCodeLabels`, `dismissedReasonLabels`, `movementTypeLabels`, `importTypeLabels`, `importIssueMeta` (level, meaning and "How to fix" text mirrored from IMPORT_PIPELINE §6), `evaluationStatusLabels`, `auditActionLabels`, `toolNameLabels`, `permissionLabels` (label + description for the role matrix). |
 | QueryClient defaults | `retry: (n, e) => n < 2 && (isNetwork(e) \|\| e.status >= 500)`, `refetchOnWindowFocus: true`, `staleTime: 30_000` | Query keys start with `['store', storeId, …]`. |
 
 ---
@@ -151,9 +154,10 @@ in the text, not only the colour. **Used by.** S-02, S-03, S-04, S-14, S-15.
 
 ### C-06 ExceptionRef
 ```ts
-type ExceptionRefProps = { id: string; copy?: boolean; href?: string };   // "EXC-9B1C4E2A"
+type ExceptionRefProps = { reference: string; copy?: boolean; href?: string };   // operational_exception.reference, "EXC-1042"
 ```
-Mono, `slashed-zero`. **Used by.** S-03, S-04, S-06, S-08, S-15.
+Renders the reference verbatim in Inter 500 with tabular numerals (it is a human reference, like an
+order number). Never derived from the UUID. **Used by.** S-02, S-03, S-04, S-06, S-08, S-14, S-15, C-26.
 
 ### C-07 CopyButton
 ```ts
@@ -196,13 +200,17 @@ CRITICAL is the only solid pill. **Used by.** S-02, S-03, S-04, S-06, S-08, S-22
 ```ts
 type ExceptionStatusPillProps = {
   status: ExceptionStatus;
-  resolutionCode?: string | null;     // closed view: "Resolved · Stock replenished"
-  dismissalReason?: string | null;    // "Dismissed · False positive"
-  verified?: boolean;                 // adds "· verified"
+  resolutionCode?: string | null;     // decides the RESOLVED form
+  verifiedAt?: IsoDateTime | null;    // manual resolution: null → "Resolved — awaiting verification", set → "Verified"
+  dismissedReason?: string | null;    // tooltip on "Dismissed"
   size?: "sm" | "md";
 };
 ```
-**Used by.** S-02, S-03, S-04, S-06, S-08.
+`RESOLVED` renders one of four forms (DESIGN_SYSTEM §3.5): manual with `verifiedAt` null →
+"Resolved — awaiting verification" (info, `hourglass`). Manual with `verifiedAt` set → "Verified"
+(success). `CONDITION_CLEARED` → "Resolved · condition cleared" (success). `SUPERSEDED` →
+"Superseded" (muted). A manual resolution is never shown with a success tone before `verified_at`
+exists. **Used by.** S-02, S-03, S-04, S-06, S-08.
 
 ### C-12 PriorityIndicator
 **Purpose.** Show priority band and score as a meter plus text, a shape distinct from severity
@@ -217,10 +225,15 @@ Bars are `aria-hidden`. **Used by.** S-02, S-03, S-04, S-06, S-08.
 
 ### C-13 HealthBadge
 ```ts
-type HealthBadgeProps = { health: StockHealth | null; size?: "sm" | "md"; iconOnly?: boolean };
+type HealthBadgeProps = { health: StockHealth | null; onHand: number; size?: "sm" | "md"; iconOnly?: boolean };
+// resolves to a DisplayHealth: onHand < 0 → "DATA_ISSUE" (any product status); health null → "NOT_TRACKED"
 ```
-`null` (non-ACTIVE product) → "Not tracked" (muted) with a tooltip "Stock health is computed for
-active products only." OVERSOLD is solid danger. **Used by.** S-06, S-07, S-08, S-09, and
+`onHand < 0` → "Data issue" (attention tone, `database` icon) with the tooltip "On hand is
+negative ({onHand}). That is physically impossible, so stock health can't be computed until a
+cycle count corrects it (BR-402a)." This takes precedence over any `health` value. `null` (non-ACTIVE
+product) → "Not tracked" (muted) with a tooltip "Stock health is computed for active products
+only." OVERSOLD is solid danger. If the API later returns a data-issue value itself, the mapping
+switches to it and the `onHand` rule is removed. **Used by.** S-06, S-07, S-08, S-09, and
 C-26 search results.
 
 ### C-14 OrderStatusPill (+ PaymentStatusText, FulfillmentStatusText)
@@ -320,7 +333,8 @@ The trigger has `aria-label="Account menu for Morgan Lee"`. **Used by.** S-00.
 ```ts
 type GlobalSearchProps = { open: boolean; onOpenChange: (v: boolean) => void };
 ```
-Command palette in a Dialog. Ctrl/⌘ K toggles it. Groups: Exceptions, Orders, Products, Go to.
+Command palette in a Dialog. Ctrl/⌘ K toggles it. Groups: Exceptions (`q` matches `reference`
+and title, rows show "EXC-1042 · title"), Orders, Products, Go to.
 Queries run only for permitted groups (min 2 characters, 200 ms debounce, 5 per group).
 **States.** Idle (shows Go to), loading (a skeleton row per group, existing results kept), results,
 no results ("No matches for "kh-99"". Search covers order numbers, SKUs, product names and
@@ -605,11 +619,15 @@ Rows: label, a bar (`div` width %, `--chart-1`, or `--chart-emphasis` if `emphas
 is explainable.
 ```ts
 type PriorityBreakdownProps = {
-  breakdown: S["PriorityBreakdown"];   // proposed shape: SCREEN_SPECS §0.4
+  breakdown: S["PriorityBreakdown"];   // {components[] {key, label, points, max_points, explanation}, total, uncapped_total, band, formula_version, as_of}
   dueAt: IsoDateTime;
+  dueAtOverridden: boolean;
+  severity: Severity;
 };
 ```
-A table with columns Component, Input, Points, Max, and a meter. The total row reads "81 / 100 ·
+A table with columns Component (`label`), Explanation (the rule-authored `explanation` sentence),
+Points (`points / max_points`) and a meter. When `uncapped_total > 100`, the total row says "capped
+at 100". The total row reads "81 / 100 ·
 P1 (≥ 70)". A due-date basis line follows. A limitation note links to a popover with the formula
 `min(100, S + A + E + D + T)` and the four PRIORITY_MODEL limitations. **States.** Populated only
 (the data is always present). Missing breakdown → an inline "Priority breakdown unavailable" plus
@@ -620,30 +638,38 @@ the request ID (defect signal). **A11y.** `<table>` with a caption "Why this pri
 ```ts
 type CalculationBlockProps = { calculation: S["Calculation"] };
 ```
-Header: "How this was detected · rule INV-OVERSOLD@1 · as of Oct 31, 9:45 AM EDT". Rows: label,
-expression (mono), substituted values (mono), result (formatted by `result_type`, danger tone for
-negative quantities). The condition row comes first with "→ true". **A11y.** `<table>` with a
-caption. Expressions use real minus signs, with `aria-label` text forms. **Used by.** S-04.
+`S["Calculation"]` = `{formulas[], inputs{}, outputs{}, steps[]?}` (SCREEN_SPECS §0.4). Header:
+"How this was detected · rule INV-OVERSOLD@1 · as of Oct 31, 9:45 AM EDT" (rule ID and `as_of`
+from the exception). Body: the `formulas` as an ordered list in mono, then **Inputs** and
+**Outputs** as key–value rows (keys humanised from snake_case, values formatted by type: money
+strings via `Money`, ISO strings via `DateTime`, negative numbers in danger tone with U+2212), then
+`steps` (if present) as a generic table whose columns are the step keys. **A11y.** Lists and
+`<dl>`s, no layout tables. Formulas use real minus signs, with `aria-label` text forms. **Used
+by.** S-04.
 
 ### C-52 EvidenceTable
 ```ts
-type EvidenceTableProps = { items: S["EvidenceItem"][] };
+type EvidenceTableProps = { evidence: S["Evidence"] };   // {facts[], records{}, notes[]}
 ```
-Columns: Fact, Value (formatted by `value_type`, with EstimateLabel when `is_estimate`), Source
-(link: `inventory_balance`/`product` → S-08, `order` → S-06, `inventory_movement` →
-`/inventory/movements?q={reference}`, `data_import` → S-13, `calculated` → plain text
-"Calculated"). **States.** Populated. Empty → defect message (SCREEN_SPECS S-04). **A11y.**
+Columns: Fact (`label`), Value (`value` + `unit`, formatted by its JSON type, with EstimateLabel
+when `estimate`; `volatile` facts get a muted "changes over time" tooltip), Source (`source` →
+link by `type`: `product`/`inventory_balance` → S-08, `order` → S-06, `inventory_movement` →
+`/inventory/movements?product_id={product}`, `data_import` → S-13. `null` → "Calculated").
+`records` groups other than `affected_orders` render as titled sub-tables below. `notes` render as
+a bullet list. **States.** Populated. Empty → defect message (SCREEN_SPECS S-04). **A11y.**
 Source links are named "{label}, opens {entity}". **Used by.** S-04.
 
 ### C-53 AffectedOrdersTable
 ```ts
 type AffectedOrdersTableProps = {
-  rows: Array<{ orderId: string; orderNumber: string; paidAt: IsoDateTime | null; shipBy: IsoDateTime | null;
-                status: OrderStatus; uncoveredQuantity?: number; atRisk?: DecimalString }>;
-  total: number; viewAllHref: string;
+  rows: Array<Record<string, unknown>>;   // evidence.records.affected_orders, rendered column by column
+  total: number;
 };
 ```
-Uses C-30 (compact, no pagination, max 50 rows, then "View all {n} in Orders"). **Used by.** S-04.
+Uses C-30 (compact, no pagination, max 50 rows, then "Showing 50 of {n} affected orders"). Known
+keys get formatted columns (order number → S-06 link, paid at, ship by, uncovered quantity, value at
+risk). Unknown keys render as plain columns, so a rule can add a field without a UI change.
+**Used by.** S-04.
 
 ### C-54 Timeline
 **Purpose.** A chronological history for exceptions and orders.
@@ -720,9 +746,12 @@ navigation between buttons. The More menu items show their disabled reasons as i
 ```ts
 type LifecycleDialogProps = { exception: S["ExceptionDetail"]; open: boolean; onOpenChange: (v: boolean) => void };
 ```
-Fields, copy and Zod rules per SCREEN_SPECS S-04. Each sends `expected_version`. **States.**
-Idle, field errors, pending, 409 conflict (Alert + **Reload latest**, inputs kept), other errors
-(Alert + request ID). On success: close, toast, invalidate the exception, events and inbox
+Fields, copy and Zod rules per SCREEN_SPECS S-04: Resolve `{resolution_code, resolution_note}`,
+Dismiss `{reason, note}` (stored as `dismissed_reason`), Reopen `{reason}`. Resolve and dismiss
+notes need at least 10 characters after trimming. Each body sends `expected_version`. **States.**
+Idle, field errors, pending, `409 STALE_VERSION` (warning toast "Someone else updated EXC-1042…",
+refetch, dialog kept open with its input, next submit carries the new version; closes if the new
+status no longer allows the action), other errors (Alert + request ID). On success: close, toast, invalidate the exception, events and inbox
 queries. **A11y.** Dialog title as `h2`. The first field receives focus. Errors are linked with
 `aria-describedby`. The radio group (Dismiss) has a legend. **Used by.** S-04.
 
@@ -736,7 +765,9 @@ type AssigneeControlProps = {
 };
 ```
 Read-only text when `canAssign` is not allowed (the reason is on focus). Otherwise a combobox
-Popover: "Assign to me", members from `assignable-users` (name + role), "Remove assignee".
+Popover: "Assign to me", members from `GET /stores/{id}/members` filtered to
+`can_work_exceptions = true` (name + role, no emails), "Remove assignee". Commands: `POST /assign
+{assignee_id}`, `POST /unassign`, `POST /claim`, each with `expected_version`.
 **States.** Idle, loading members, pending (spinner in the trigger), error toast, conflict.
 **A11y.** Combobox pattern. The trigger is labelled "Assignee: Unassigned, change". **Used by.**
 S-04.
@@ -744,14 +775,16 @@ S-04.
 ### C-59 DueDateControl
 ```ts
 type DueDateControlProps = {
-  dueAt: IsoDateTime; calculatedDueAt?: IsoDateTime;
-  basis: "SEVERITY_RESPONSE" | "BUSINESS_DEADLINE" | "MANUAL_OVERRIDE";
-  canEdit: Gate; exceptionId: string;
+  dueAt: IsoDateTime;
+  dueAtOverridden: boolean;          // true → "Set manually" note under the date
+  canEdit: Gate; exceptionId: string; version: number;
 };
 ```
 Shows C-05 DueLabel plus an edit button. The Popover has date and time inputs in the store zone
-(the zone abbreviation is shown next to the time), an optional note, and the "Calculated: …" line.
-Validation: the date must be in the future. **Used by.** S-04.
+(the zone abbreviation is shown next to the time), a required reason, and the note "A manual due
+date is kept until the exception is reopened. Reopening recalculates it from the reopen time."
+Sends `POST /set-due-date {due_at, reason, expected_version}`. Validation: the date must be in the
+future. **Used by.** S-04.
 
 ### C-60 ExceptionLifecycleBanner
 ```ts
@@ -764,16 +797,19 @@ supersession, previous occurrence). **A11y.** `role="status"`. **Used by.** S-04
 ```ts
 type RunAnalysisButtonProps = { size?: "sm" | "md" };
 ```
-Handles `POST evaluation-runs` with an `Idempotency-Key`, polling while `RUNNING`, 409 handling,
-and the completion toast with counts. Gated by `evaluations.run`. **Used by.** S-02, S-03, S-21.
+Handles `POST /stores/{id}/evaluations` with an `Idempotency-Key` (synchronous, returns the run).
+`SUCCEEDED` → completion toast with `counts`. `SKIPPED` (another run holds the store lock) → info
+toast "An analysis is already running. Results will appear when it finishes." `FAILED` → error
+toast "Analysis failed. No exceptions were changed." with the request ID. If the run comes back
+`RUNNING`, it polls `GET …/evaluations/{rid}` every 2 s. Gated by `evaluations.run`. **Used by.** S-02, S-03, S-21.
 
 ### C-62 ExceptionListItem
 ```ts
 type ExceptionListItemProps = { exception: S["ExceptionListItem"]; href: string; variant: "stacked" | "attention" };
 ```
 The 3–4 line block for mobile lists (DESIGN_SYSTEM §11.5) and the Overview "Needs attention" rows.
-The whole item is one link with the name "{title}, {severity}, priority {band} {score}, {status},
-{due}". **Used by.** S-02, S-03 (< 768), S-22.
+The whole item is one link with the name "{reference}, {title}, {severity}, priority {band}
+{score}, {status}, {due}". The reference (`EXC-1042`) leads the meta line. **Used by.** S-02, S-03 (< 768), S-22.
 
 ### C-63 LifecycleExplainer
 **Purpose.** For demo viewers (and anyone curious), explain the resolution process without
@@ -781,10 +817,13 @@ pretending the buttons work.
 ```ts
 type LifecycleExplainerProps = { exampleLinks?: { verified?: string; reopened?: string } };
 ```
-A Popover with a compact ordered list (Open → Acknowledged → In progress → Resolved → verified at
-the next evaluation, or Reopened when the condition is still present) and links to live examples
-found through `GET exceptions?status=RESOLVED&verified=true&page_size=1` and
-`?status=REOPENED&page_size=1`. Links are hidden when no example exists. **Used by.** S-04 (VIEWER),
+A Popover with a compact ordered list: Open → Acknowledged → In progress → Resolved — awaiting
+verification → Verified. The exception reopens instead if the condition is still present after
+the next import, or after 24 h (grace rule, STATE_MACHINES §3.3–3.4). It links to live examples:
+the first `RESOLVED` exception with `verified_at` set and a manual resolution code
+(`GET exceptions?status=RESOLVED&page_size=25`, picked client-side), and the first `REOPENED` one
+(`?status=REOPENED&page_size=1`). The demo seed guarantees both exist. Outside the demo a link is
+hidden when no example is found. **Used by.** S-04 (VIEWER),
 C-93.
 
 ---
@@ -827,6 +866,7 @@ path. Drag-and-drop is an enhancement only. Errors are linked by `aria-described
 type ImportStepperProps = { status: ImportStatus | "NEW" };
 ```
 Maps status → step (NEW/UPLOADED → 1, VALIDATING/VALIDATED → 2, APPLYING → 3, terminal applied → 4).
+Validation normally completes inside the upload request, so step 2 usually starts at `VALIDATED`.
 Below 768 px it collapses to "Step 2 of 4 · Preview". **A11y.** `<ol>` with `aria-current="step"`
 and "completed" text on finished steps. **Used by.** S-12.
 
@@ -835,24 +875,31 @@ and "completed" text on finished steps. **Used by.** S-12.
 type ImportStatusPanelProps = { phase: "validating" | "applying"; rowCount: number; startedAt: IsoDateTime };
 ```
 `motion-essential` spinner, "Validating 1,240 rows…" / "Applying 1,226 rows…", elapsed time, and
-the safe-to-leave note. The parent hook polls every 2 s. **A11y.** `role="status"`. The text
+the safe-to-leave note. Shown while the upload or apply request is pending, and while a record is
+observed in `UPLOADED`/`VALIDATING`/`APPLYING` (then the parent hook polls every 2 s). **A11y.** `role="status"`. The text
 changes are announced at most every 10 s. **Used by.** S-12.
 
 ### C-74 ImportSummaryTiles
 ```ts
-type ImportSummaryTilesProps = { rowCount: number; summary: S["ImportSummary"]; phase: "preview" | "applied"; skipped?: number };
+type ImportSummaryTilesProps = { summary: S["ImportSummary"]; phase: "preview" | "applied" };
 ```
-Six C-40 tiles. "Rows with errors" uses the danger tone when > 0. **Used by.** S-12, S-13.
+Six C-40 tiles. Preview: `rows_total`, `creates`, `updates`, `unchanged`, `rows_with_errors`,
+`rows_with_warnings`. Applied: `applied.{creates, updates, unchanged, skipped}` plus rows and
+warnings. "Rows with errors" and "Skipped" use the danger and warning tones when > 0. **Used by.** S-12, S-13.
 
 ### C-75 IssueTable
 **Purpose.** Every row-level and file-level issue, filterable, with fix hints and CSV export.
 ```ts
 type IssueTableProps = { importId: string; counts: { error: number; warning: number } };
 ```
-Uses C-30 (compact, server-paginated). Tabs: All, Errors, Warnings. Filters: code (multi), row
-number. Columns: Row, Column, Code (mono, with the hint tooltip from the S-12 table), Severity
-(pill), Message, Value (`raw_value`, mono, truncated at 40 characters, full value in the tooltip,
-rendered as text, never as HTML). **Download issues CSV** (`GET …/issues.csv`).
+Uses C-30 (compact, server-paginated, `GET …/imports/{id}/issues?severity&code`). Tabs: All,
+Errors, Warnings. Filters: code (multi, options from `summary.issue_counts_by_code`), row number.
+Columns: Row, Column, Code (mono, with the "How to fix" tooltip from `importIssueMeta`, which
+mirrors IMPORT_PIPELINE §6, including `STALE_CYCLE_COUNT`), Severity (pill), Message (API text),
+Value (`raw_value`, mono, truncated at 40 characters, full value in the tooltip, rendered as text,
+never as HTML). File-level issues (`row_number` null) are listed first with "File" in the Row
+column. An unknown code shows the API message with no hint. **Download issues CSV** (`GET
+…/issues.csv`: original columns plus `row_number`, `code`, `column`, `message`).
 **States.** Loading, empty (success tone "No issues"), no-results, error, populated. **A11y.**
 The code hint is reachable by focus (a button wrapping the code). **Used by.** S-12, S-13.
 
@@ -870,8 +917,13 @@ type ApplyPanelProps = {
 A mode RadioGroup (Strict, Valid rows only), a consent checkbox (valid-rows-only only), the
 "What will change" line, and a dynamic button label ("Apply 1,240 rows" / "Apply 1,226 rows, skip
 14"). It sends `{mode, confirm_skipped_rows}` with an `Idempotency-Key` generated once per
-`importId + mode`. **States.** Strict-blocked (button disabled with reason), consent-missing
-(button disabled with reason), ready, pending ("Applying…"), error (inline, same key on retry).
+`importId + mode` (a new key when the mode changes, to avoid `422 IDEMPOTENCY_KEY_REUSED`). In
+valid-rows-only mode for Products or Orders it shows the cascade hint (IMPORT_PIPELINE §7).
+**States.** Strict-blocked (button disabled with reason), consent-missing (button disabled with
+reason), ready, pending ("Applying…"), error (inline, same key on retry). Maps the apply error
+codes per SCREEN_SPECS S-12 (`IMPORT_HAS_ERRORS`, `IMPORT_SKIPPED_ROWS_NOT_CONFIRMED`,
+`IMPORT_PREVIEW_EXPIRED`, `IMPORT_PREVIEW_STALE`, `IDEMPOTENT_REQUEST_IN_PROGRESS`,
+`IMPORT_NOT_APPLICABLE`).
 **A11y.** The fieldset has a legend "Apply mode". The disabled reason is in `aria-describedby`.
 **Used by.** S-12.
 
@@ -908,7 +960,7 @@ S-14.
 type ReferenceChipProps = { reference: { type: "exception" | "order" | "product" | "import"; id: string; label: string } };
 ```
 A tag-styled link whose text starts with the entity type ("Order KHK-10477", "Product
-KHK-DO55-SGE", "Exception EXC-9B1C4E2A"). It has no icon, because the type word carries the meaning.
+KHK-DO55-SGE", "Exception EXC-1042"). It has no icon, because the type word carries the meaning.
 Without read permission for the type, it renders as plain text with a tooltip "You don't have
 access to orders." **Used by.** C-80.
 
@@ -959,6 +1011,8 @@ type AIInvestigationPanelProps = {
 };
 ```
 Header "AI investigation" with a muted note "Explains the evidence. It doesn't change data."
+Generate and regenerate call `POST /stores/{id}/copilot/exception-summaries {exception_id,
+refresh}` (cached per exception). Note drafts use `POST /stores/{id}/copilot/note-drafts`.
 **States.** No permission (reason text), empty (one sentence + **Generate investigation**),
 pending ("Reading evidence, history and related records…" + elapsed time), populated (C-80
 compact + **Regenerate** + **Ask a follow-up**, which opens S-14 with exception context), stale
@@ -990,16 +1044,20 @@ bar is `role="region"` `aria-label="Unsaved changes"`. **Used by.** S-16.
 ```ts
 type RoleMatrixProps = { roles: Array<{ role: string; permissions: Permission[] }>; permissionMeta: Array<{ code: Permission; label: string; description: string }> };
 ```
-Data from `GET /api/v1/roles` (never hard-coded in the UI). **A11y.** A `<table>` with row headers
+Data from `GET /api/v1/roles` (any authenticated user, `[{role, permissions[]}]`). The matrix is
+never hard-coded in the UI. Labels and descriptions come from `permissionLabels`. **A11y.** A `<table>` with row headers
 (permission) and column headers (role). Cells have "Granted" or "Not granted" as visually hidden
 text. **Used by.** S-17, C-92.
 
-### C-92 ChangeRoleDialog
+### C-92 ChangeRoleDialog (P1)
 ```ts
 type ChangeRoleDialogProps = { member: S["Member"]; currentUserId: string; ownerCount: number; open: boolean; onOpenChange: (v: boolean) => void };
 ```
 A role select with descriptions, and a "What changes" list (gained and lost permissions computed
-from C-91 data). Guards per SCREEN_SPECS S-17. **Used by.** S-17.
+from C-91 data). Owner only (`users.manage`). Guards: not your own role, and never the last owner
+(pre-checked with `ownerCount`, enforced by the server with `409 LAST_OWNER`). Sends `PATCH
+/organizations/{org_id}/members/{membership_id} {role}`. There is no invite, deactivation or
+password-reset component in v1. **Used by.** S-17.
 
 ### C-93 DemoTourPanel (P1)
 **Purpose.** A guided path for public visitors through the six demo steps (USER_FLOWS F6), driven

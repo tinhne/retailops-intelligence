@@ -36,16 +36,16 @@ has an owner and a realistic due date, and noise has been dismissed.
 
 | Step | Screen | User action | System response / what the user sees |
 |---|---|---|---|
-| 1 | S-01 → S-02 Overview | Signs in | Overview loads with the **freshness strip**: "Last evaluation 7:45 AM EDT · Scheduled · 2 new, 5 refreshed, 1 resolved" and "Last orders import Oct 31, 6:02 AM EDT". |
-| 2 | S-02 | **D1** Is the data current? If the last orders import is older than expected, imports come first (F3). If an import finished after the last evaluation, or the run is older than 2 × `evaluation_interval_minutes`, the manager clicks **Run analysis**. | The button shows "Running analysis…". On completion a toast reads "Analysis complete: 3 new, 6 refreshed, 2 resolved, 0 reopened" with **View new**. A 409 (run already in progress) shows "An analysis is already running for this store. Results will appear when it finishes." |
+| 1 | S-01 → S-02 Overview | Signs in | Overview loads with the **freshness strip**: "Last evaluation 7:45 AM EDT · Scheduled · Succeeded" and "Last orders import Oct 31, 6:02 AM EDT". |
+| 2 | S-02 | **D1** Is the data current? If the last orders import is older than expected, imports come first (F3). If an import finished after the last evaluation, or the run is older than 2 × `evaluation_interval_minutes`, the manager clicks **Run analysis**. | The button shows "Running analysis…". On completion a toast reads "Analysis complete: 3 new, 6 refreshed, 2 resolved, 0 reopened" with **View new**. If another run holds the store lock, the API returns the run with status `SKIPPED` and the UI says "An analysis is already running. Results will appear when it finishes." |
 | 3 | S-02 | Reads the KPI row and clicks **Open triage queue** under "Needs attention". | Navigates to S-03 with `?view=triage` (`OPEN` + `REOPENED`, sorted by priority score, descending). |
 | 4 | S-03 Inbox | Opens the top row. | S-04 detail. The breadcrumb remembers the triage filter. |
 | 5 | S-04 Detail | Reads the header, **Why this priority**, **How this was detected** and **Evidence**. | All deterministic sections render before the AI panel. |
 | 6 | S-04 | **D2** Is the exception real and actionable? | |
-| 6a | S-04 | *No* → **Dismiss** (More menu) and choose `FALSE_POSITIVE`, `ACCEPTED_RISK`, `DUPLICATE` or `NOT_ACTIONABLE`, with a required note. | Confirm dialog. Status becomes `DISMISSED`. Toast "Exception dismissed" with **Next in queue**. (There is no undo. A manager can reopen it.) |
+| 6a | S-04 | *No* → **Dismiss** (More menu) and choose `FALSE_POSITIVE`, `ACCEPTED_RISK`, `DUPLICATE` or `NOT_ACTIONABLE`, with a required note of at least 10 characters. | Confirm dialog. Status becomes `DISMISSED`. Toast "Exception dismissed" with **Next in queue**. (There is no undo. A manager can reopen it.) |
 | 6b | S-04 | *Yes* → **D3** Who owns it? Self: **Start work** (auto-assigns the manager, status `IN_PROGRESS`). Someone else: **Assign** → choose a staff member, then **Acknowledge** (status `ACKNOWLEDGED`). | Assignment and status changes appear in the timeline as `ASSIGNED` and `STATUS_CHANGED` events. |
-| 7 | S-04 | **D4** Is the computed due date realistic? (For example, the replenishment ETA is in 3 days.) If not → **Change due date**, with a note. | `DUE_DATE_CHANGED` event, audited. |
-| 8 | S-04 | If the status was `REOPENED`, reads the reopen reason in the timeline (`VERIFICATION_FAILED` or `RECURRED_WITHIN_WINDOW`) before reassigning. | Timeline shows "Reopened by system: the condition was still present at the first evaluation after resolution." |
+| 7 | S-04 | **D4** Is the computed due date realistic? (For example, the replenishment ETA is in 3 days.) If not → **Change due date**, with a reason. | `DUE_DATE_CHANGED` event, audited. The manual due date is kept until the exception is reopened, when it is recalculated from the reopen time. |
+| 8 | S-04 | If the status was `REOPENED`, reads the reopen reason in the timeline (`VERIFICATION_FAILED` or `RECURRED_WITHIN_WINDOW`) before reassigning. | Timeline shows "Reopened: verification failed. The condition was still present after the data was refreshed." The due date was recalculated from the reopen time, so step 7 applies again. |
 | 9 | S-04 | **Next in queue** | Opens the next exception in the remembered list. At the end of the queue: "Triage queue is clear. 0 exceptions open or reopened." |
 | 10 | S-03 | Switches to **All active** sorted by **Due** to follow up items whose `due_at` has passed. | Overdue-due rows show "Overdue 2h" in the Due column. |
 
@@ -58,7 +58,7 @@ flowchart TD
     F3 --> C
     D1 -->|"Evaluation older than 2 intervals or import since last run"| R["Run analysis"]
     R --> R1{"Run accepted?"}
-    R1 -->|"409 run in progress"| RW["Wait for the running analysis"]
+    R1 -->|"Skipped: another run holds the lock"| RW["Wait for the running analysis"]
     RW --> E
     R1 -->|"Completed"| E
     D1 -->|"Current"| E["Open triage queue: Open and Reopened, by priority"]
@@ -67,7 +67,7 @@ flowchart TD
     Q -->|"No"| G["Open top exception"]
     G --> H["Read priority breakdown, calculation, evidence"]
     H --> D2{"Real and actionable?"}
-    D2 -->|"No"| X["Dismiss with reason and note"]
+    D2 -->|"No"| X["Dismiss with reason and a 10+ character note"]
     X --> N["Next in queue"]
     D2 -->|"Yes"| D3{"Who owns it?"}
     D3 -->|"Me"| S["Start work: auto-assigned, In progress"]
@@ -84,9 +84,9 @@ flowchart TD
 
 | Situation | Behaviour |
 |---|---|
-| Another user changed the exception meanwhile (409 `expected_version`) | Dialog stays open with the inputs kept. Alert: "This exception changed while you were working. Review the latest details, then try again." Button **Reload latest**. |
+| Another user changed the exception meanwhile (`409 STALE_VERSION`, because the `expected_version` sent no longer matches) | Warning toast "Someone else updated EXC-1042. The latest details are now shown. Review them and try again." The exception refetches. An open dialog stays open with its input, and the next submit sends the new version. |
 | The exception auto-resolved while open (a refetch returns `RESOLVED` / `CONDITION_CLEARED`) | An info banner replaces the action bar: "Resolved automatically at 7:52 AM EDT. The condition cleared during the latest evaluation." Lifecycle buttons update to the `RESOLVED` set. |
-| A more severe exception superseded this one (`SUPERSEDED`) | Banner: "Superseded by EXC-4F20A1C9 (Oversold)" with a link. The assignee carried over (BR-401). |
+| A more severe exception superseded this one (`SUPERSEDED`) | Banner: "Superseded by EXC-1038 (Oversold)" with a link. The assignee carried over (BR-401). |
 | No staff exist to assign to | The Assign combobox shows "No members can work on exceptions. Owners can change roles in Users & roles." |
 
 ---
@@ -112,8 +112,8 @@ me, or it is unassigned and I claim it.
 | 6 | S-04 | Optional: **Generate investigation** in the AI panel, then **Draft note** → edits the draft → **Save note**. | The note is saved with `source = AI_DRAFT_ACCEPTED` only after the person saves it. Until then it is a local draft. |
 | 7 | S-04 | **D3** Is the fix already in RetailOps data? (Has the updated order been imported?) | The Resolve dialog says: "The next evaluation checks the data in RetailOps. If your change in the source system has not been imported yet, this exception will reopen." |
 | 7a | S-04 | *Not yet imported* → keeps it In progress with a note, or asks a manager to run the orders import (F3). | |
-| 7b | S-04 | *Imported, or the cause is outside the data (customer contacted)* → **Resolve**: picks a resolution code (`ORDER_FULFILLED`) and writes a note of at least 10 characters. | Status `RESOLVED`, shown as "Resolved · awaiting verification". |
-| 8 | S-04 / S-03 | **D4** Next evaluation (scheduled within `evaluation_interval_minutes`, default 15): is the condition still present? | Cleared → `VERIFIED` event, "Resolution verified at 8:15 AM EDT". Still present → `REOPENED` (`VERIFICATION_FAILED`), and the item is back in **Assigned to me**. |
+| 7b | S-04 | *Imported, or the cause is outside the data (customer contacted)* → **Resolve**: picks a resolution code (`ORDER_FULFILLED`) and writes a note of at least 10 characters. | Status `RESOLVED`, shown as "Resolved — awaiting verification". |
+| 8 | S-04 / S-03 | **D4** Each evaluation after the resolution checks the condition. Cleared → `VERIFIED` event and the pill reads "Verified" ("Verified at 8:15 AM EDT"). Still present → it reopens only once the data has been refreshed (an import completed after `resolved_at`) or 24 h have passed (grace rule, STATE_MACHINES §3.3–3.4). Until then it stays "Resolved — awaiting verification". | Reopened → `REOPENED` (`VERIFICATION_FAILED`), the due date is recalculated from the reopen time, and the item is back in **Assigned to me**. |
 
 ```mermaid
 flowchart TD
@@ -136,9 +136,11 @@ flowchart TD
     D3 -->|"No"| WAIT["Keep In progress, note, request import"]
     WAIT --> W
     D3 -->|"Yes or not data-driven"| RS["Resolve: code and note of 10+ chars"]
-    RS --> V{"Next evaluation: condition present?"}
-    V -->|"Cleared"| OK(["Resolved and verified"])
-    V -->|"Still present"| RE["Reopened: verification failed"]
+    RS --> AW["Resolved, awaiting verification"]
+    AW --> V{"Next evaluation: condition present?"}
+    V -->|"Cleared"| OK(["Verified"])
+    V -->|"Present, no import since and under 24 h"| AW
+    V -->|"Present after an import or 24 h"| RE["Reopened: verification failed, due date recalculated"]
     RE --> B
 ```
 
@@ -165,17 +167,17 @@ it.
 | Step | Screen | User action | System response |
 |---|---|---|---|
 | 1 | S-11 Imports | **New import** | S-12 step 1. |
-| 2 | S-12 | Chooses the type: Products, Orders, Order items, or Inventory adjustments. Optionally **Download template**. | Ordering hint: "Import orders before their order items. Order items must reference existing orders and SKUs." |
+| 2 | S-12 | Chooses the type: Products, Orders, Order items, or Inventory adjustments. Optionally **Download template**. | Recommended order (IMPORT_PIPELINE §10): products → inventory adjustments → orders → order items. The Order items card says "Order items must reference orders and SKUs that already exist." |
 | 3 | S-12 | Drops or browses for the file. | Client pre-checks: the extension is `.csv` and the size is ≤ 5 MB. A failure shows an inline error and nothing is uploaded. |
-| 4 | S-12 → S-13 | Clicks **Upload and validate**. | Upload progress, then the URL becomes `/imports/{id}`. Stepper: Upload ✓ → **Preview** (Validating 1,240 rows…). The app polls the import every 2 s. |
-| 5 | S-13 | **D1** File-level result? | `REJECTED` → a danger alert names the code and the fix (for example `MISSING_COLUMNS`: "Missing required columns: placed_at, payment_status"). **Upload a corrected file** returns to step 3 with the type kept. |
-| 6 | S-13 | `VALIDATED` → reviews the preview: counts (312 new, 914 updated, 0 unchanged, 14 rows with errors, 3 warnings), file metadata, "Preview expires in 23 h 58 m", and the issues table grouped by code. | A `DUPLICATE_FILE` warning, if present, says: "This file matches an import completed on Oct 30. Applying it again is safe (upserts) but may be unnecessary." |
+| 4 | S-12 → S-13 | Clicks **Upload and validate**. | "Uploading and validating…" with upload progress. Validation runs inside the upload request, which returns the import as `VALIDATED` or `REJECTED`. The URL becomes `/imports/{id}`. |
+| 5 | S-13 | **D1** File-level result? | `REJECTED` → a danger alert names the code and the fix (for example `MISSING_COLUMNS`: "Missing required columns: placed_at, payment_status", which may add "this looks like a products file"). **Upload a corrected file** returns to step 3 with the type kept. |
+| 6 | S-13 | `VALIDATED` → reviews the preview: counts (312 to create, 914 to update, 0 unchanged, 14 rows with errors, 3 rows with warnings), the expected-changes table (row, key, action, changed fields), file metadata, "Preview expires in 23 h 58 m", and the issues table grouped by code. | A `DUPLICATE_FILE` warning, if present, says: "This file matches an import completed on Oct 30. Applying it again is safe (upserts) but may be unnecessary." |
 | 7 | S-13 | **D2** Any row errors? | |
 | 7a | S-13 | *No* → **Apply import** (strict). Confirm dialog: "Apply 1,240 rows to Kestrel Home & Kitchen?" | `APPLYING` → `COMPLETED`. |
 | 7b | S-13 | *Yes* → **D3** Fix first, or apply the valid rows now? | Strict mode: Apply is `aria-disabled` with "Strict mode blocks apply while 14 rows have errors." |
 | 7b-i | S-13 | *Fix first* → **Download issues CSV** → corrects the export in the source system → **Discard import** → new upload (step 3). | The issues CSV is formula-injection safe. Discarded imports keep their issue list for reference. |
 | 7b-ii | S-13 | *Apply valid rows* → selects **Valid rows only** → ticks "I understand 14 rows will be skipped and kept as import errors." → **Apply 1,226 rows, skip 14**. | `APPLYING` → `COMPLETED_WITH_ERRORS`. |
-| 8 | S-13 | **D4** Did apply succeed? | `FAILED` → "No data was changed. The transaction was rolled back." with **Retry validation** (returns to `VALIDATING`). |
+| 8 | S-13 | **D4** Did apply succeed? | `FAILED` → "No data was changed. The transaction was rolled back." with **Validate again** (`FAILED → VALIDATING` from the stored file, once that endpoint exists; otherwise upload again). `IMPORT_PREVIEW_STALE` (data changed since the preview) → nothing applied, validate or upload again. |
 | 9 | S-13 Summary | Reads the summary: rows applied, rows skipped, and the evaluation run triggered by the import ("Evaluation run: 3 new exceptions, 1 resolved"). | **View 3 new exceptions** → S-03 filtered by `evaluation_run_id`. |
 | 10 | S-12 | Later: fixes the 14 skipped rows and imports a file containing only those rows. | Upserts by natural key make a partial corrective file safe (BR-608). |
 
@@ -202,7 +204,7 @@ flowchart TD
     CON --> AV["Apply, valid-rows-only mode"]
     AP --> D4{"Apply succeeded?"}
     AV --> D4
-    D4 -->|"Failed, rolled back"| RT["Retry validation"]
+    D4 -->|"Failed, rolled back"| RT["Validate again"]
     RT --> P
     D4 -->|"Completed or completed with errors"| S["Summary and evaluation run results"]
     S --> X(["View new exceptions"])
@@ -214,7 +216,9 @@ flowchart TD
 |---|---|
 | `TOO_MANY_ROWS` (more than 20,000), `FILE_TOO_LARGE`, `FILE_ENCODING`, `FILE_EMPTY`, `FILE_TYPE` | `REJECTED` with a code-specific fix ("Save the file as CSV UTF-8", "Split the file into parts of 20,000 rows or fewer"). |
 | Order items before orders | Row errors `UNKNOWN_ORDER` / `UNKNOWN_SKU`. The issue group header suggests "Import the orders/products file first, then re-upload this file." |
-| Line change on a shipped order | `ORDER_LINE_LOCKED`: "Lines of orders that have shipped cannot change." |
+| Line change on a shipped order | `ORDER_LINE_LOCKED`: "An already-recorded line of a shipped order can't change." First-time lines on a shipped order are accepted (BR-609). |
+| An old cycle count is re-sent | `STALE_CYCLE_COUNT` row error (a count older than the product's latest count, BR-113). The fix text says to drop the row, or record a `CORRECTION` if the old count really was wrong. |
+| A product import is applied first, before adjustments | The summary notes that new active products show as Out of stock until inventory adjustments are imported (IMPORT_PIPELINE §10). |
 | User leaves during `VALIDATING` / `APPLYING` | The work continues server-side. The Imports list shows the live status. Returning to the record resumes the stepper. |
 | User without `imports.run` | **New import** is disabled with a reason. Import records and issue CSVs stay readable. |
 
@@ -230,10 +234,10 @@ fulfilment on track?
 |---|---|---|---|
 | 1 | S-02 | Signs in and lands on Overview. | KPI row, Needs attention, Fulfilment, Freshness. |
 | 2 | S-02 | **D1** Is the data fresh? Reads the freshness strip. | If the last orders import is older than 24 h, a warning-tone note appears: "Order data was last imported 2 days ago. Figures may be out of date." |
-| 3 | S-02 | Reads the KPIs: Active exceptions (P1 count), Unassigned P1–P2, Overdue orders, Value at risk (gross), Refunds pending, On-time shipments (7 d). | Each KPI links to the filtered list behind it. |
-| 4 | S-02 → S-03 | **D2** Any unassigned P1–P2? → clicks the KPI. | S-03 with `view=unassigned&priority_band=P1,P2`. The owner assigns (they hold `exceptions.assign`) or follows up with the manager outside the app. |
+| 3 | S-02 | Reads the KPIs: Active exceptions (P1 and P2 counts), Unassigned, Past due exceptions, Overdue orders (with gross value), Awaiting shipment, On-time shipments (30 d). Reads order value at risk **per category** in the category card. There is no grand total, because one order can appear in several exceptions. | Each KPI links to the filtered list behind it. |
+| 4 | S-02 → S-03 | **D2** Any unassigned or past-due exceptions? → clicks the KPI. | S-03 with `view=unassigned` (or past due, sorted by due date). The owner assigns (they hold `exceptions.assign`) or follows up with the manager outside the app. |
 | 5 | S-02 | Scans **Needs attention** (top 8 by priority). Opens one if needed. | S-04. Back returns to Overview. |
-| 6 | S-02 | **D3** Has on-time shipment fallen compared with the previous 7 days? | Delta shown as "−6.2 pp vs previous 7 days" with a down arrow and text, never colour alone. |
+| 6 | S-02 | **D3** Is the 30-day on-time shipment rate lower than expected, or is the shipments chart showing late days? | "94.1%, 412 of 438 on time" with the definition in a tooltip. Late days show in the stacked chart, with legend and table view, never colour alone. |
 | 6a | S-02 → S-05 | *Yes* → **Overdue orders** KPI → Orders filtered `overdue=true`. | |
 | 6b | S-02 → S-14 | Or asks the copilot: "Why are more orders overdue this week?" | Grounded answer with references (F5 step 5). |
 | 7 | — | Done. | |
@@ -244,12 +248,12 @@ flowchart TD
     F -->|"Stale"| FN["Note stale data, ask manager to import"]
     FN --> K
     F -->|"Fresh"| K["Read KPI row"]
-    K --> D2{"Unassigned P1 or P2?"}
-    D2 -->|"Yes"| IN["Open inbox filtered: unassigned P1 and P2"]
+    K --> D2{"Unassigned or past-due exceptions?"}
+    D2 -->|"Yes"| IN["Open inbox filtered: unassigned or past due"]
     IN --> ASG["Assign or follow up with manager"]
     ASG --> NA
     D2 -->|"No"| NA["Scan Needs attention"]
-    NA --> D3{"On-time shipment rate dropped?"}
+    NA --> D3{"On-time shipment rate too low?"}
     D3 -->|"Yes"| CH{"Drill into data or ask?"}
     CH -->|"Data"| OR["Orders filtered: overdue"]
     CH -->|"Ask"| CP["Copilot: why are orders overdue"]
@@ -328,7 +332,7 @@ ordinary links. Every target is computed from live data (no hard-coded IDs).
 | 5 | S-04 → S-06 | Tour step 4, **Affected orders**: opens one affected order. | Three status axes (Paid / Paid / Unfulfilled), the line with its active reservation, and the linked exception. Back returns to S-04. |
 | 6 | S-04 | Tour step 5, **Copilot summary**: **Generate investigation** in the AI panel. | Facts, Metrics, Estimates, Recommendations, Limitations, References, and "Generated by". |
 | 7 | S-04 | Tour step 6, **Recommended action**: compares the rule recommendation ("Confirm physical stock with a cycle count…", deterministic, rule `INV-OVERSOLD@1`) with the AI recommendations (labelled, with rationale). | The two are visually distinct. The tour copy explains that the rule decides and the AI explains. |
-| 8 | S-04 | Tour step 7, **Resolution process**: hovers or focuses the disabled lifecycle buttons ("The public demo is read-only."), opens **How resolution works**, then **See a verified resolution**. | Lifecycle explainer (Open → Acknowledged → In progress → Resolved → verified at the next evaluation, or Reopened). A seeded resolved exception whose timeline shows `RESOLVED` then `VERIFIED`, and a link to a `REOPENED` example (`VERIFICATION_FAILED`). |
+| 8 | S-04 | Tour step 7, **Resolution process**: hovers or focuses the disabled lifecycle buttons ("The public demo is read-only."), opens **How resolution works**, then **See a verified resolution**. | Lifecycle explainer (Open → Acknowledged → In progress → Resolved — awaiting verification → Verified, or Reopened when the condition is still there after fresh data or 24 h). The demo seed includes a resolved-and-verified exception (timeline `RESOLVED` then `VERIFIED`, pill "Verified") and a reopened one (`VERIFICATION_FAILED`). The tour links to both. |
 | 9 | any | **Finish tour**. | The panel closes. The banner stays. The visitor explores freely or chooses **Leave demo**. |
 
 ```mermaid
@@ -358,7 +362,7 @@ flowchart TD
 
 | Situation | Behaviour |
 |---|---|
-| No P1 exists after a reset | Step 2 targets the highest-priority active exception of any band. With no active exceptions at all: "No active exceptions right now. The demo dataset is regenerated periodically." The tour then continues with resolved examples. |
+| No P1 exists after a reset | Step 2 targets the highest-priority active exception of any band. With no active exceptions at all: "No active exceptions right now. The demo dataset is regenerated periodically." The tour then continues with the seeded verified and reopened examples. |
 | Demo organization missing (seed not run) | The `/demo` start button fails with "The demo is temporarily unavailable. Try again in a few minutes." No fallback data is invented. |
 | Visitor tries a mutation via a pasted API call | The backend refuses it with 403. The UI never offers it. |
 | Small screen (360 px) | The tour panel is a bottom sheet with one step visible. Each step has **Go there** and **Next** buttons. |
