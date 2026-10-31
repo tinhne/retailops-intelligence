@@ -312,3 +312,57 @@ export const movementTypeLabels: Record<MovementType, string> = {
 };
 
 export const movementSourceLabels: Record<MovementSource, string> = { IMPORT: "Import", ORDER: "Order", SYSTEM: "System" };
+
+export type ImportMode = Schema<"ImportMode">;
+export type RowAction = Schema<"RowAction">;
+
+/** The recommended order: each file references the ones before it (IMPORT_PIPELINE §10). */
+export const IMPORT_TYPES_IN_ORDER: ImportType[] = ["products", "inventory_adjustments", "orders", "order_items"];
+
+export const importModeLabels: Record<ImportMode, string> = { STRICT: "Strict", VALID_ROWS_ONLY: "Valid rows only" };
+
+export const rowActionLabels: Record<RowAction, string> = {
+  CREATE: "Create",
+  UPDATE: "Update",
+  UNCHANGED: "Unchanged",
+  SKIP: "Has errors",
+};
+
+type IssueLevel = "FILE" | "ERROR" | "WARNING";
+
+/**
+ * Issue codes with their "How to fix" text, mirrored from IMPORT_PIPELINE §6. The API message
+ * says what went wrong; this adds what to do. An unknown code falls back to the message alone.
+ */
+export const importIssueMeta: Record<string, { level: IssueLevel; fix: string }> = {
+  FILE_EMPTY: { level: "FILE", fix: "Re-export, and check that the export filter returned rows." },
+  FILE_TOO_LARGE: { level: "FILE", fix: "Split the file by date range and import the parts in order." },
+  FILE_TYPE: { level: "FILE", fix: "Save or export the file as CSV." },
+  FILE_ENCODING: { level: "FILE", fix: "Save the file as \"CSV UTF-8\"." },
+  TOO_MANY_ROWS: { level: "FILE", fix: "Split the file into parts of at most 20,000 rows." },
+  MISSING_COLUMNS: { level: "FILE", fix: "Start from the downloadable template, or choose the right import type." },
+  REQUIRED: { level: "ERROR", fix: "Fill in the value in the source export." },
+  VALUE_TOO_LONG: { level: "ERROR", fix: "Shorten the value in the source." },
+  INVALID_ENUM: { level: "ERROR", fix: "Map the source value to one of the allowed values." },
+  INVALID_NUMBER: { level: "ERROR", fix: "Remove currency symbols and thousands separators, and round to cents." },
+  INVALID_INTEGER: { level: "ERROR", fix: "Use a whole number in the allowed range." },
+  NEGATIVE_VALUE: { level: "ERROR", fix: "Use the positive amount; the type gives the sign. Use CORRECTION for a signed fix." },
+  INVALID_DATETIME: { level: "ERROR", fix: "Export timestamps as ISO-8601, for example 2026-11-05T14:00:00-05:00." },
+  DUPLICATE_KEY_IN_FILE: { level: "ERROR", fix: "Remove the repeated row or merge the rows." },
+  UNKNOWN_SKU: { level: "ERROR", fix: "Import the product first, or fix the SKU's spelling and case." },
+  UNKNOWN_ORDER: { level: "ERROR", fix: "Import orders.csv first." },
+  CURRENCY_MISMATCH: { level: "ERROR", fix: "Export in the store currency; multi-currency isn't supported." },
+  ORDER_INVALID_STATUS_COMBINATION: { level: "ERROR", fix: "Check how the source maps payment and fulfillment states." },
+  ORDER_MISSING_TIMESTAMP: { level: "ERROR", fix: "Include paid_at, shipped_at, delivered_at or cancelled_at as the statuses require." },
+  ORDER_TIMESTAMP_SEQUENCE: { level: "ERROR", fix: "Usually a time-zone mix-up between columns; check the offsets." },
+  ORDER_TRANSITION_NOT_ALLOWED: { level: "ERROR", fix: "Usually an older export; import the newest one. If the source really went backwards, fix it there." },
+  ORDER_LINE_LOCKED: { level: "ERROR", fix: "Shipped lines are history; correct the source only if the shipment record itself was wrong." },
+  LINE_DISCOUNT_EXCEEDS_LINE: { level: "ERROR", fix: "Check whether the source discount is per unit or per line." },
+  STALE_CYCLE_COUNT: { level: "ERROR", fix: "Usually a re-sent old count. Drop the row; if the old count was wrong, record a CORRECTION." },
+  UNKNOWN_COLUMN: { level: "WARNING", fix: "Nothing to do, or remove the column." },
+  TIMEZONE_ASSUMED: { level: "WARNING", fix: "Export with UTC offsets to remove the ambiguity." },
+  PRICE_ZERO: { level: "WARNING", fix: "Confirm it is intentional, for example a free sample." },
+  NEGATIVE_MARGIN: { level: "WARNING", fix: "Confirm the cost or the price." },
+  ALREADY_APPLIED: { level: "WARNING", fix: "Nothing to do. Use a new reference for a genuinely new movement." },
+  DUPLICATE_FILE: { level: "WARNING", fix: "Check that you meant to import it again; applying it is safe." },
+};

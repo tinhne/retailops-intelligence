@@ -6,10 +6,10 @@
 |---|---|
 | Project | RetailOps Intelligence: E-commerce Operations & Decision Intelligence Platform |
 | Owner | Lê Văn Trung Tính (GitHub `tinhne`) |
-| Current milestone | **M6 frontend: foundation, Overview, exceptions, orders, products and inventory done (T-060..T-064).** Next: T-065, then M7 AI |
-| Current phase | Backend core complete. Web sign-in, shell, Overview, exceptions, orders, products, inventory positions and the ledger built and verified. Imports and admin screens not built |
-| Overall completion | M0–M3 documented and tagged. Backend M4–M5 implemented and tested. Web shell, sign-in, Overview, the full exception workflow, orders, products and inventory done. Imports and admin screens, copilot and deployment not done |
-| Last verified commit | `main` after merging `feat/inventory-ui`: web lint, typecheck, 151 tests and build green; backend unchanged since `make check` (629 tests) |
+| Current milestone | **M6 frontend P0 screens done (T-060..T-065).** Next: M7 AI copilot (T-071..T-073), with T-058 and T-067 alongside |
+| Current phase | Backend core complete. Every P0 web screen built and verified: sign-in, Overview, exceptions, orders, products, inventory, movements and imports. Admin screens (T-066, P1) and the copilot not built |
+| Overall completion | M0–M3 documented and tagged. Backend M4–M5 implemented and tested. Web shell, sign-in, Overview, the full exception workflow, orders, products, inventory and imports done. Admin screens, copilot and deployment not done |
+| Last verified commit | `main` after merging `feat/imports-ui`: web lint, typecheck, 165 tests and build green; backend unchanged since `make check` (629 tests) |
 | Remote | https://github.com/tinhne/retailops-intelligence (public). The first CI run passed |
 | Architecture version | v1 (modular monolith; `docs/domain/*`, ADR-0001..0013) |
 | Last update | 2026-11-01 (UTC+7) |
@@ -52,14 +52,16 @@
 - **Products and inventory (T-064):** S-07 products, S-08 product detail (stock arithmetic, data-issue
   callout, exceptions, recent ledger), S-09 positions with the health summary bar, S-10 movements
   ledger. List URL state now comes from declarative field specs (`lib/list-params.ts`).
+- **Imports (T-065):** S-11 history, S-12 upload, preview and apply (strict or valid-rows-only with
+  consent, Idempotency-Key), S-13 record views for every terminal status, template and issues CSV
+  downloads, and import actions in the other screens' empty states.
 - **Delivery:** API Dockerfile (non-root, builds), CI workflow (passed on GitHub), OpenAPI → TS contracts.
 
 ## In progress / next
 
 | Task | Notes |
 |---|---|
-| T-065 Imports screens | READY. Next up. Flip `ready: true` for Imports in `components/shell/nav-config.ts`, then add the import actions to the empty states of S-02, S-05, S-07, S-09 and S-10 |
-| T-067 List and detail UI follow-ups | BACKLOG (P1): exceptions mobile action bar and filter sheet, queue Previous/Next, jump menu, density, VIEWER explainer, evidence links; orders custom date range, import file links, Ask the copilot; ledger product combobox, custom range, Import column and filter, exact order-line links |
+| T-067 List and detail UI follow-ups | BACKLOG (P1): exceptions mobile action bar and filter sheet, queue Previous/Next, jump menu, density, VIEWER explainer, evidence links; orders custom date range, import file links, Ask the copilot; ledger product combobox, custom range, Import column and filter, exact order-line links; imports upload percentage, issue row search, multi-status filter, new-exceptions link, Validate again |
 | T-058 Stock health data issue | READY (P1, backend). Negative on-hand products count as Oversold today (BR-402a) |
 | T-071..T-073 AI copilot | T-071 READY. Needs migration 0003 (session-scoped demo conversations, tool-call result refs, cache key) |
 | T-056 Demo seed history | Add exception history (assigned, in progress, resolved and verified, reopened, dismissed) via the lifecycle service |
@@ -88,13 +90,16 @@
 - The demo store has no CSV imports (the seed writes rows directly), so the Overview says "No CSV
   imports yet" and the recent imports list is empty for the demo.
 - The demo banner and `/demo` page omit the spec's "periodically reset" wording until the reset job exists (T-094).
+- Locally, the seeded staff accounts (`make seed` with `DEMO_STAFF_PASSWORD`) belong to the demo
+  organization, so the banner says "read-only" even for the manager, who can run imports. Deployed,
+  only the demo viewer can sign in there.
 - Behind the Next.js proxy, the API sees the proxy's IP unless `TRUST_PROXY_HEADERS=true`, so the demo
   sign-in limiter would be shared by all visitors. Set it in the deployed configuration (T-090, T-093).
 
 ## Latest test results
 
 - `make check` (2026-11-01, after the exceptions API changes): ruff OK, ruff format OK, mypy --strict OK, pytest **629 passed**.
-- Web (2026-11-01, after T-064): `pnpm --filter @retailops/web lint`, `typecheck`, `build` green; vitest **151 passed**.
+- Web (2026-11-01, after T-065): `pnpm --filter @retailops/web lint`, `typecheck`, `build` green; vitest **165 passed**.
   `pnpm audit --prod --audit-level high`: no known vulnerabilities.
 - Browser check against the seeded local API: password and demo sign-in, `next` redirect, invalid
   credentials, session expiry, sign-out, unknown store, and the 375, 768 and 1280 px layouts.
@@ -103,6 +108,8 @@
   overdue filter, search, cancelled-but-paid and total-mismatch orders, 375 px with no sideways scroll.
   Products and inventory: product list, the data-issue product KHK-BW-003, positions (health toggles,
   include inactive), the ledger filtered from a product; 1440 and 375 px with no sideways page scroll.
+  Imports as manager: upload, preview, strict block, valid-rows-only apply of a no-change test file,
+  duplicate-file warning, discard, rejected file; as the demo viewer; 1440 and 375 px.
 - GitHub Actions run 41240705536 (products and inventory, T-064, on 54bcb6c): success. API, web,
   dependency audit and Docker image jobs all passed.
 
@@ -117,8 +124,8 @@
 
 ## Next three highest-priority actions
 
-1. Imports (T-065): upload, preview, issues, apply with consent, history, templates; then wire the
-   import actions into the empty states.
+1. AI copilot (T-071..T-073): migration 0003, free-tier provider adapter with the deterministic
+   fallback, then the copilot UI (S-14).
 2. The stock-health data-issue fix (T-058) and the list and detail follow-ups (T-067).
 3. Compose stack with the web image (T-090) and demo exception history (T-056), then the AI copilot
    (T-071..T-073).

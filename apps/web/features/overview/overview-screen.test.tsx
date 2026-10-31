@@ -84,8 +84,9 @@ describe("OverviewScreen (S-02)", () => {
     renderInStore(<OverviewScreen />, testStore({ permissions: VIEWER }));
     await screen.findByText("Needs attention");
     const hrefs = screen.queryAllByRole("link").map((link) => link.getAttribute("href") ?? "");
-    // Imports (T-065) is not built yet, so nothing links there.
-    expect(hrefs.filter((href) => href.includes("/imports"))).toEqual([]);
+    // The copilot (T-073) is not built yet, so nothing links there.
+    expect(hrefs.filter((href) => href.includes("/copilot"))).toEqual([]);
+    expect(hrefs).toContain("/s/f0da0f22-b9e0-4483-b144-e9f0f8703d13/imports");
     expect(hrefs).toContain("/s/f0da0f22-b9e0-4483-b144-e9f0f8703d13/inventory?health=OVERSOLD");
     expect(hrefs).toContain("/s/f0da0f22-b9e0-4483-b144-e9f0f8703d13/orders?overdue=true&sort=ship_by");
     expect(hrefs).toContain("/s/f0da0f22-b9e0-4483-b144-e9f0f8703d13/exceptions?view=active");
@@ -115,6 +116,19 @@ describe("OverviewScreen (S-02)", () => {
       "/api/v1/stores/f0da0f22-b9e0-4483-b144-e9f0f8703d13/imports/templates/orders",
     );
     expect(screen.queryByText("Needs attention")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Start an import" })).not.toBeInTheDocument();
+  });
+
+  it("offers a first import to people who can run one", async () => {
+    const empty = dashboardFixture();
+    empty.inventory = { ...empty.inventory, active_products: 0 };
+    empty.active_exceptions = { ...empty.active_exceptions, total: 0 };
+    routes({ "/analytics/dashboard": jsonResponse({ ...empty, attention: [] }) });
+    renderInStore(<OverviewScreen />, testStore({ permissions: MANAGER }));
+    expect(await screen.findByRole("link", { name: "Start an import" })).toHaveAttribute(
+      "href",
+      "/s/f0da0f22-b9e0-4483-b144-e9f0f8703d13/imports/new?type=products",
+    );
   });
 
   it("shows one error with retry when the dashboard fails, and loads again on retry", async () => {

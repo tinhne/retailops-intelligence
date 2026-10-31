@@ -219,12 +219,16 @@ export function Pagination({
   total,
   onPageChange,
   onPageSizeChange,
+  pageSizes = [25, 50, 100],
 }: {
   page: number;
   pageSize: number;
   total: number;
   onPageChange: (page: number) => void;
-  onPageSizeChange: (size: number) => void;
+  /** Without it the page size is fixed and no selector is shown. */
+  onPageSizeChange?: (size: number) => void;
+  /** The sizes the list's URL state accepts. */
+  pageSizes?: readonly number[];
 }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
   const first = total === 0 ? 0 : (page - 1) * pageSize + 1;
@@ -235,12 +239,14 @@ export function Pagination({
         {formatQuantity(first)}–{formatQuantity(last)} of {formatQuantity(total)}
       </p>
       <div className="flex flex-wrap items-center gap-3">
-        <SelectField
-          label="Rows per page"
-          value={String(pageSize)}
-          options={[25, 50, 100].map((size) => ({ value: String(size), label: String(size) }))}
-          onChange={(value) => onPageSizeChange(Number(value))}
-        />
+        {onPageSizeChange ? (
+          <SelectField
+            label="Rows per page"
+            value={String(pageSize)}
+            options={pageSizes.map((size) => ({ value: String(size), label: String(size) }))}
+            onChange={(value) => onPageSizeChange(Number(value))}
+          />
+        ) : null}
         <Button type="button" variant="secondary" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
           Previous
         </Button>

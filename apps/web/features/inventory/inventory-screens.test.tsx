@@ -144,6 +144,13 @@ describe("PositionsScreen (S-09)", () => {
     expect(positionsCall).toContain("page_size=50");
   });
 
+  it("offers only the page sizes its URL state accepts", async () => {
+    routes([positionFixture()]);
+    renderInStore(<PositionsScreen />, testStore({ permissions: VIEWER }));
+    const sizes = await screen.findByLabelText("Rows per page");
+    expect(within(sizes).getAllByRole("option").map((option) => option.textContent)).toEqual(["50", "100"]);
+  });
+
   it("shows a negative on-hand row as a data issue without days of cover", async () => {
     routes([positionFixture({ on_hand: -4, available: -4, health: "OVERSOLD", days_of_cover: null })]);
     renderInStore(<PositionsScreen />, testStore({ permissions: VIEWER }));

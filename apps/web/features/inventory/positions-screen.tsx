@@ -14,6 +14,7 @@ import { HealthBadge } from "@/components/status/status-pill";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ImportLink } from "@/features/imports/import-actions";
 import type { InventoryPosition } from "@/lib/api/orders-api";
 import { inventoryApi, inventoryKeys } from "@/lib/api/inventory-api";
 import { storeApi, storeKeys } from "@/lib/api/store-api";
@@ -248,10 +249,17 @@ export function PositionsScreen() {
               />
             )
           }
-          empty={<EmptyState icon={Boxes} title="No stock positions yet" description="Import products, then inventory adjustments (a CYCLE_COUNT sets on-hand)." />}
+          empty={
+            <EmptyState
+              icon={Boxes}
+              title="No stock positions yet"
+              description="Import products, then inventory adjustments (a CYCLE_COUNT sets on-hand)."
+              action={<ImportLink type="inventory_adjustments" label="Import inventory adjustments" />}
+            />
+          }
         />
         {list.data && total > 0 ? (
-          <Pagination page={params.page} pageSize={params.page_size} total={total} onPageChange={(page) => update({ page }, "push")} onPageSizeChange={(page_size) => update({ page_size })} />
+          <Pagination page={params.page} pageSize={params.page_size} total={total} onPageChange={(page) => update({ page }, "push")} onPageSizeChange={(page_size) => update({ page_size })} pageSizes={positionsList.options.pageSizes} />
         ) : null}
       </section>
     </div>

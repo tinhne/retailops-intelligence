@@ -66,7 +66,7 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "Data",
-    items: [{ label: "Imports", segment: "imports", icon: Upload, permission: ["imports.read"], ready: false }],
+    items: [{ label: "Imports", segment: "imports", icon: Upload, permission: ["imports.read"], ready: true }],
   },
   {
     label: "Administration",

@@ -52,7 +52,7 @@ describe("sectionHref (S-02 links)", () => {
   });
 
   it("returns nothing for pages that are not built or not permitted", () => {
-    expect(sectionHref("s1", "imports", perms("imports.read"))).toBeUndefined();
+    expect(sectionHref("s1", "copilot", perms("copilot.use"))).toBeUndefined();
     expect(sectionHref("s1", "products", perms("inventory.read"))).toBeUndefined();
     expect(sectionHref("s1", "exceptions", perms())).toBeUndefined();
     expect(sectionHref("s1", "overview", perms())).toBeUndefined();
