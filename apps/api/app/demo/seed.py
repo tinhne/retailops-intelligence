@@ -50,6 +50,10 @@ P = PaymentStatus
 F = FulfillmentStatus
 
 
+class DemoSeedRefusedError(RuntimeError):
+    """The seed would have to delete data that is not demo data."""
+
+
 @dataclass
 class DemoSummary:
     organization_id: uuid.UUID
@@ -405,6 +409,11 @@ def seed_demo(
     """Replace the demo organization with a freshly generated dataset. Caller commits."""
     existing = db.scalar(select(Organization).where(Organization.slug == DEMO_ORG_SLUG))
     if existing is not None:
+        if not existing.is_demo:
+            # ADR-0011: the reset may only ever delete a demo organization's data.
+            raise DemoSeedRefusedError(
+                f"Organization '{DEMO_ORG_SLUG}' exists but is not a demo organization."
+            )
         purge_organization(db, existing.id)
     db.execute(delete(User).where(User.email.like("%@kestrel.example")))
     db.flush()
