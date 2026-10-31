@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  CLEARED_FILTERS,
   exactReference,
   isFiltered,
   parseInboxParams,
@@ -72,6 +73,18 @@ describe("updates", () => {
   it("knows when a view is filtered", () => {
     expect(isFiltered(parse("view=triage").params)).toBe(false);
     expect(isFiltered(parse("view=triage&q=x").params)).toBe(true);
+  });
+
+  it("carries the hidden evaluation run filter (S-13 \"View new exceptions\")", () => {
+    const run = "7c3d2a10-5b4e-4f6a-9c8d-1e2f3a4b5c6d";
+    const { params } = parse(`view=active&evaluation_run_id=${run}`);
+    expect(toApiQuery(params, NOW).evaluation_run_id).toBe(run);
+    expect(isFiltered(params)).toBe(true);
+    expect(serializeInboxParams(params).toString()).toBe(`view=active&evaluation_run_id=${run}`);
+    const bad = parse("evaluation_run_id=latest");
+    expect(bad.invalid).toEqual(["evaluation_run_id"]);
+    expect(bad.params.evaluation_run_id).toBeNull();
+    expect(updateParams(params, CLEARED_FILTERS).evaluation_run_id).toBeNull();
   });
 
   it("recognises exact references", () => {
