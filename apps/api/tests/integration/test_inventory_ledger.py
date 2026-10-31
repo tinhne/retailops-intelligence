@@ -222,3 +222,30 @@ def test_reconcile_reports_no_drift_after_normal_operations(db: Session) -> None
     db.flush()
     drift = inventory.reconcile(db, tenant.store.id)
     assert [(d.field, d.stored, d.computed) for d in drift] == [("reserved", 99, 4)]
+
+
+def test_br121_sku_change_on_committed_line_moves_the_reservation(db: Session) -> None:
+    tenant = create_tenant(db)
+    mug = _product(db, tenant, "KH-MUG-01")
+    bowl = _product(db, tenant, "KH-BOWL-01")
+    _order(db, tenant, mug, number="5001", status=OrderStatus.PAID, qty=2)
+    order = orders.find_by_number(db, tenant.store.id, "5001")
+    assert order is not None
+
+    orders.upsert_order_item(
+        db,
+        order=order,
+        line=orders.OrderLineSnapshot(
+            line_number=1,
+            product_id=bowl.id,
+            sku=bowl.sku,
+            quantity=2,
+            unit_price=Decimal("18.00"),
+            line_discount=Decimal("0"),
+        ),
+    )
+    inventory.sync_reservations(db, tenant.store.id, [order.id], now=T0)
+
+    assert inventory.get_balance(db, tenant.store.id, mug.id).reserved == 0
+    assert inventory.get_balance(db, tenant.store.id, bowl.id).reserved == 2
+    assert inventory.reconcile(db, tenant.store.id) == []

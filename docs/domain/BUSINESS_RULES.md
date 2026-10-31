@@ -56,7 +56,7 @@ Inventory is tracked per `(store, product)` in `inventory_balance`. Each quantit
 | ID | Rule | Basis |
 |---|---|---|
 | BR-120 | An order line is reserved when its order enters committed demand (`PAID`, `PROCESSING`, `READY_TO_SHIP`). See `STATE_MACHINES.md §1.5`. | Industry (reserve on payment) |
-| BR-121 | A reservation is `RELEASED` when the order is cancelled, its payment fails, or it is refunded before shipping. | Industry |
+| BR-121 | A reservation is `RELEASED` when the order is cancelled or refunded before shipping. (Payment failure happens before reservation in the v1 graph. `RELEASED → ACTIVE` is kept for idempotent re-sync, but the v1 graph cannot reach it.) If a committed line's SKU changes, the reservation moves to the new product and both products' `reserved` are recomputed. | Industry |
 | BR-122 | A reservation is `CONSUMED` when the order ships. | Industry |
 | BR-123 | Reservations are synchronised by one idempotent function (`reservations.sync_for_orders`). Running it twice gives the same result. | MVP |
 
@@ -93,7 +93,7 @@ Applies only to products with `status = ACTIVE`. It is evaluated top-down and th
 
 | ID | Rule | Basis |
 |---|---|---|
-| BR-150 | `avg_daily_units = units on order lines placed in the last velocity_window_days (default 28) whose order status is not CANCELLED, PAYMENT_FAILED, CREATED, or PAYMENT_PENDING, divided by velocity_window_days`. | Industry (simple moving average) |
+| BR-150 | `avg_daily_units = units on order lines placed in the last velocity_window_days (default 28) whose order status is not CANCELLED, PAYMENT_FAILED, CREATED, or PAYMENT_PENDING, and that are not REFUNDED-before-shipping (status REFUNDED with fulfillment UNFULFILLED), divided by velocity_window_days`. | Industry (simple moving average) |
 | BR-151 | `days_of_cover = available / avg_daily_units` when `avg_daily_units > 0`; otherwise "not enough sales history". | Industry |
 | BR-152 | Velocity and days of cover are **estimates**. The UI and AI must label them that way. They ignore seasonality and promotions. | MVP; Validate |
 

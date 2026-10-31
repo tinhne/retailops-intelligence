@@ -206,6 +206,8 @@ def sync_reservations(
                         )
                     )
                 else:
+                    # A line whose SKU changed must release stock on the previous product too.
+                    affected.add(reservation.product_id)
                     if reservation.status is not ReservationStatus.ACTIVE:
                         reservation.status = ReservationStatus.ACTIVE
                         reservation.activated_at = now

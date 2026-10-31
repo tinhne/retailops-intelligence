@@ -82,7 +82,7 @@ Order rules: `ORDER_FULFILLMENT_OVERDUE` supersedes `ORDER_STALLED_AFTER_PAYMENT
   `days_of_cover < lead_time_days` (it will likely run out before a new order arrives); otherwise `MEDIUM`.
 - **Exposure:** 0.
 - **Evidence:** available, reorder point, incoming and ETA, avg daily units, days of cover (estimate), lead time.
-- **Recommended action:** "Place a replenishment order for at least {reorder_quantity or reorder_point × 2 − available − incoming} units."
+- **Recommended action:** `suggested = max(0, (reorder_quantity if set, else reorder_point × 2 − available) − incoming)`. If `suggested > 0`: "Place a replenishment order for at least {suggested} units." Otherwise: "Incoming stock ({incoming} units) covers the reorder point. Confirm the ETA with {supplier}."
 - **Auto-resolves when:** `available > reorder_point`.
 
 ## ORDER_FULFILLMENT_OVERDUE (`ORD-OVERDUE@1`)
@@ -118,7 +118,7 @@ Order rules: `ORDER_FULFILLMENT_OVERDUE` supersedes `ORDER_STALLED_AFTER_PAYMENT
 - **Severity:** `HIGH`; `CRITICAL` when `as_of − cancelled_at > 3 × refund_overdue_hours` (both clocks start at `cancelled_at`).
 - **Exposure:** order total (customer money held).
 - **Deadline:** `cancelled_at + refund_overdue_hours`.
-- **Recommended action:** "Issue the refund in the payment system, then re-import the order or record it."
+- **Recommended action:** "Issue the refund in the payment system. The next orders import that shows `payment_status = REFUNDED` resolves this exception automatically."
 - **Auto-resolves when:** `payment_status = REFUNDED`.
 
 ## DATA_ORDER_TOTAL_MISMATCH (`DQ-ORDER-TOTAL@1`)
