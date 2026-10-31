@@ -96,14 +96,17 @@
   Overview as demo viewer and as manager (Run analysis), at 1440 and 375 px. Exceptions: acknowledge,
   start, resolve, Closed view and reopen as manager; read-only demo viewer; 1440 and 375 px. Orders:
   overdue filter, search, cancelled-but-paid and total-mismatch orders, 375 px with no sideways scroll.
-- GitHub Actions run 41227323682 (5e24711, first run with the web foundation): success. API, web,
-  dependency audit and Docker image jobs all passed.
+- GitHub Actions run 41233590288 (orders, T-063): success. API, web, dependency audit and Docker image
+  jobs all passed. It ran on 6d534b2, which is c5b7e57 after the history rewrite (same code).
 
 ## Owner decisions log
 
 - 2026-10-31: The AI copilot uses **free-tier LLM APIs only** (Gemini by default, OpenAI-compatible
   free tiers as an alternative) with a deterministic fallback.
 - 2026-11-01: The owner created the GitHub repository. Pushes go over SSH.
+- 2026-11-01: Commits credit the owner only, with no tool co-author lines. The owner approved a one-time
+  history rewrite to remove them from the 39 earlier commits (force-push of `main` and the 3 tags);
+  code was unchanged. AGENTS.md's no-rewrite rule otherwise stands.
 
 ## Next three highest-priority actions
 

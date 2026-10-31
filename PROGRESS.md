@@ -199,3 +199,19 @@ add a correction entry instead.
   list only). Orders and its links (Overview KPIs) are live in the nav.
 - **Deferred to T-067:** custom placed range, import file links in order history, Ask the copilot.
 - **Tests:** web lint, typecheck and build green; vitest **134 passed**.
+
+## 2026-11-01 (UTC+7): Orchestrator: commit attribution and history rewrite (owner-approved)
+
+- **Decision (owner):** commits, tags and pull requests credit the owner only, with no tool co-author
+  lines. 39 of the 43 commits on GitHub carried a co-author trailer.
+- **Action:** a one-time history rewrite removed those trailer lines from every commit message on all
+  branches and tags, then `main` and the tags `discovery-complete`, `workflow-v1` and `architecture-v1`
+  were force-pushed with leases on the old remote IDs. This is an explicit, owner-approved exception to
+  AGENTS.md §8 ("never rewrite published history"); the rule otherwise stands.
+- **Verification:** all 43 commits map one-to-one; every rewritten commit has the same tree, author and
+  dates as its original; no message or tag mentions the tool; the old state is kept in a git bundle
+  outside the repository.
+- **Hash map for commits cited earlier in this log** (old → new): 4f38073 → 78a31bf, 932df62 → 6458a58,
+  747441b → 0fba20f, 5a108e5 → e942e71, 2d58630 → 82bdb4f, 574cec1 → 8b6f967, 1f7e1d5 → 43239c7,
+  5e24711 → f97a8af, 6d534b2 → c5b7e57. CI run IDs recorded earlier still exist on GitHub and refer to
+  the old IDs of the same code.

@@ -96,7 +96,7 @@ Agent roles: **ORCH** orchestrator · **PM** product/BA · **ARCH** architect ·
 |---|---|---|---|---|---|---|---|---|
 | T-090 | P0 | Multi-stage Dockerfiles (api, web), compose (db, api, worker, web), health checks, non-root users, migrations on start | T-041, T-060 | OPS | IN_PROGRESS | `docker compose up --build` gives a working app with seeded demo data | `infra/docker/*`, `docker-compose.yml` | Manual plus CI docker build |
 | T-091 | P0 | GitHub Actions CI: lint, types, tests (with a Postgres service), builds, docker build, dependency audit | T-090 | OPS | DONE | Green on main | `.github/workflows/ci.yml` | GitHub Actions run 41216596429 passed |
-| T-092 | P0 | Create the GitHub repository `tinhne/retailops-intelligence` and push | none | OPS | DONE | Remote exists and main is pushed | none | `git ls-remote origin` shows main at 4f38073 plus 3 tags (2026-11-01) |
+| T-092 | P0 | Create the GitHub repository `tinhne/retailops-intelligence` and push | none | OPS | DONE | Remote exists and main is pushed | none | `git ls-remote origin` showed main at 4f38073 plus 3 tags (2026-11-01; that commit is 78a31bf after the history rewrite) |
 | T-093 | P1 | Hosting evaluation plus deploy pipeline (CD after CI) | T-091 | OPS | BACKLOG | Provider chosen with documented trade-offs. Deploy verified | `docs/operations/DEPLOYMENT.md` | Health check of the live URL |
 | T-094 | P1 | Public read-only demo, demo reset job | T-056, T-093 | OPS/BE | BACKLOG | Anonymous visitors cannot mutate shared data | none | E2E against the deployment |
 | T-095 | P2 | Per-visitor demo sandbox (an ephemeral org cloned from the seed, rate-limited, auto-expiring) | T-094 | BE | BACKLOG | Visitors can run the full workflow without affecting others | none | E2E |
