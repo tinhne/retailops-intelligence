@@ -25,7 +25,7 @@ Build top to bottom. Each phase unblocks the frontend tasks listed.
 | **5. Exceptions** | C-50 PriorityBreakdown · C-51 CalculationBlock · C-52 EvidenceTable · C-53 AffectedOrdersTable · C-54 Timeline · C-55 NoteComposer · C-56 ExceptionActionBar (+ `getExceptionActions`) · C-57 Resolve/Dismiss/Reopen dialogs · C-58 AssigneeControl · C-59 DueDateControl · C-60 ExceptionLifecycleBanner · C-61 RunAnalysisButton · C-62 ExceptionListItem · C-63 LifecycleExplainer | T-062 |
 | **6. Imports** | C-70 ImportTypePicker · C-71 ImportDropzone · C-72 ImportStepper · C-73 ImportStatusPanel · C-74 ImportSummaryTiles · C-75 IssueTable · C-76 ApplyPanel | T-065 |
 | **7. Copilot** | C-80 CopilotAnswer · C-81 ReferenceChip · C-82 ToolCallDisclosure · C-83 CopilotComposer · C-84 ConversationList · C-85 SuggestedQuestions · C-86 AIInvestigationPanel | T-073 |
-| **8. Admin and P1** | C-90 SettingsField + SettingsSaveBar · C-91 RoleMatrix · C-92 ChangeRoleDialog (P1) · C-93 DemoTourPanel (P1) | T-066, T-094 |
+| **8. Admin and P1** | C-90 SettingsField + SettingsSaveBar · C-91 RoleMatrix · C-92 ChangeRoleDialog · C-94 AddMemberDialog + TemporaryPasswordDialog · C-95 MemberStatusDialog · C-93 DemoTourPanel (P1) | T-066, T-094 |
 
 ---
 
@@ -71,7 +71,7 @@ export type LoadStatus = "loading" | "error" | "success";
 | `useListParams()` | `<T extends z.ZodTypeAny>(schema: T) => [z.infer<T>, (patch: Partial<z.infer<T>>) => void]` | Parses and validates URL search params, drops invalid values (SCREEN_SPECS §0.3 validation), resets `page` on filter or sort change, and writes with `router.replace` (no history spam for typing) or `push` (for page changes). |
 | `useApiMutation()` | wraps `useMutation` | Adds the `X-CSRF-Token` header (from the `ro_csrf` cookie), `expected_version` (the exception `version` on screen), `Idempotency-Key` where configured, maps the error envelope to `ApiError`, and maps 401 to the session-expired redirect. On `409 STALE_VERSION` it shows the "Someone else updated {reference}…" warning toast and invalidates the exception, events and notes queries (SCREEN_SPECS §0.3). |
 | `lib/format/*` | `formatMoney`, `formatMoneyCompact`, `formatQuantity`, `formatDelta`, `formatPercent`, `formatPp`, `formatDateTime`, `formatDateTimeShort`, `formatDate`, `formatRelative`, `formatDue`, `formatDuration`, `formatDaysOfCover`, `formatBytes` | Pure functions, rules in DESIGN_SYSTEM §13. Tests include an EDT→EST transition (Nov 1, 2026) and negative values. |
-| `lib/status-maps.ts` | `Record<Enum, { label: string; tone: Tone; icon: LucideIcon; description?: string }>` per enum | The single source of UI labels, tones and icons (DESIGN_SYSTEM §3.5). Includes `exceptionTypeLabels`, `resolutionCodeLabels`, `dismissedReasonLabels`, `movementTypeLabels`, `importTypeLabels`, `importIssueMeta` (level, meaning and "How to fix" text mirrored from IMPORT_PIPELINE §6), `evaluationStatusLabels`, `auditActionLabels`, `toolNameLabels`, `permissionLabels` (label + description for the role matrix). |
+| `lib/status-maps.ts` | `Record<Enum, { label: string; tone: Tone; icon: LucideIcon; description?: string }>` per enum | The single source of UI labels, tones and icons (DESIGN_SYSTEM §3.5). Includes `exceptionTypeLabels`, `resolutionCodeLabels`, `dismissedReasonLabels`, `movementTypeLabels`, `importTypeLabels`, `importIssueMeta` (level, meaning and "How to fix" text mirrored from IMPORT_PIPELINE §6), `evaluationStatusLabels`, `toolNameLabels`. As built: `permissionLabels`, `permissionDescriptions`, `roleLabels` and `roleDescriptions` live in `lib/permissions.ts`, and `auditActionLabels` in `features/admin/audit-actions.ts` (T-066). |
 | QueryClient defaults | `retry: (n, e) => n < 2 && (isNetwork(e) \|\| e.status >= 500)`, `refetchOnWindowFocus: true`, `staleTime: 30_000` | Query keys start with `['store', storeId, …]`. |
 
 ---
@@ -418,8 +418,11 @@ type DataTableProps<T> = {
   renderStackedRow?: (row: T) => React.ReactNode;           // < 768 for primary lists
   stickyFirstColumn?: boolean;            // ledgers on small screens
   selectedRowId?: string;
+  renderExpanded?: (row: T) => React.ReactNode | null;      // full-width row under the row (S-15)
 };
 ```
+`renderExpanded` returns `null` while a row is collapsed; the disclosure button with
+`aria-expanded` lives in one of the row's cells (the audit log puts it in the pinned Time column).
 Plain `<table>` built on the shadcn `Table` primitive. No client-side table engine, because
 sorting, filtering and paging are server-side. **States.** Loading (8-row skeleton at the
 current density), fetching (rows at 60% opacity + `aria-busy`), error (ErrorState in the body),
@@ -1039,6 +1042,9 @@ type SettingsSaveBarProps = { dirtyCount: number; pending: boolean; onDiscard: (
 The input has a unit suffix inside the field. The save bar is sticky at the bottom, visible only
 when dirty. **A11y.** The unit is part of the accessible name ("Fulfillment SLA, hours"). The save
 bar is `role="region"` `aria-label="Unsaved changes"`. **Used by.** S-16.
+**As built (T-066):** readers get a separate definition-list view instead of a `readOnly` prop,
+and the field model (limits, defaults, units, PATCH body) is data in
+`features/admin/settings-fields.ts`, so the inputs, the confirm list and the read-only view share it.
 
 ### C-91 RoleMatrix
 ```ts
@@ -1049,15 +1055,34 @@ never hard-coded in the UI. Labels and descriptions come from `permissionLabels`
 (permission) and column headers (role). Cells have "Granted" or "Not granted" as visually hidden
 text. **Used by.** S-17, C-92.
 
-### C-92 ChangeRoleDialog (P1)
+### C-92 ChangeRoleDialog
 ```ts
-type ChangeRoleDialogProps = { member: S["Member"]; currentUserId: string; ownerCount: number; open: boolean; onOpenChange: (v: boolean) => void };
+type ChangeRoleDialogProps = { member: S["OrganizationMemberOut"]; roles: S["RolePermissionsOut"][] | undefined; open: boolean; onOpenChange: (v: boolean) => void };
 ```
-A role select with descriptions, and a "What changes" list (gained and lost permissions computed
-from C-91 data). Owner only (`users.manage`). Guards: not your own role, and never the last owner
-(pre-checked with `ownerCount`, enforced by the server with `409 LAST_OWNER`). Sends `PATCH
-/organizations/{org_id}/members/{membership_id} {role}`. There is no invite, deactivation or
-password-reset component in v1. **Used by.** S-17.
+A role radio group with descriptions, and a "What changes" list (gained and lost permissions
+computed from C-91 data). Owner only (`users.manage`). Guards are checked by the row menu before
+the dialog opens: not your own role, and never the last active owner (enforced by the server with
+`409 LAST_OWNER`). Sends `PATCH /organizations/{org_id}/members/{membership_id} {role}`.
+**Used by.** S-17.
+
+### C-94 AddMemberDialog + TemporaryPasswordDialog (T-066)
+```ts
+type AddMemberDialogProps = { open: boolean; onOpenChange: (v: boolean) => void; onCreated: (created: S["MemberCreated"]) => void };
+type TemporaryPasswordDialogProps = { created: S["MemberCreated"] | null; onClose: () => void };
+```
+Full name, email and role (react-hook-form + zod, mirroring `MemberCreate`). Sends `POST
+/organizations/{org_id}/members`. `409 MEMBER_EXISTS` / `EMAIL_IN_USE` land on the email field.
+The temporary password is shown once in mono with a copy button; the dialog ignores outside
+clicks. **Used by.** S-17.
+
+### C-95 MemberStatusDialog (T-066)
+```ts
+type MemberStatusDialogProps = { member: S["OrganizationMemberOut"]; open: boolean; onOpenChange: (v: boolean) => void };
+```
+Confirmation for **Deactivate member** (destructive; every session ends) or **Reactivate member**,
+chosen from the member's status. Sends `PATCH …/members/{membership_id} {status}`. Conflicts
+(`LAST_OWNER`, `MEMBER_IN_OTHER_ORGANIZATION`) and `OWN_MEMBERSHIP` show as an alert in the dialog.
+There is no password-reset component in v1. **Used by.** S-17.
 
 ### C-93 DemoTourPanel (P1)
 **Purpose.** A guided path for public visitors through the six demo steps (USER_FLOWS F6), driven

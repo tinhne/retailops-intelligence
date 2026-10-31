@@ -90,7 +90,7 @@ Audit log).
 | A8 | **"New import" and "Import detail" share the record route.** `/imports/new` only selects the type and uploads. The upload creates a `data_import` record, and the app then replaces the URL with `/imports/{importId}`, which renders the wizard while the import is in progress (`UPLOADED`, `VALIDATING`, `VALIDATED`, `APPLYING`) and the detail view once it is terminal. | The preview survives a reload and can be resumed for 24 h (STATE_MACHINES §4). A wizard held only in client state would lose a validated preview on refresh. |
 | A9 | **Data quality is P1 and has a defined scope.** | The catalog sends invalid CSV rows to "Import errors / Data quality page" (EXCEPTION_CATALOG, "Explicitly not exceptions"). The page aggregates: active `DATA_QUALITY` exceptions (links into the inbox), and imports with rejected or skipped rows. It adds no new data source. In P0 the same information is reachable through the inbox category filter and the Imports list status filter. |
 | A10 | **Analytics is P1.** | P0 analytics needs (KPIs, attention list, fulfillment performance) are on Overview (T-061). The Analytics page adds trend exploration for the Analyst persona and the "Ask the copilot about this chart" entry point. It is specified briefly in `SCREEN_SPECIFICATIONS.md §P1`. |
-| A11 | **Users & roles: member list and read-only role matrix in P0. Role change is P1 and owner-only. No invite or deactivation UI in v1.** | Roles and permissions are code-defined (ADR-0007). The matrix comes from `GET /api/v1/roles`, so the UI never duplicates it, and an editable permission grid would be a fake control. In P1 an owner can change a member's role, with the last-owner guard (`409 LAST_OWNER`). Nobody can edit what a role grants. Invitations and deactivation are out of the v1 UI (ROLE_AND_PERMISSION_WORKFLOW §8). |
+| A11 | **Users & roles: member list and read-only role matrix. Owners add members (temporary password shown once), change roles, and deactivate or reactivate members. No invite email and no password reset in v1.** | Roles and permissions are code-defined (ADR-0007). The matrix comes from `GET /api/v1/roles`, so the UI never duplicates it, and an editable permission grid would be a fake control. An owner changes a member's role or status with the last-owner guard (`409 LAST_OWNER`) and never their own membership. Nobody can edit what a role grants. Add member and deactivation were added in T-066 (orchestrator decision), using the simplest variant of ROLE_AND_PERMISSION_WORKFLOW §8 (no email delivery). |
 | A12 | **Administration pages stay under the store prefix.** Users & roles lists the members of the current store's organization, and its header says so ("Kestrel Commerce · organization-wide"). The Audit log lists the current store's entries (`GET /stores/{id}/audit-logs`). | Keeps one shell and one URL scheme. Memberships belong to the organization (DOMAIN_MODEL). The audit read API is store-scoped, so the page states which store it shows. |
 | A13 | **No account/profile page.** The user menu shows name, email, role and organization, plus "Sign out". | v1 has no password change, profile editing or notification settings, so a page would be empty or fake. |
 
@@ -165,7 +165,7 @@ Each `page.tsx` is a thin server component that renders a client feature module 
 | `/s/{storeId}/imports/new` | New import (type + upload) | `imports.run` | P0 | Users without it get the permission-denied state, not a redirect. |
 | `/s/{storeId}/imports/{importId}` | Import wizard / detail | `imports.read` | P0 | Apply, discard and retry need `imports.run`. |
 | `/s/{storeId}/data-quality` | Data quality | `imports.read` **and** `exceptions.read` | P1 | |
-| `/s/{storeId}/admin/users` | Users & roles | `users.read` | P0 | Member list and role matrix. Role change (P1) needs `users.manage` (OWNER only). |
+| `/s/{storeId}/admin/users` | Users & roles | `users.read` | P0 | Member list and role matrix. Add member, role change, deactivate and reactivate need `users.manage` (OWNER only). |
 | `/s/{storeId}/admin/settings` | Settings | `settings.read` | P0 | Saving needs `settings.manage`. |
 | `/s/{storeId}/admin/audit-log` | Audit log | `audit.read` | P0 | Entries of the current store. |
 
@@ -214,7 +214,8 @@ group containing only Settings).
 | New import, apply, discard, retry | `imports.run` | Imports list, Import wizard/detail |
 | Download issues CSV, templates | `imports.read` | Import detail, Imports list, wizard step 1 |
 | Save settings | `settings.manage` | Settings |
-| Change member role (P1) | `users.manage` (OWNER only). Not your own role. Never the last owner | Users & roles |
+| Add member | `users.manage` (OWNER only) | Users & roles header |
+| Change member role, deactivate, reactivate | `users.manage` (OWNER only). Not your own membership. Never the last active owner | Users & roles row menu |
 
 ---
 
@@ -383,6 +384,6 @@ unchanged. The only UI-only parameter is `view` (a named preset of these filters
 | Q-IA-1 | ~~Human-readable exception reference~~ | **Resolved:** `operational_exception.reference` (`EXC-1001`, per-store sequence). `q` searches reference and title. |
 | Q-IA-2 | VIEWER has `audit.read`. The audit log holds IPs, user agents and failed sign-in emails, including those of other demo visitors (ROLE_AND_PERMISSION_WORKFLOW O-29). | `GET /stores/{id}/audit-logs` returns them inside `details`. Redact them there for VIEWER / demo organizations, or remove `audit.read` from VIEWER. The UI has no IP column and renders `details` as returned. |
 | Q-IA-3 | If every demo visitor shares one VIEWER user, copilot conversations are visible to all visitors and the 20/min copilot limit is shared (O-29). | One viewer identity per demo session, or conversations scoped to the session. |
-| Q-IA-4 | ~~User provisioning~~ | **Resolved for v1:** no invite or add-member UI. |
-| Q-IA-5 | ~~Deactivation~~ | **Resolved for v1:** no deactivation UI. Role change only (P1), by the owner, with the last-owner guard. |
+| Q-IA-4 | ~~User provisioning~~ | **Resolved (revised in T-066):** an owner adds a member by creating the account; the temporary password is shown once and handed over outside the product. No invite email. Existing accounts are refused (O-35). |
+| Q-IA-5 | ~~Deactivation~~ | **Resolved (revised in T-066):** owners deactivate and reactivate members (all sessions revoked on deactivation) and change roles, with the last-owner guard. |
 | Q-IA-6 | Import detail links to "exceptions from this evaluation run" with `?evaluation_run_id=`. API_CONVENTIONS §12.6 does not list that filter on the exception list. | Add `evaluation_run_id` to the exception list filters. Until then, the link opens the inbox sorted by newest (`sort=-first_detected_at`). |
