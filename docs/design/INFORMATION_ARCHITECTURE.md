@@ -65,9 +65,9 @@ sidebar entries are not rendered until the page exists (IA-5).
 `SCREEN_SPECIFICATIONS.md §0` and `COMPONENT_INVENTORY.md` (AppShell).
 
 **Sidebar badges.** Only one item carries a count: **Exceptions** shows the number of active P1
-exceptions (`analytics summary.active_by_band.P1`) when it is greater than zero, as a danger-soft
-count badge with the accessible name "12 active P1 exceptions". No other counts: a badge must
-mean "act now".
+exceptions (`GET /stores/{id}/analytics/dashboard` → `active_exceptions.by_band.P1`) when it is
+greater than zero, as a danger-soft count badge with the accessible name "12 active P1
+exceptions". No other counts: a badge must mean "act now".
 
 ---
 
@@ -90,8 +90,8 @@ Audit log).
 | A8 | **"New import" and "Import detail" share the record route.** `/imports/new` only selects the type and uploads. The upload creates a `data_import` record, and the app then replaces the URL with `/imports/{importId}`, which renders the wizard while the import is in progress (`UPLOADED`, `VALIDATING`, `VALIDATED`, `APPLYING`) and the detail view once it is terminal. | The preview survives a reload and can be resumed for 24 h (STATE_MACHINES §4). A wizard held only in client state would lose a validated preview on refresh. |
 | A9 | **Data quality is P1 and has a defined scope.** | The catalog sends invalid CSV rows to "Import errors / Data quality page" (EXCEPTION_CATALOG, "Explicitly not exceptions"). The page aggregates: active `DATA_QUALITY` exceptions (links into the inbox), and imports with rejected or skipped rows. It adds no new data source. In P0 the same information is reachable through the inbox category filter and the Imports list status filter. |
 | A10 | **Analytics is P1.** | P0 analytics needs (KPIs, attention list, fulfillment performance) are on Overview (T-061). The Analytics page adds trend exploration for the Analyst persona and the "Ask the copilot about this chart" entry point. It is specified briefly in `SCREEN_SPECIFICATIONS.md §P1`. |
-| A11 | **Users & roles shows the role matrix read-only.** | Roles and permissions are code-defined (ADR-0007). An editable permission grid would be a fake control. Owners can change a member's role. They cannot edit what a role grants. |
-| A12 | **Administration pages are organization-wide but stay under the store prefix.** Users & roles and Audit log operate on the organization of the current store, and the page header says so ("Kestrel Commerce · organization-wide"). | Keeps one shell and one URL scheme. Memberships and audit logs belong to the organization (DOMAIN_MODEL), so a store-level copy would be misleading. |
+| A11 | **Users & roles: member list and read-only role matrix in P0. Role change is P1 and owner-only. No invite or deactivation UI in v1.** | Roles and permissions are code-defined (ADR-0007). The matrix comes from `GET /api/v1/roles`, so the UI never duplicates it, and an editable permission grid would be a fake control. In P1 an owner can change a member's role, with the last-owner guard (`409 LAST_OWNER`). Nobody can edit what a role grants. Invitations and deactivation are out of the v1 UI (ROLE_AND_PERMISSION_WORKFLOW §8). |
+| A12 | **Administration pages stay under the store prefix.** Users & roles lists the members of the current store's organization, and its header says so ("Kestrel Commerce · organization-wide"). The Audit log lists the current store's entries (`GET /stores/{id}/audit-logs`). | Keeps one shell and one URL scheme. Memberships belong to the organization (DOMAIN_MODEL). The audit read API is store-scoped, so the page states which store it shows. |
 | A13 | **No account/profile page.** The user menu shows name, email, role and organization, plus "Sign out". | v1 has no password change, profile editing or notification settings, so a page would be empty or fake. |
 
 ---
@@ -106,7 +106,7 @@ apps/web/app/
 │   ├── login/page.tsx                         Login + "Explore the demo"
 │   └── demo/page.tsx                          Shareable demo entry (explains, then starts a viewer session)
 ├── (app)/
-│   ├── layout.tsx                             Session guard: GET /api/v1/me, else redirect /login?next=
+│   ├── layout.tsx                             Session guard: GET /api/v1/auth/me, else redirect /login?next=
 │   ├── page.tsx                               "/" → redirect to last-used store's overview
 │   └── s/[storeId]/
 │       ├── layout.tsx                         StoreProvider + AppShell (DemoBanner, TopBar, SidebarNav)
@@ -165,9 +165,9 @@ Each `page.tsx` is a thin server component that renders a client feature module 
 | `/s/{storeId}/imports/new` | New import (type + upload) | `imports.run` | P0 | Users without it get the permission-denied state, not a redirect. |
 | `/s/{storeId}/imports/{importId}` | Import wizard / detail | `imports.read` | P0 | Apply, discard and retry need `imports.run`. |
 | `/s/{storeId}/data-quality` | Data quality | `imports.read` **and** `exceptions.read` | P1 | |
-| `/s/{storeId}/admin/users` | Users & roles | `users.read` | P0 | Role changes need `users.manage`. |
+| `/s/{storeId}/admin/users` | Users & roles | `users.read` | P0 | Member list and role matrix. Role change (P1) needs `users.manage` (OWNER only). |
 | `/s/{storeId}/admin/settings` | Settings | `settings.read` | P0 | Saving needs `settings.manage`. |
-| `/s/{storeId}/admin/audit-log` | Audit log | `audit.read` | P0 | |
+| `/s/{storeId}/admin/audit-log` | Audit log | `audit.read` | P0 | Entries of the current store. |
 
 **Route guard behaviour.** (1) No session → `/login?next={path}`. (2) `storeId` not in any
 membership → global 404 ("This store doesn't exist or you don't have access"). This mirrors the
@@ -207,14 +207,14 @@ group containing only Settings).
 | Acknowledge, Start work, Add note | `exceptions.work` | Exception detail action bar, timeline composer |
 | Claim (assign to me) | `exceptions.work`, exception unassigned | Exception detail action bar |
 | Resolve | `exceptions.work` and (actor is the assignee **or** holds `exceptions.manage`) | Exception detail |
-| Assign / reassign / unassign, change due date | `exceptions.assign` | Exception detail (assignee field, due field) |
+| Assign / reassign / unassign, change due date | `exceptions.assign` | Exception detail (assignee field, due field). The picker lists `GET /stores/{id}/members` entries with `can_work_exceptions = true` |
 | Dismiss, Reopen | `exceptions.manage` | Exception detail ("More" menu / primary on closed) |
 | Generate AI investigation, ask copilot | `copilot.use` | Exception detail AI panel, Copilot |
 | Draft note with AI → save | `copilot.use` to draft, `exceptions.work` to save | Exception detail composer |
 | New import, apply, discard, retry | `imports.run` | Imports list, Import wizard/detail |
 | Download issues CSV, templates | `imports.read` | Import detail, Imports list, wizard step 1 |
 | Save settings | `settings.manage` | Settings |
-| Change member role | `users.manage` | Users & roles |
+| Change member role (P1) | `users.manage` (OWNER only). Not your own role. Never the last owner | Users & roles |
 
 ---
 
@@ -234,7 +234,7 @@ and settings. It never mutates shared data (ADR-0011).
 | Orders, Products, Inventory, Movements | Full read access. |
 | Imports | List and detail (including issue tables and the issues CSV) are readable. **New import** is disabled with the read-only reason. Templates can be downloaded. |
 | Settings | Rendered as read-only values (a definition list, not disabled inputs). |
-| Audit log | Readable, for seeded actors. See open question Q-IA-2 about IP addresses of real visitors. |
+| Audit log | Readable (store entries). See open question Q-IA-2 about visitor IPs and emails inside `details`. |
 | Users & roles | Hidden (no `users.read`). |
 
 **Disabled-reason copy** (used by `PermissionGate`, exact strings):
@@ -257,7 +257,7 @@ the copilot".
 ## 6. Cross-links between entities
 
 Every entity reference in the UI is a link to its detail page, rendered with the entity's
-natural key (order number, SKU, short exception reference), never a raw UUID.
+natural key (order number, SKU, exception reference such as `EXC-1042`), never a raw UUID.
 
 ```mermaid
 flowchart LR
@@ -306,17 +306,18 @@ flowchart LR
 | Product detail | Recent movements → "View all" | `/inventory/movements?product_id=` | `inventory_movement` |
 | Movements ledger | SKU / Reference / Import | Product / Order / Import detail | `product_id`, `reference = order_item:{id}`, `import_id` |
 | Inventory positions | Row (SKU cell link) | Product detail | `product_id` |
-| Import detail | Evaluation run summary | Exceptions inbox filtered `?evaluation_run_id=` | `data_import.evaluation_run_id` |
+| Import detail | Evaluation run summary | Exceptions inbox filtered `?evaluation_run_id=` (see Q-IA-6) | `data_import.evaluation_run_id` |
 | Copilot answer | Reference chips | Exception / Order / Product detail | `references[] {type, id, label}` |
 | Overview | KPI cards, attention list | Filtered list pages / Exception detail | analytics summary |
 
-**Back navigation.** Detail pages show a breadcrumb (`Exceptions / EXC-9B1C4E2A`). The parent
+**Back navigation.** Detail pages show a breadcrumb (`Exceptions / EXC-1042`). The parent
 crumb returns to the list **with the filters the user came from** (the list URL is kept in
 `sessionStorage ro.lastListUrl.{area}`), falling back to the unfiltered list.
 
-**Exception reference format.** `operational_exception` has no human-readable number in v1, so
-the UI shows `EXC-` plus the first 8 hex characters of the UUID, upper-cased (`EXC-9B1C4E2A`), in
-the mono font. See open question Q-IA-1.
+**Exception reference format.** Every exception has a human-friendly
+`operational_exception.reference` (`EXC-1001`, `EXC-1002`, …) from a per-store sequence. The UI
+shows it verbatim wherever an exception is named: lists, breadcrumbs, timelines, copilot
+references, search results and document titles. The UUID appears only under "Technical details".
 
 ---
 
@@ -324,13 +325,13 @@ the mono font. See open question Q-IA-1.
 
 | Concern | Rule |
 |---|---|
-| Source of truth | The `storeId` URL segment. `StoreProvider` resolves it against `GET /api/v1/me` (memberships → organization → stores) and exposes `{ id, name, code, currency, timezone, organization: { id, name, slug, isDemo }, role, permissions }`. |
+| Source of truth | The `storeId` URL segment. `StoreProvider` resolves it against `GET /api/v1/auth/me` (`memberships[] {organization_id, organization_name, is_demo, role, permissions[], stores[] {id, name, code, currency, timezone}}`) and exposes `{ id, name, code, currency, timezone, organization: { id, name, isDemo }, role, permissions }`. |
 | Data fetching | Every TanStack Query key starts with `['store', storeId, …]`. Switching store never shows another store's cached data. |
 | Formatting | `Money`, `DateTime` and `RelativeTime` read currency and time zone from the store context, **never** from the browser locale or zone (BR-004, BR-501). Locale is fixed to `en-US` in v1. |
 | Store switcher | Lists every store across the user's memberships, grouped by organization. Choosing a store navigates to the **same section** in the new store, with record IDs stripped (`/s/A/exceptions/123` → `/s/B/exceptions`). With exactly one store (the demo), the switcher renders as a static label, not a dropdown (IA-5). |
 | Zone hint | The store switcher's second line reads "USD · Times in ET". Table column headers that hold times carry the generic zone ("Placed (ET)"). Full timestamps carry the specific abbreviation (EDT/EST). See `DESIGN_SYSTEM.md §13`. |
 | Last store | Stored in `localStorage ro.lastStoreId` for the `/` redirect only. It is never used for data access. |
-| Document title | `{Page} · {Store name} · RetailOps`, for example `EXC-9B1C4E2A · Kestrel Home & Kitchen · RetailOps`. |
+| Document title | `{Page} · {Store name} · RetailOps`, for example `EXC-1042 · Kestrel Home & Kitchen · RetailOps`. |
 
 ---
 
@@ -342,14 +343,15 @@ palette calls each list endpoint with `q` and `page_size=5` in parallel.
 
 | Group | Matches | Endpoint (proposed) | Permission | Result row |
 |---|---|---|---|---|
-| Exceptions | Title (contains, case-insensitive). Reference: `EXC-xxxxxxxx` or a pasted full UUID | `GET /stores/{id}/exceptions?q=` | `exceptions.read` | Severity badge · title · status · `EXC-…` |
+| Exceptions | Reference (`EXC-1042`, also `1042`) and title (contains, case-insensitive), via the API's `q` | `GET /stores/{id}/exceptions?q=` | `exceptions.read` | Reference · severity badge · title · status |
 | Orders | Order number (prefix, case-insensitive) | `GET /stores/{id}/orders?q=` | `orders.read` | Order number · status pill · total · placed date |
 | Products | SKU (prefix, case-sensitive per BR-506) or name (contains) | `GET /stores/{id}/products?q=` | `catalog.read` | SKU (mono) · name · health badge |
 | Go to | Static list of the sidebar pages the user can see | client-side | per route | Page name |
 
 Behaviour: minimum 2 characters, 200 ms debounce, 5 results per group, and a "See all results
 in Orders" row that opens the list page with `?q=`. Groups the user cannot read are not queried.
-An exact match on a full order number or SKU is ranked first. Customer references (`customer_ref`)
+An exact match on an exception reference, a full order number or a SKU is ranked first, and Enter
+opens it. Customer references (`customer_ref`)
 are searchable only from the Orders list filter, not globally (data minimisation, BR-505). Recent
 searches are not stored.
 
@@ -359,15 +361,18 @@ searches are not stored.
 
 | State | Where it lives | Example |
 |---|---|---|
-| Filters, sort, page, page size, list view | URL search params (shareable, survives reload) | `/s/…/exceptions?view=active&severity=CRITICAL,HIGH&sort=-priority_score&page=2` |
+| Filters, sort, page, page size, list view | URL search params (shareable, survives reload) | `/s/…/exceptions?view=active&severity=CRITICAL&severity=HIGH&sort=-priority_score&page=2` |
 | Open dialog / sheet | Component state (not in the URL) | Resolve dialog |
 | Detail page section | URL hash | `/exceptions/{id}#evidence` |
 | Table density | `localStorage ro.density.{table}` | `compact` |
 | Sidebar collapsed | `localStorage ro.sidebar.collapsed` | `true` |
 
-Param names mirror the API query params (`status`, `severity`, `priority_band`, `category`,
-`exception_type`, `assignee`, `sort`, `page`, `page_size`, `q`), so the list page can forward
-them unchanged.
+Param names and formats mirror the API query params (API_CONVENTIONS §5): multi-value filters
+repeat the parameter (`status=OPEN&status=REOPENED`), ranges use `{field}_from` / `{field}_to`
+(`placed_from`, `occurred_to`), and the exception assignee filter is `assignee_id` with the special
+values `me` and `unassigned`. Other names: `severity`, `priority_band`, `category`,
+`exception_type`, `due_to`, `sort`, `page`, `page_size`, `q`. The list page forwards them
+unchanged. The only UI-only parameter is `view` (a named preset of these filters).
 
 ---
 
@@ -375,8 +380,9 @@ them unchanged.
 
 | ID | Question | Recommendation |
 |---|---|---|
-| Q-IA-1 | `operational_exception` has no human-readable reference. Search "by ID" means pasting a UUID or a short prefix. | Add a per-store sequential `number` (display `EXC-1042`). Until then, the UI uses the 8-character UUID prefix and the API must support prefix search on `id`. |
-| Q-IA-2 | VIEWER has `audit.read`. If the shared demo org records `auth.login` / demo-session events with real visitors' IPs, public visitors could read each other's IPs. | Omit `ip` from audit responses for VIEWER (or never record IPs for demo-session events). The UI shows the IP column only when the field is present. |
-| Q-IA-3 | If every demo visitor shares one VIEWER user, copilot conversations (`ai_conversation.user_id`) are visible to all visitors, and the 20/min copilot limit is shared. | Create one VIEWER user per demo session (expiring with the session), or scope demo conversations to the session. |
-| Q-IA-4 | User provisioning: no canonical flow exists for adding members (invitation or initial password). | v1 UI: list members, change role. Adding members is done through a server-side command until a provisioning ADR exists. No "Add member" button ships until the endpoint exists (IA-5). |
-| Q-IA-5 | Deactivating access: `membership` has no status, and `app_user.is_active` is global across organizations. | Add `membership.status` (ACTIVE/SUSPENDED) if deactivation is required in v1. Otherwise v1 has role change only. |
+| Q-IA-1 | ~~Human-readable exception reference~~ | **Resolved:** `operational_exception.reference` (`EXC-1001`, per-store sequence). `q` searches reference and title. |
+| Q-IA-2 | VIEWER has `audit.read`. The audit log holds IPs, user agents and failed sign-in emails, including those of other demo visitors (ROLE_AND_PERMISSION_WORKFLOW O-29). | `GET /stores/{id}/audit-logs` returns them inside `details`. Redact them there for VIEWER / demo organizations, or remove `audit.read` from VIEWER. The UI has no IP column and renders `details` as returned. |
+| Q-IA-3 | If every demo visitor shares one VIEWER user, copilot conversations are visible to all visitors and the 20/min copilot limit is shared (O-29). | One viewer identity per demo session, or conversations scoped to the session. |
+| Q-IA-4 | ~~User provisioning~~ | **Resolved for v1:** no invite or add-member UI. |
+| Q-IA-5 | ~~Deactivation~~ | **Resolved for v1:** no deactivation UI. Role change only (P1), by the owner, with the last-owner guard. |
+| Q-IA-6 | Import detail links to "exceptions from this evaluation run" with `?evaluation_run_id=`. API_CONVENTIONS §12.6 does not list that filter on the exception list. | Add `evaluation_run_id` to the exception list filters. Until then, the link opens the inbox sorted by newest (`sort=-first_detected_at`). |

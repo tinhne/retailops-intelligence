@@ -128,7 +128,7 @@ benchmark in T-053); a cursor-based list is the fallback if it is not.
 | `STALE_VERSION` | 409 | `expected_version` differs from the stored version |
 | `EXCEPTION_TRANSITION_NOT_ALLOWED` | 409 | Transition not allowed from the current status (STATE_MACHINES §3.2) |
 | `EXCEPTION_NEWER_OCCURRENCE_EXISTS` | 409 | Proposed: manual reopen of an occurrence when a newer active exception exists for the same dedup key |
-| `EVALUATION_IN_PROGRESS` | 409 | Manual trigger while a run holds the store lock |
+| (none) | 200 | A manual trigger while another run holds the store lock returns that request's run with status `SKIPPED`; it is not an error |
 | `IMPORT_NOT_APPLICABLE` | 409 | Apply, discard or revalidate called in a status that does not allow it |
 | `IMPORT_PREVIEW_EXPIRED` | 409 | Apply after the 24 h preview window |
 | `IMPORT_HAS_ERRORS` | 409 | Strict-mode apply of an import with error rows |
@@ -169,7 +169,7 @@ click.
 | Replay after completion | Returns 200 with the current representation of the same resource and the header `Idempotent-Replayed: true`. Nothing is re-applied or re-run |
 | Replay while the first is running | `409 IDEMPOTENT_REQUEST_IN_PROGRESS` with `Retry-After` |
 | Same key, different resource or body | `422 IDEMPOTENCY_KEY_REUSED` (for apply, the body is compared by `mode` and `confirm_skipped_rows`) |
-| First request failed before creating anything | For example the trigger got `409 EVALUATION_IN_PROGRESS`. No row holds the key, so a retry with the same key runs normally |
+| First request failed before creating anything | For example a validation error. No row holds the key, so a retry with the same key runs normally |
 | Retention | As long as the import or run row exists |
 | Without a key | Apply is still protected by its state machine: a second apply gets `409 IMPORT_NOT_APPLICABLE`. A second manual trigger without a key starts another run once the lock is free |
 
@@ -295,7 +295,7 @@ Exceptions linked to an order use the exception list filter `order_id`.
 | POST | `/stores/{store_id}/exceptions/{exception_id}/claim` | `exceptions.work` | Assign an unassigned exception to oneself |
 | POST | `/stores/{store_id}/exceptions/{exception_id}/start` | `exceptions.work` | `→ IN_PROGRESS`; auto-assigns the actor if unassigned |
 | POST | `/stores/{store_id}/exceptions/{exception_id}/resolve` | `exceptions.work` + actor rule | `resolution_code`, `resolution_note` (≥ 10 characters); the assignee or a holder of `exceptions.manage` |
-| POST | `/stores/{store_id}/exceptions/{exception_id}/dismiss` | `exceptions.manage` | `dismissal_reason`, note |
+| POST | `/stores/{store_id}/exceptions/{exception_id}/dismiss` | `exceptions.manage` | `reason` (stored as `dismissed_reason`), `note` (≥ 10 chars) |
 | POST | `/stores/{store_id}/exceptions/{exception_id}/reopen` | `exceptions.manage` | `reason`; only the latest occurrence for its dedup key |
 | POST | `/stores/{store_id}/exceptions/{exception_id}/assign` | `exceptions.assign` | `assignee_id` (an active member with `exceptions.work`) |
 | POST | `/stores/{store_id}/exceptions/{exception_id}/unassign` | `exceptions.assign` | Clear the assignee |
