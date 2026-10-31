@@ -12,6 +12,7 @@ import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/states/empty-state";
 import { PermissionDenied } from "@/components/states/permission-denied";
 import { Button } from "@/components/ui/button";
+import { ImportLink } from "@/features/imports/import-actions";
 import { exceptionKeys, exceptionsApi } from "@/lib/api/exceptions-api";
 import { inventoryApi, inventoryKeys, type Movement } from "@/lib/api/inventory-api";
 import { formatDateTimeShort, storeMidnight, zoneGenericName } from "@/lib/format/datetime";
@@ -247,11 +248,16 @@ export function MovementsScreen() {
             />
           }
           empty={
-            <EmptyState icon={ArrowLeftRight} title="No movements yet" description="Inventory adjustment imports and shipped orders write ledger entries." />
+            <EmptyState
+              icon={ArrowLeftRight}
+              title="No movements yet"
+              description="Inventory adjustment imports and shipped orders write ledger entries."
+              action={<ImportLink type="inventory_adjustments" label="Import inventory adjustments" />}
+            />
           }
         />
         {list.data && total > 0 ? (
-          <Pagination page={params.page} pageSize={params.page_size} total={total} onPageChange={(page) => update({ page }, "push")} onPageSizeChange={(page_size) => update({ page_size })} />
+          <Pagination page={params.page} pageSize={params.page_size} total={total} onPageChange={(page) => update({ page }, "push")} onPageSizeChange={(page_size) => update({ page_size })} pageSizes={movementsList.options.pageSizes} />
         ) : null}
       </section>
     </div>

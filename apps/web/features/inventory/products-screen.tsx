@@ -13,6 +13,7 @@ import { PermissionDenied } from "@/components/states/permission-denied";
 import { HealthBadge, ProductStatusTag } from "@/components/status/status-pill";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ImportLink } from "@/features/imports/import-actions";
 import { inventoryApi, inventoryKeys, type ProductListItem } from "@/lib/api/inventory-api";
 import { formatCount, formatQuantity } from "@/lib/format/number";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
@@ -245,7 +246,14 @@ export function ProductsScreen() {
               }
             />
           }
-          empty={<EmptyState icon={Tag} title="No products yet" description="Import products.csv to create your catalog. SKUs are matched exactly." />}
+          empty={
+            <EmptyState
+              icon={Tag}
+              title="No products yet"
+              description="Import products.csv to create your catalog. SKUs are matched exactly."
+              action={<ImportLink type="products" label="Import products" />}
+            />
+          }
         />
         {list.data && total > 0 ? (
           <Pagination

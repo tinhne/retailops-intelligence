@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/states/empty-state";
 import { ErrorState } from "@/components/states/error-state";
 import { PermissionDenied } from "@/components/states/permission-denied";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ImportLink } from "@/features/imports/import-actions";
 import { storeApi, storeKeys, type Dashboard } from "@/lib/api/store-api";
 import { formatLongDate } from "@/lib/format/datetime";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
@@ -104,7 +105,12 @@ export function OverviewScreen() {
                 ? "Import products first, then inventory adjustments, orders and order items, to start detecting exceptions."
                 : "Ask an owner or manager to import data."
             }
-            action={canReadImports ? <TemplateLinks /> : undefined}
+            action={
+              <div className="flex flex-col items-center gap-3">
+                <ImportLink type="products" label="Start an import" />
+                {canReadImports ? <TemplateLinks /> : null}
+              </div>
+            }
           />
         </div>
       ) : (

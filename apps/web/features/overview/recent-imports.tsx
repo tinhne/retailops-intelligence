@@ -60,9 +60,19 @@ export function RecentImports() {
               key={item.id}
               className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b px-4 py-3 text-body last:border-b-0 md:px-5"
             >
-              <span className="min-w-0 flex-1 basis-48 truncate font-mono text-mono" title={item.original_filename}>
-                {item.original_filename}
-              </span>
+              {allHref ? (
+                <Link
+                  href={`/s/${store.id}/imports/${item.id}`}
+                  className="min-w-0 flex-1 basis-48 truncate font-mono text-mono hover:underline"
+                  title={item.original_filename}
+                >
+                  {item.original_filename}
+                </Link>
+              ) : (
+                <span className="min-w-0 flex-1 basis-48 truncate font-mono text-mono" title={item.original_filename}>
+                  {item.original_filename}
+                </span>
+              )}
               <span className="w-40 text-muted-foreground">{importTypeLabels[item.import_type]}</span>
               <ImportStatusPill status={item.status} />
               <span className="w-24 text-right tabular-nums text-muted-foreground">

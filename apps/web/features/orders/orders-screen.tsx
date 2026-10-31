@@ -16,6 +16,7 @@ import { PermissionDenied } from "@/components/states/permission-denied";
 import { AxisText, OrderStatusPill } from "@/components/status/status-pill";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ImportLink } from "@/features/imports/import-actions";
 import { ordersApi, orderKeys, type OrderListItem } from "@/lib/api/orders-api";
 import { formatDateTimeShort, formatDue, zoneGenericName } from "@/lib/format/datetime";
 import { formatCount, formatQuantity } from "@/lib/format/number";
@@ -261,7 +262,14 @@ export function OrdersScreen() {
               />
             )
           }
-          empty={<EmptyState icon={ShoppingCart} title="No orders yet" description="Orders come from CSV imports (orders.csv, then order_items.csv)." />}
+          empty={
+            <EmptyState
+              icon={ShoppingCart}
+              title="No orders yet"
+              description="Orders come from CSV imports (orders.csv, then order_items.csv)."
+              action={<ImportLink type="orders" label="Import orders" />}
+            />
+          }
         />
         {list.data && total > 0 ? (
           <Pagination

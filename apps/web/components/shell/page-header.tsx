@@ -23,7 +23,7 @@ export function PageHeader({ title, subtitle, meta, actions, className }: PageHe
         {subtitle ? <p className="text-body text-muted-foreground">{subtitle}</p> : null}
         {meta ? <div className="text-sm text-muted-foreground">{meta}</div> : null}
       </div>
-      {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+      {actions ? <div className="flex flex-wrap items-center gap-2 md:shrink-0">{actions}</div> : null}
     </div>
   );
 }
