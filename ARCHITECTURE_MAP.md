@@ -24,7 +24,7 @@ dependencies, data flows and owners. Details live in
 | orders | `apps/api/app/domains/orders/` | `apps/web/features/orders/` | `/stores/{id}/orders` | BE | API done · UI planned |
 | inventory | `apps/api/app/domains/inventory/` | `apps/web/features/inventory/` | `/stores/{id}/inventory/*` | BE | API done · UI planned |
 | imports | `apps/api/app/domains/imports/` | `apps/web/features/imports/` | `/stores/{id}/imports`, `/stores/{id}/imports/templates/{import_type}` | BE | API done · UI planned |
-| exceptions | `apps/api/app/domains/exceptions/` | `apps/web/features/exceptions/` | `/stores/{id}/exceptions`, `/stores/{id}/evaluations` | BE | API done · UI planned |
+| exceptions | `apps/api/app/domains/exceptions/` | `apps/web/features/exceptions/` | `/stores/{id}/exceptions`, `/stores/{id}/evaluations` | BE | API done · inbox and investigation UI done |
 | audit | `apps/api/app/domains/audit/` | `apps/web/features/admin/` (audit viewer) | `/stores/{id}/audit-logs` | BE | API done · UI planned |
 | ai | `apps/api/app/domains/ai/` | `apps/web/features/copilot/` | `/stores/{id}/copilot/*` | AI (backend), FE (UI) | planned (models only) |
 | analytics | `apps/api/app/domains/analytics/` | `apps/web/features/overview/` | `/stores/{id}/analytics/*` (dashboard, trends, exceptions-breakdown) | BE | API done · Overview UI done |
@@ -67,6 +67,8 @@ dependencies, data flows and owners. Details live in
 | `apps/web/proxy.ts`, `apps/web/next.config.ts` | Optimistic sign-in redirect; `/api/*` rewrite to FastAPI (ADR-0004) | T-060 | done |
 | `apps/web/styles/tokens.css`, `app/globals.css`, `components/ui/` | Design tokens, Tailwind theme mapping, restyled shadcn/ui primitives | T-060 | done |
 | `apps/web/lib/format/`, `lib/status-maps.ts`, `components/status/`, `components/data/`, `components/charts/` | Formatters, enum labels and tones, status pills, money and time atoms, KPI card, chart frame | T-061 | done |
+| `apps/web/components/data/data-table.tsx`, `list-controls.tsx` | Server-paginated table, filters, chips, search, pagination | T-062 | done |
+| `apps/web/features/exceptions/` | Inbox URL state, list, investigation sections, lifecycle actions and dialogs, timeline and notes | T-062 | done |
 | `apps/web/tests/e2e/` | Playwright critical journey | T-081 | planned |
 | `docker-compose.yml`, `infra/docker/` | `db`, `api`, `worker`, `web` (only `db` and the API image exist) | T-090 | in progress |
 | `.github/workflows/ci.yml` | Lint, types, tests, builds, dependency audit (no contract diff check yet) | T-091 | done |

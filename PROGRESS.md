@@ -148,3 +148,34 @@ add a correction entry instead.
   key reuse or the data-quality "—" rule fails the suite. Browser check against the seeded API as the
   demo viewer (Run analysis read-only) and as a manager (Run analysis completes, freshness updates),
   at 1440 and 375 px.
+
+## 2026-11-01 (UTC+7): Orchestrator: exceptions inbox and investigation (T-062)
+
+- **API (2d58630):** `due_to` filter on the exception list (due at or before an instant, time zone
+  required). Backs the inbox Due filter and the Overview's past-due link. 1 integration test.
+- **API (574cec1):** list items (and so the detail) carry `resolution_code`, `verified_at`,
+  `dismissed_reason` and `closed_at`, so the Closed view shows the four RESOLVED forms without
+  calling an unverified manual resolution a success, and when each exception closed. Dismissal time
+  comes from the latest DISMISSED event, batch-loaded per page. 1 integration test.
+- **Web, inbox (S-03):** views as link tabs with counts, URL state validated and normalised (unknown
+  values dropped with a toast), search with debounce and `/`, multi-select filters with chips, assignee
+  and due selects, sort, server pagination, stacked rows below 768 px, per-view empty states,
+  60 s refresh, and the list URL remembered for the detail breadcrumb.
+- **Web, investigation (S-04):** header with status row, assignee control (assign, reassign, claim,
+  unassign) and due-date override in the store zone; lifecycle banner per resolution form and reopen
+  reason; recommended action; priority breakdown with the PRIORITY_MODEL limitations; calculation;
+  evidence; affected orders; activity timeline (events and notes merged, newest first) with notes;
+  details with technical identifiers.
+- **Actions:** laid out from the API's `available_actions` and `blocked_actions` per the S-04 status
+  table, with IA §5 reasons (demo: read-only). Resolve, Dismiss and Reopen dialogs validate like the
+  API (closing notes need 10 non-whitespace characters). Every command sends `expected_version`;
+  `STALE_VERSION` keeps the dialog and its input, warns, and refetches. Changes made by others are
+  announced on refetch.
+- **Nav:** Exceptions is live, so the Overview's KPI cards, category rows and attention rows link to it.
+- **Spec synced:** SCREEN_SPECIFICATIONS §0.4 exception endpoints now match the API.
+- **Deferred to T-067:** sticky mobile action bar and filter sheet, queue Previous/Next, jump menu,
+  density toggle, VIEWER lifecycle explainer, evidence source links. AI panel and AI note drafts stay
+  with T-073.
+- **Tests:** web lint, typecheck and build green; vitest **120 passed**. Browser check against the seeded
+  API: acknowledge, start, resolve (with validation), the Closed view, and reopen as a manager; the
+  read-only demo viewer; 1440 and 375 px.
