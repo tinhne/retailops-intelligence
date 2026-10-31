@@ -327,7 +327,7 @@ their cell shows "—".
 | Freshness: last evaluation | `data_freshness.last_evaluation_run.{trigger, status, as_of, started_at, finished_at}` |
 | Freshness: last imports | `data_freshness.imports[].{import_type, status, applied_at}` |
 | Active exceptions | `active_exceptions.total`, `active_exceptions.by_band.{P1, P2}` |
-| Unassigned | `active_exceptions.unassigned` (secondary "2 are P1" from a `page_size=1` count query `assignee_id=unassigned&priority_band=P1&active=true`) |
+| Unassigned | `active_exceptions.unassigned` (secondary "2 are P1" from a `page_size=1` count query `assignee=unassigned&priority_band=P1`; the list returns active statuses when `status` is omitted) |
 | Past due exceptions | `active_exceptions.past_due` (active with `due_at < as_of`) |
 | Overdue orders | `orders.overdue_count` (BR-202), secondary `orders.overdue_value` labelled "gross value" |
 | Awaiting shipment | `orders.awaiting_shipment` (PAID, PROCESSING, READY_TO_SHIP) |
@@ -335,9 +335,9 @@ their cell shows "—".
 | Needs attention | `attention[]` (top 8) → `reference, title, severity, status, priority_band, priority_score, due_at, is_past_due, assignee_name` |
 | Triage count | `GET /stores/{id}/exceptions?status=OPEN&status=REOPENED&page_size=1` → `total` |
 | Active by category: count | `active_exceptions.by_category.{INVENTORY, FULFILLMENT, PAYMENT, DATA_QUALITY}` |
-| Active by category: order value at risk | `active_exceptions.exposure_by_category.{…}` = Σ `exposure_amount` of active exceptions per category. **This field is not in `DashboardOut` yet and must be added (orchestrator decision 7).** Until it exists the column is not rendered (no client-side summing). |
+| Active by category: order value at risk | `active_exceptions.exposure_by_category.{…}` = Σ `exposure_amount` of active exceptions per category (implemented 2026-11-01). Never summed client-side. `DATA_QUALITY` shows "—" because data-quality findings claim no exposure (EXCEPTION_CATALOG). |
 | Stock health | `inventory.{oversold, out_of_stock, below_reorder_point, approaching_reorder_point, healthy}` (ACTIVE products). Products with `on_hand < 0` should be left out of these classes and shown as a sixth row, "Data issue" (BR-402a). `InventoryHealthSummary` has no such count yet. Until it does, the row is not rendered, and those products appear through the Data-quality category count (`DATA_NEGATIVE_ON_HAND`). |
-| Shipments chart | `GET /stores/{id}/analytics/trends?date_from={today−29d}&date_to={today}&granularity=day` → `days[].{date, shipped_on_time, shipped_late}`, `partial_last_day` |
+| Shipments chart | `GET /stores/{id}/analytics/trends?days=30` (daily, store-local days, the last one partial) → `days[].{date, shipped_on_time, shipped_late}`, `partial_last_day` |
 | Recent imports | `GET /stores/{id}/imports?page_size=3` |
 
 ### Actions
@@ -347,7 +347,8 @@ their cell shows "—".
 | Run analysis | `evaluations.run` | Missing: "You need the Run analysis permission. Ask an owner or manager." Demo: "The public demo is read-only." While a run is in progress: "An analysis is already running." |
 | KPI card links, list rows, category rows, health rows | the target route's permission | Without it, the card renders as plain text (not a link) |
 
-**KPI links:** Active → `/exceptions?view=active`. Unassigned → `/exceptions?view=unassigned`.
+**KPI links** (rendered only once the target page exists and the role may open it; until then the card is plain text):
+Active → `/exceptions?view=active`. Unassigned → `/exceptions?view=unassigned`.
 Past due → `/exceptions?view=active&due=overdue&sort=due_at`. Overdue orders →
 `/orders?overdue=true&sort=ship_by`. Awaiting shipment → `/orders?status=PAID&status=PROCESSING&status=READY_TO_SHIP`.
 On-time → `/analytics` (P1) or no link in P0. Category row → `/exceptions?view=active&category={CATEGORY}`.

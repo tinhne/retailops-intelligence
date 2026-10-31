@@ -56,13 +56,14 @@ Agent roles: **ORCH** orchestrator · **PM** product/BA · **ARCH** architect ·
 | T-055 | P0 | Scheduled evaluation worker with Postgres advisory lock per store | T-053 | BE | DONE | No concurrent runs per store. Each run is recorded | `app/workers/` | pytest plus a manual run |
 | T-056 | P0 | Demo dataset generator (relative to now, internally consistent) plus `make seed` / demo reset | T-053 | BE | IN_PROGRESS | Seed produces each exception type at least once. Rerunning is deterministic for a fixed seed | `scripts/`, `app/demo/` | pytest snapshot of counts |
 | T-057 | P0 | Analytics: dashboard summary, trends, exceptions by type/severity, fulfillment performance | T-053 | BE | DONE | Numbers reconcile with the underlying tables in tests | `domains/analytics` | test_api_analytics.py |
+| T-058 | P1 | Stock health: classify `on_hand < 0` as a data issue instead of an availability class, and expose a data-issue count in `InventoryHealthSummary` (BR-402a). Today such products count as Oversold on the dashboard and in health filters | T-051, T-057 | BE | READY | Health classes exclude negative on-hand everywhere (positions, products, dashboard). Tests reference BR-402a | `domains/inventory/queries.py`, `domains/analytics` | pytest |
 
 ## M6: Frontend product
 
 | ID | Pri | Description | Deps | Agent | Status | Acceptance criteria | Files | Verification |
 |---|---|---|---|---|---|---|---|---|
 | T-060 | P0 | Web scaffold: Next.js, Tailwind tokens, shadcn/ui, app shell and navigation, login, `/api` proxy, generated contracts, query client | T-030, T-042 | FE | DONE | Login works against the API. The shell is responsive. Lint, typecheck, and build pass | `apps/web/*`, `packages/contracts` | 2026-11-01: lint, typecheck, `next build` green; vitest 57 passed; browser check of password and demo sign-in, `next` redirect, session expiry, sign-out, unknown store, 375/768/1280 px layouts |
-| T-061 | P0 | Overview dashboard (prioritised attention list, KPIs from real data) | T-057, T-060 | FE | READY | All states. No hard-coded numbers | `apps/web/app/(app)/overview` | vitest plus manual check |
+| T-061 | P0 | Overview dashboard (prioritised attention list, KPIs from real data) | T-057, T-060 | FE | DONE | All states. No hard-coded numbers | `apps/web/features/overview/` | 2026-11-01: vitest 90 passed (screen states, BR-404 per-category exposure, idempotent Run analysis); browser check as demo viewer and manager at 1440 and 375 px |
 | T-062 | P0 | Exception inbox and investigation detail (evidence, calculation, priority breakdown, history, notes, actions) | T-054, T-060 | FE | READY | Full lifecycle from the UI. Actions are hidden or disabled per permission, with a reason | `features/exceptions` | Playwright |
 | T-063 | P0 | Orders list and detail (axes, timeline, linked exceptions) | T-050, T-060 | FE | READY | Server-side filters and pagination | `features/orders` | vitest |
 | T-064 | P0 | Products, inventory positions (health), movement ledger | T-051, T-060 | FE | READY | Health badges match the backend | `features/inventory` | vitest |

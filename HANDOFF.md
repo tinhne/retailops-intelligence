@@ -16,17 +16,23 @@ worker (T-055). `make check` gives 627 tests green. The GitHub repo exists and i
 **Web foundation (T-060, 2026-11-01):** tokens and theme, restyled shadcn/ui primitives, API
 client (CSRF header, `ApiError`), QueryClient policy (retries, 401 → sign-in), `/api` rewrite,
 `proxy.ts` sign-in redirect, S-01 sign-in and `/demo`, session gate, store resolution and the app
-shell. 57 vitest tests. See `PROJECT_STATE.md`.
+shell. **Overview (T-061):** the S-02 dashboard with formatters, status maps and atoms, KPI cards,
+chart frame and Run analysis; the dashboard API gained `exposure_by_category`. 90 vitest tests.
+See `PROJECT_STATE.md`.
 
 ## 3. Currently being implemented
-Nothing is in flight. The working tree is clean. (The previous handoff described uncommitted
+Nothing is in flight. The working tree is clean. (An earlier handoff described uncommitted
 frontend and AI work; it was not in the tree on 2026-11-01, so T-071..T-074 start from scratch.)
-Next up: the Overview dashboard (T-061), which replaces the header-only Overview page that exists
-today. T-062..T-065 and T-071 are also READY.
+Next up: the exception inbox and investigation (T-062). T-063..T-065, T-071 and T-058 are also READY.
 
 **Notes for the next frontend task:**
-- The sidebar lists only built pages. Flip `ready: true` in `apps/web/components/shell/nav-config.ts`
-  when a page lands.
+- The sidebar lists only built pages, and `sectionHref` returns a link only for built pages the role
+  may open. Flip `ready: true` in `apps/web/components/shell/nav-config.ts` when a page lands; the
+  Overview's KPI cards, category rows and health rows then become links automatically.
+- Reuse what T-061 added: `lib/format/*`, `lib/status-maps.ts`, `components/status/status-pill.tsx`,
+  `components/data/values.tsx` (Money, DateTime, DueLabel), `components/actions/action-button.tsx`,
+  `components/states/empty-state.tsx`, and `test/fetch.ts` `routeFetch` plus `test/render.tsx`
+  `renderInStore` for screen tests.
 - Every page component calls `useStore()` and renders `PermissionDenied` when its route
   permission is missing (see `features/overview/overview-screen.tsx`). Query keys start with
   `["store", storeId, …]` (IA §7).

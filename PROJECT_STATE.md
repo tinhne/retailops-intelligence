@@ -6,10 +6,10 @@
 |---|---|
 | Project | RetailOps Intelligence: E-commerce Operations & Decision Intelligence Platform |
 | Owner | Lê Văn Trung Tính (GitHub `tinhne`) |
-| Current milestone | **M6 frontend: foundation done (T-060).** Next: T-061 Overview, then T-062..T-065, M7 AI |
-| Current phase | Backend core complete. Web foundation, sign-in and app shell built and verified. Data screens not built |
-| Overall completion | M0–M3 documented and tagged. Backend M4–M5 implemented and tested. Web shell and sign-in done. No data screens, no copilot, not deployed |
-| Last verified commit | `main` after merging `feat/web-foundation`: backend `make check` green (627 tests), web lint, typecheck, 57 tests and build green |
+| Current milestone | **M6 frontend: foundation and Overview done (T-060, T-061).** Next: T-062 exceptions, then T-063..T-065, M7 AI |
+| Current phase | Backend core complete. Web sign-in, app shell and Overview dashboard built and verified. Other data screens not built |
+| Overall completion | M0–M3 documented and tagged. Backend M4–M5 implemented and tested. Web shell, sign-in and Overview done. Exceptions, orders, inventory and imports screens, copilot and deployment not done |
+| Last verified commit | `main` after merging `feat/overview-dashboard`: backend `make check` green (627 tests), web lint, typecheck, 90 tests and build green |
 | Remote | https://github.com/tinhne/retailops-intelligence (public). The first CI run passed |
 | Architecture version | v1 (modular monolith; `docs/domain/*`, ADR-0001..0013) |
 | Last update | 2026-11-01 (UTC+7) |
@@ -36,16 +36,20 @@
 - **Web foundation (T-060):** tokens and Tailwind theme, restyled shadcn/ui primitives, API client
   (CSRF header, `ApiError`), QueryClient policy (retries; 401 → sign-in), `/api` rewrite to FastAPI,
   `proxy.ts` optimistic sign-in redirect, S-01 sign-in and `/demo`, session gate, store resolution,
-  app shell (demo banner, sidebar with rail and drawer, account menu, offline notice). The Overview
-  route shows only its header until T-061.
+  app shell (demo banner, sidebar with rail and drawer, account menu, offline notice).
+- **Overview (T-061):** S-02 with freshness strip, six KPIs, Needs attention, value at risk per
+  category (never totalled, BR-404), stock health, shipments chart with a table view, recent imports,
+  and Run analysis (idempotent, gated for the demo). Dashboard API gained `exposure_by_category`.
+  Links stay plain text until their target pages exist.
 - **Delivery:** API Dockerfile (non-root, builds), CI workflow (passed on GitHub), OpenAPI → TS contracts.
 
 ## In progress / next
 
 | Task | Notes |
 |---|---|
-| T-061 Overview dashboard | READY. Replace the header-only page with S-02 (KPIs, attention list, trends) |
-| T-062..T-065 Frontend screens | READY. Flip `ready: true` in `components/shell/nav-config.ts` as each page lands |
+| T-062 Exceptions inbox and investigation | READY. Next up. Then flip `ready: true` for exceptions so Overview links activate |
+| T-063..T-065 Frontend screens | READY. Flip `ready: true` in `components/shell/nav-config.ts` as each page lands |
+| T-058 Stock health data issue | READY (P1, backend). Negative on-hand products count as Oversold today (BR-402a) |
 | T-071..T-073 AI copilot | T-071 READY. Needs migration 0003 (session-scoped demo conversations, tool-call result refs, cache key) |
 | T-056 Demo seed history | Add exception history (assigned, in progress, resolved and verified, reopened, dismissed) via the lifecycle service |
 | T-090 Compose stack | Add `api`, `worker`, `web` services and the web Dockerfile. The web image needs `API_INTERNAL_URL` at build time |
@@ -68,6 +72,10 @@
   cannot send without a CORS preflight. Decide in the security review: implement it or amend the ADR.
 - **Doc/code gap (for T-062):** SCREEN_SPECIFICATIONS §0.4 lists `/claim`, `/unassign` and
   `/set-due-date` exception commands. The API has `/assign`, `/start` and `/due-date`, and no claim or unassign.
+- Products with `on_hand < 0` are classified by `available` and count as Oversold in stock health
+  (dashboard, positions, product filters). BR-402a calls for a separate "Data issue" state (T-058).
+- The demo store has no CSV imports (the seed writes rows directly), so the Overview says "No CSV
+  imports yet" and the recent imports list is empty for the demo.
 - The demo banner and `/demo` page omit the spec's "periodically reset" wording until the reset job exists (T-094).
 - Behind the Next.js proxy, the API sees the proxy's IP unless `TRUST_PROXY_HEADERS=true`, so the demo
   sign-in limiter would be shared by all visitors. Set it in the deployed configuration (T-090, T-093).
@@ -75,10 +83,11 @@
 ## Latest test results
 
 - `make check` (2026-11-01, after the contracts change): ruff OK, ruff format OK, mypy --strict OK, pytest **627 passed**.
-- Web (2026-11-01): `pnpm --filter @retailops/web lint`, `typecheck`, `build` green; vitest **57 passed**.
+- Web (2026-11-01, after T-061): `pnpm --filter @retailops/web lint`, `typecheck`, `build` green; vitest **90 passed**.
   `pnpm audit --prod --audit-level high`: no known vulnerabilities.
 - Browser check against the seeded local API: password and demo sign-in, `next` redirect, invalid
   credentials, session expiry, sign-out, unknown store, and the 375, 768 and 1280 px layouts.
+  Overview as demo viewer and as manager (Run analysis), at 1440 and 375 px.
 - GitHub Actions run 41227323682 (5e24711, first run with the web foundation): success. API, web,
   dependency audit and Docker image jobs all passed.
 
@@ -90,8 +99,8 @@
 
 ## Next three highest-priority actions
 
-1. Overview dashboard (T-061), then the exception inbox and investigation (T-062), built from
-   `docs/design/*` against `packages/contracts`.
+1. Exception inbox and investigation (T-062), built from `docs/design/*` against `packages/contracts`,
+   then flip the nav `ready` flag so the Overview links activate.
 2. Orders, products and inventory, and imports screens (T-063..T-065).
 3. Compose stack with the web image (T-090) and demo exception history (T-056), then the AI copilot
    (T-071..T-073).
