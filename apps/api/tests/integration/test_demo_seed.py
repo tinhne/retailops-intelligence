@@ -1,12 +1,14 @@
 """Demo dataset generator (T-056): engineered scenarios and internal consistency."""
 
 from datetime import UTC, datetime
+from decimal import Decimal
 
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.demo.seed import seed_demo
+from app.domains.analytics import queries as analytics_queries
 from app.domains.catalog.models import Product
 from app.domains.identity.models import Membership
 from app.domains.identity.permissions import Role
@@ -43,6 +45,12 @@ def test_seed_is_consistent_and_engineers_every_inventory_scenario(db: Session) 
         assert 0 < on_hand - reserved <= rop
     (negative,) = scenarios["DATA_NEGATIVE_ON_HAND"]
     assert _balance(db, summary.store_id, negative)[0] < 0
+    # BR-402a: the negative product is a data issue, not one of the oversold products.
+    health = analytics_queries.active_product_health_counts(
+        db, summary.store_id, factor=Decimal("1.25")
+    )
+    assert health.get("DATA_ISSUE") == 1
+    assert health.get("OVERSOLD") == len(scenarios["INVENTORY_OVERSOLD"])
     for key in (
         "ORDER_FULFILLMENT_OVERDUE",
         "ORDER_STALLED_AFTER_PAYMENT",

@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { ExceptionStatusPill, PriorityIndicator, SeverityBadge } from "./status-pill";
+import { ExceptionStatusPill, HealthBadge, PriorityIndicator, SeverityBadge } from "./status-pill";
 
 describe("status atoms (DESIGN_SYSTEM §3.5, §12)", () => {
   it("names severity with its dimension and marks only Critical as solid", () => {
@@ -22,6 +22,17 @@ describe("status atoms (DESIGN_SYSTEM §3.5, §12)", () => {
     const { container } = render(<ExceptionStatusPill status="RESOLVED" {...props} />);
     expect(screen.getByText(label)).toBeInTheDocument();
     expect(container.firstElementChild).toHaveClass(toneClass);
+  });
+
+  it("shows the API's data-issue class with the on-hand figure in its tooltip (BR-402a)", () => {
+    const { container, rerender } = render(<HealthBadge health="DATA_ISSUE" onHand={-4} />);
+    expect(container.textContent).toBe("Stock: Data issue");
+    expect(container.firstElementChild).toHaveAttribute("title", expect.stringContaining("On hand is negative (-4)"));
+    rerender(<HealthBadge health={null} onHand={-4} />);
+    // Health null means an inactive product with valid stock: the badge never re-derives it.
+    expect(container.textContent).toBe("Stock: Not tracked");
+    rerender(<HealthBadge health="OVERSOLD" onHand={2} />);
+    expect(container.textContent).toBe("Stock: Oversold");
   });
 
   it("reads priority as band and score, with decorative bars", () => {

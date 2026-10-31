@@ -137,7 +137,11 @@ benchmark in T-053); a cursor-based list is the fallback if it is not.
 | `IMPORT_SKIPPED_ROWS_NOT_CONFIRMED` | 422 | Valid-rows-only apply without the matching skipped-row count |
 | `IDEMPOTENCY_KEY_REUSED` | 422 | Key already used for a different resource or with a different body |
 | `IDEMPOTENT_REQUEST_IN_PROGRESS` | 409 | The first request with this key is still running |
-| `LAST_OWNER` | 409 | Demoting or deactivating the last OWNER |
+| `LAST_OWNER` | 409 | Demoting or deactivating the last active OWNER |
+| `MEMBER_EXISTS` | 409 | Adding a member whose email is already a member of the organization |
+| `EMAIL_IN_USE` | 409 | Adding a member whose email has an account in another organization (attaching existing accounts is open question O-35) |
+| `MEMBER_IN_OTHER_ORGANIZATION` | 409 | Deactivating or reactivating an account that also belongs to another organization (`is_active` is per account) |
+| `OWN_MEMBERSHIP` | 403 | Changing your own role or status (ROLE_AND_PERMISSION_WORKFLOW §8.2) |
 | `INTERNAL_ERROR` | 500 | Unexpected error |
 
 CSV row-level issue codes (`UNKNOWN_SKU`, `ORDER_TRANSITION_NOT_ALLOWED`, …) are **data**, returned in
@@ -238,9 +242,9 @@ organization. All mutating routes require the CSRF header.
 | GET | `/stores/{store_id}` | member | Store name, code, currency, time zone, demo flag |
 | GET | `/stores/{store_id}/settings` | `settings.read` | Store settings (BUSINESS_RULES §7) |
 | PATCH | `/stores/{store_id}/settings` | `settings.manage` | Update thresholds, weights, evaluation interval; validated and audited |
-| GET | `/organizations/{organization_id}/members` | `users.read` | Members with role and status |
-| POST | `/organizations/{organization_id}/members` | `users.manage` | Add a member; the onboarding flow is defined by the role and permission workflow doc (T-010) |
-| PATCH | `/organizations/{organization_id}/members/{membership_id}` | `users.manage` | Change role or deactivate; last-OWNER guard; deactivation revokes sessions |
+| GET | `/organizations/{organization_id}/members` | `users.read` | Members with email, role, `status` (`ACTIVE`, `DEACTIVATED`), `joined_at`, `last_login_at`; `{items}` sorted by name, no paging |
+| POST | `/organizations/{organization_id}/members` | `users.manage` | Body `email`, `full_name`, `role`. Creates the account (no email delivery, ROLE_AND_PERMISSION_WORKFLOW §8.1) and returns 201 `{member, temporary_password}`, the password shown once; `409 MEMBER_EXISTS` / `EMAIL_IN_USE`. Audited as `user.create` |
+| PATCH | `/organizations/{organization_id}/members/{membership_id}` | `users.manage` | Body `role` and/or `status`. Last-OWNER guard; not your own membership (403 `OWN_MEMBERSHIP`); deactivation revokes every session. Audited as `user.role_change`, `user.deactivate` (+ `auth.session_revoked`), `user.reactivate` |
 
 ### 12.2 Catalog
 

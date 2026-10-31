@@ -150,7 +150,8 @@ def test_inactive_products_are_never_classified() -> None:
 
 
 def test_negative_on_hand_suppresses_every_inventory_rule() -> None:
-    """Orchestrator decision: on_hand < 0 is invalid input, only DQ-NEGATIVE-ON-HAND@1 fires."""
+    """BR-402a: on_hand < 0 is invalid input, only DQ-NEGATIVE-ON-HAND@1 fires. Available is −3
+    here, which would otherwise be INV-OVERSOLD@1."""
     p = facts_product("SKU-A", on_hand=-1, reserved=2, reorder_point=10)
     snap = snapshot(
         products=[p],

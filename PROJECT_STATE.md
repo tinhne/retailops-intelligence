@@ -110,8 +110,8 @@
   include inactive), the ledger filtered from a product; 1440 and 375 px with no sideways page scroll.
   Imports as manager: upload, preview, strict block, valid-rows-only apply of a no-change test file,
   duplicate-file warning, discard, rejected file; as the demo viewer; 1440 and 375 px.
-- GitHub Actions run 41240705536 (products and inventory, T-064, on 54bcb6c): success. API, web,
-  dependency audit and Docker image jobs all passed.
+- GitHub Actions run 41249634639 (imports, T-065, on f956f88): success. API, web, dependency audit
+  and Docker image jobs all passed.
 
 ## Owner decisions log
 

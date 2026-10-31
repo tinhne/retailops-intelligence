@@ -30,7 +30,9 @@ router = APIRouter(prefix="/stores/{store_id}/inventory", tags=["inventory"])
 @router.get("/positions", response_model=Page[InventoryPositionOut])
 def list_positions(
     q: str | None = Query(None, max_length=100, description="Substring of SKU or name."),
-    health: list[StockHealth] | None = Query(None, description="Repeatable."),
+    health: list[StockHealth] | None = Query(
+        None, description="Repeatable. DATA_ISSUE selects products with on_hand < 0 (BR-402a)."
+    ),
     category: str | None = Query(None, max_length=100),
     include_inactive: bool = Query(False, description="Include DRAFT and ARCHIVED products."),
     sort: PositionSort = "available",

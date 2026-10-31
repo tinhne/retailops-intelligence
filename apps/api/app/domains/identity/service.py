@@ -1,6 +1,7 @@
 """Authentication, sessions and store access resolution."""
 
 import uuid
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -33,6 +34,26 @@ class StoreContext:
     @property
     def organization_id(self) -> uuid.UUID:
         return self.store.organization_id
+
+    def can(self, permission: Permission) -> bool:
+        return permission in self.permissions
+
+
+@dataclass(frozen=True)
+class OrganizationContext:
+    """Resolved access context for an organization-scoped request (members, BR-002)."""
+
+    user: User
+    membership: Membership
+    permissions: frozenset[Permission]
+
+    @property
+    def organization_id(self) -> uuid.UUID:
+        return self.membership.organization_id
+
+    @property
+    def role(self) -> Role:
+        return self.membership.role
 
     def can(self, permission: Permission) -> bool:
         return permission in self.permissions
@@ -108,6 +129,32 @@ def revoke_session(db: Session, session: UserSession, *, now: datetime) -> None:
     session.revoked_at = now
 
 
+def revoke_user_sessions(db: Session, user_id: uuid.UUID, *, now: datetime) -> int:
+    """Revoke every live session of a user (deactivation, ROLE_AND_PERMISSION_WORKFLOW §8.3).
+
+    The next request with any of those cookies gets 401. Returns how many sessions were revoked.
+    """
+    sessions = db.scalars(
+        select(UserSession).where(
+            UserSession.user_id == user_id,
+            UserSession.revoked_at.is_(None),
+            UserSession.expires_at > now,
+        )
+    ).all()
+    for session in sessions:
+        session.revoked_at = now
+    return len(sessions)
+
+
+def user_names(db: Session, user_ids: Iterable[uuid.UUID]) -> dict[uuid.UUID, str]:
+    """Full names for user ids (no emails), for labelling actors in other modules' views."""
+    ids = set(user_ids)
+    if not ids:
+        return {}
+    rows = db.execute(select(User.id, User.full_name).where(User.id.in_(ids))).all()
+    return {user_id: full_name for user_id, full_name in rows}
+
+
 def memberships_for(db: Session, user_id: uuid.UUID) -> list[Membership]:
     stmt = (
         select(Membership)
@@ -133,3 +180,22 @@ def store_context(db: Session, user: User, store_id: uuid.UUID) -> StoreContext:
         raise NotFoundError("Store not found.")
     store, role = row
     return StoreContext(user=user, store=store, role=role, permissions=permissions_for(role))
+
+
+def organization_context(
+    db: Session, user: User, organization_id: uuid.UUID
+) -> OrganizationContext:
+    """Resolve the caller's membership in an organization.
+
+    An organization the caller does not belong to is reported as 404, not 403 (BR-003).
+    """
+    membership = db.scalar(
+        select(Membership).where(
+            Membership.organization_id == organization_id, Membership.user_id == user.id
+        )
+    )
+    if membership is None:
+        raise NotFoundError("Organization not found.")
+    return OrganizationContext(
+        user=user, membership=membership, permissions=permissions_for(membership.role)
+    )

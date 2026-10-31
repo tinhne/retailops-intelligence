@@ -29,6 +29,7 @@ from app.domains.exceptions.models import (
 from app.domains.identity.models import User
 from app.domains.identity.permissions import Permission, Role
 from app.domains.imports.models import ImportStatus, ImportType
+from app.domains.inventory.models import MovementType
 from app.domains.orders.models import Order, OrderStatus, PaymentStatus
 from tests.factories import Tenant, create_tenant, create_user, login
 from tests.factories_commerce import (
@@ -40,6 +41,7 @@ from tests.factories_commerce import (
     create_order,
     create_product,
     freeze_now,
+    move_stock,
     strip_permission,
 )
 
@@ -250,6 +252,7 @@ def test_dashboard_numbers_reconcile_with_seeded_rows(client: TestClient, store:
         "below_reorder_point": 1,
         "approaching_reorder_point": 1,
         "healthy": 1,
+        "data_issue": 0,
     }
     today = body["sales_today"]
     assert today["window"] == {
@@ -278,6 +281,43 @@ def test_dashboard_numbers_reconcile_with_seeded_rows(client: TestClient, store:
     assert freshness["last_evaluation_run"]["started_at"] == "2026-11-03T11:01:00Z"
     orders_import = next(i for i in freshness["imports"] if i["import_type"] == "orders")
     assert orders_import["applied_at"] == "2026-11-03T11:00:00Z"
+
+
+def test_br402a_negative_on_hand_counts_as_data_issue_not_oversold(
+    client: TestClient, db: Session, store: Store
+) -> None:
+    """BR-402a: ACTIVE products with on_hand < 0 leave the availability classes for data_issue."""
+    tenant = store.tenant
+    negative = create_product(db, tenant, "N-NEGATIVE", reorder_point=5)
+    reserved = create_product(db, tenant, "N-NEGATIVE-RESERVED")
+    archived = create_product(db, tenant, "N-ARCHIVED", status=ProductStatus.ARCHIVED)
+    for product in (negative, reserved, archived):
+        count_stock(db, tenant, product, 1, utc(9, 1, 12))
+        move_stock(db, tenant, product, MovementType.DAMAGE, 3, utc(10, 1, 12))  # on hand −2
+    db.commit()
+    create_order(
+        db,
+        tenant,
+        "T-20",
+        status=OrderStatus.PAID,
+        lines=[Line(reserved, 2)],
+        placed_at=utc(11, 2, 16),
+    )
+
+    inventory = _get(client, store, "/dashboard")["inventory"]
+
+    # Q stays the only oversold product; the archived one is outside the ACTIVE summary.
+    assert inventory == {
+        "active_products": 8,
+        "oversold": 1,
+        "out_of_stock": 2,
+        "below_reorder_point": 1,
+        "approaching_reorder_point": 1,
+        "healthy": 1,
+        "data_issue": 2,
+    }
+    classes = sum(v for k, v in inventory.items() if k != "active_products")
+    assert classes == inventory["active_products"]  # disjoint classes
 
 
 def test_dashboard_is_deterministic_for_a_fixed_as_of(client: TestClient, store: Store) -> None:

@@ -139,12 +139,12 @@ export function AxisText({ axis, value }: { axis: "payment"; value: PaymentStatu
   );
 }
 
-/** Stock health, with negative on-hand shown as a data issue whatever the health says (C-13). */
-export function HealthBadge({ health, onHand, size }: { health: StockHealth | null; onHand: number; size?: "sm" | "md" }) {
-  const value = displayHealth(health, onHand);
+/** Stock health as the API classifies it; `onHand` only adds the figure to the data-issue tooltip (C-13). */
+export function HealthBadge({ health, onHand, size }: { health: StockHealth | null; onHand?: number; size?: "sm" | "md" }) {
+  const value = displayHealth(health);
   const meta = displayHealthMeta[value];
   const title =
-    value === "DATA_ISSUE"
+    value === "DATA_ISSUE" && onHand !== undefined
       ? `On hand is negative (${onHand}). That is physically impossible, so stock health can't be computed until a cycle count corrects it (BR-402a).`
       : meta.description;
   return (

@@ -33,7 +33,13 @@ def list_products(
     status: ProductStatus | None = None,
     category: str | None = Query(None, max_length=100),
     supplier_id: uuid.UUID | None = None,
-    health: list[StockHealth] | None = Query(None, description="Repeatable. ACTIVE products."),
+    health: list[StockHealth] | None = Query(
+        None,
+        description=(
+            "Repeatable. The availability classes cover ACTIVE products; DATA_ISSUE covers "
+            "on_hand < 0 for any status (BR-402a)."
+        ),
+    ),
     sort: ProductSort = "sku",
     paging: PageParams = Depends(page_params),
     ctx: StoreContext = Depends(require_permission(Permission.CATALOG_READ)),

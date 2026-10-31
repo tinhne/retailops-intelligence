@@ -1,7 +1,8 @@
 """Catalog read API: products with stock and health, suppliers, categories (T-050 read side).
 
 Stock is produced by the real ledger and reservation code, so the expected numbers below follow
-BR-101 (available), §2.5 (health), BR-130 (shipment after the latest count) and BR-150..152.
+BR-101 (available), §2.5 and BR-402a (health), BR-130 (shipment after the latest count) and
+BR-150..152.
 """
 
 from dataclasses import dataclass
@@ -224,6 +225,35 @@ def test_health_filter_keeps_pagination_totals_exact(client: TestClient, catalog
     assert (first["total"], second["total"], third["total"]) == (2, 2, 2)
     assert _skus(first) + _skus(second) == ["BOARD-03", "NOBAL-07"]
     assert third["items"] == []
+
+
+def test_br402a_negative_on_hand_is_a_data_issue_in_list_filter_and_detail(
+    client: TestClient, db: Session, catalog: Catalog
+) -> None:
+    """BR-402a: on_hand < 0 is invalid input. The product is DATA_ISSUE, not OVERSOLD, in the
+    list, the health filter and the detail, for any status (like DATA_NEGATIVE_ON_HAND)."""
+    tenant = catalog.tenant
+    bowl = create_product(db, tenant, "BOWL-08", name="Serving Bowl", reorder_point=2)
+    gone = create_product(db, tenant, "GONE-09", status=ProductStatus.ARCHIVED)
+    count_stock(db, tenant, bowl, 0, NOW - 5 * DAY)
+    move_stock(db, tenant, bowl, MovementType.SHRINKAGE, 4, NOW - 2 * DAY)  # on hand −4
+    count_stock(db, tenant, gone, 0, NOW - 5 * DAY)
+    move_stock(db, tenant, gone, MovementType.DAMAGE, 1, NOW - 2 * DAY)  # on hand −1
+    db.commit()
+    store_id = tenant.store.id
+
+    rows = {item["sku"]: item for item in _products(client, store_id)["items"]}
+    assert (rows["BOWL-08"]["available"], rows["BOWL-08"]["health"]) == (-4, "DATA_ISSUE")
+    assert (rows["GONE-09"]["status"], rows["GONE-09"]["health"]) == ("ARCHIVED", "DATA_ISSUE")
+    assert rows["PAN-02"]["health"] == "OVERSOLD"  # on hand 2, reserved 5: a real oversell
+
+    assert _skus(_products(client, store_id, health="OVERSOLD")) == ["PAN-02"]
+    assert _skus(_products(client, store_id, health="DATA_ISSUE")) == ["BOWL-08", "GONE-09"]
+    active = _products(client, store_id, health="DATA_ISSUE", status="ACTIVE")
+    assert _skus(active) == ["BOWL-08"]
+
+    detail = client.get(f"/api/v1/stores/{store_id}/products/{bowl.id}").json()
+    assert (detail["stock"]["on_hand"], detail["health"]) == (-4, "DATA_ISSUE")
 
 
 def test_product_sorts_follow_the_allowlist(client: TestClient, catalog: Catalog) -> None:

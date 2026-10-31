@@ -256,10 +256,15 @@ def order_snapshot(db: Session, store_id: uuid.UUID, *, as_of: datetime) -> Orde
 def active_product_health_counts(
     db: Session, store_id: uuid.UUID, *, factor: Decimal
 ) -> dict[str, int]:
-    """ACTIVE products grouped by health computed from current balances (§2.5)."""
+    """ACTIVE products grouped by health computed from current balances (§2.5).
+
+    Products with on_hand < 0 group under DATA_ISSUE, never under an availability class (BR-402a).
+    """
     balance = inventory_queries.balance_subquery(store_id)
-    _, _, available = inventory_queries.stock_columns(balance)
-    health = inventory_queries.health_sql(available, Product.reorder_point, Product.status, factor)
+    on_hand, _, available = inventory_queries.stock_columns(balance)
+    health = inventory_queries.health_sql(
+        on_hand, available, Product.reorder_point, Product.status, factor
+    )
     rows = db.execute(
         select(health, func.count())
         .select_from(Product)

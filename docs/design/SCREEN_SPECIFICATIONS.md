@@ -136,7 +136,7 @@ exist.
 | Store | `GET /stores/{id}` → `{store, settings, data_freshness}` | implemented | Shell, S-16 |
 | Settings | `GET /stores/{id}/settings`, `PATCH /stores/{id}/settings` (partial update) | implemented | S-16 |
 | Store members (assignee picker) | `GET /stores/{id}/members` → `{items[] {id, full_name, role, can_work_exceptions}}`, permission `exceptions.read`, no emails | implemented | S-03 (assignee filter), S-04 (assign) |
-| Organization members | `GET /organizations/{org_id}/members` (`users.read`, with email and status). `PATCH …/members/{membership_id} {role}` (`users.manage`, P1, `409 LAST_OWNER`) | API_CONVENTIONS | S-17 |
+| Organization members | `GET /organizations/{org_id}/members` (`users.read`) → `{items[] {id (membership), user_id, full_name, email, role, status: ACTIVE \| DEACTIVATED, joined_at, last_login_at}}`, sorted by name, no paging. `POST …/members {email, full_name, role}` (`users.manage`) → `201 {member, temporary_password}`; `409 MEMBER_EXISTS` (already a member here), `409 EMAIL_IN_USE` (account in another organization, O-35). `PATCH …/members/{membership_id} {role?, status?}` (`users.manage`) → the member; `409 LAST_OWNER`, `409 MEMBER_IN_OTHER_ORGANIZATION` (status of an account shared with another organization), `403 OWN_MEMBERSHIP`. Deactivation revokes every session. Other organizations answer 404 | implemented | S-17 |
 | Dashboard | `GET /stores/{id}/analytics/dashboard` → `DashboardOut` (see S-02 Data) | implemented | S-02, sidebar badge |
 | Trends | `GET /stores/{id}/analytics/trends?date_from&date_to&granularity` → `days[] {date, orders_placed, units, gmv, exceptions_detected, exceptions_resolved, shipped_on_time, shipped_late}`, `partial_last_day` | implemented | S-02 chart, S-20 |
 | Exception breakdown | `GET /stores/{id}/analytics/exceptions-breakdown` → per type: active, detected, resolved, median hours to resolve | implemented | S-20, S-22 |
@@ -144,12 +144,12 @@ exist.
 | Exception commands | `POST …/{eid}/acknowledge`, `/start`, `/resolve {resolution_code, resolution_note}`, `/dismiss {dismissal_reason, note}`, `/reopen {reason}`, `/assign {assignee_id}` (claim = assign yourself, unassign = `assignee_id: null`), `PATCH …/{eid}/due-date {due_at, note?}`. Every body also carries `expected_version`. A mismatch returns `409 STALE_VERSION`. The detail response lists `available_actions` and `blocked_actions {action, code, reason}` for the caller | implemented | S-04 |
 | Evaluation runs | `POST /stores/{id}/evaluations` ("Run analysis", synchronous, `Idempotency-Key`, returns the run. Status `SKIPPED` when another run holds the store lock), `GET …/evaluations`, `GET …/evaluations/{rid}`. Statuses `RUNNING`, `SUCCEEDED`, `FAILED`, `SKIPPED` | implemented | S-02, S-03, S-13, S-21 |
 | Orders | `GET /stores/{id}/orders` (filters `q` = order number, `status`, `payment_status`, `fulfillment_status`, `channel`, `placed_from`, `placed_to`, `overdue`. Items include `line_count`, `is_overdue`), `GET …/orders/{oid}` (lines with reservation, amounts with `expected_total`, `difference`, `has_total_mismatch`, events with `import_id` and `import_filename`, linked exceptions with `reference`) | implemented | S-05, S-06 |
-| Products | `GET /stores/{id}/products` (filters `q` = SKU or name substring, `status`, `category`, `supplier_id`, `health` repeatable. Items include `on_hand`, `reserved`, `available`, `health`), `GET …/products/{pid}` (stock snapshot, `health`, `approaching_threshold`, `avg_daily_units` and `days_of_cover` as `Estimate {value, basis, window_days}`, `active_exception_count`), `GET /stores/{id}/suppliers`, `GET /stores/{id}/categories` | implemented | S-07, S-08 |
-| Inventory | `GET /stores/{id}/inventory/positions` (filters `health`, `category`, `q`), `GET …/inventory/movements` (filters `product_id`, `movement_type`, `source`, `import_id`, `from`, `to`; rows carry `import_filename` and, for shipments, the `order_id` behind the `order_item:{id}` reference, both derived on read), `GET …/inventory/reconciliation` (P1) | implemented | S-08, S-09, S-10 |
+| Products | `GET /stores/{id}/products` (filters `q` = SKU or name substring, `status`, `category`, `supplier_id`, `health` repeatable. Items include `on_hand`, `reserved`, `available`, `health`; `health` is `DATA_ISSUE` when `on_hand < 0`, any status, BR-402a), `GET …/products/{pid}` (stock snapshot, `health`, `approaching_threshold`, `avg_daily_units` and `days_of_cover` as `Estimate {value, basis, window_days}`, `active_exception_count`), `GET /stores/{id}/suppliers`, `GET /stores/{id}/categories` | implemented | S-07, S-08 |
+| Inventory | `GET /stores/{id}/inventory/positions` (filters `health` including `DATA_ISSUE`, `category`, `q`), `GET …/inventory/movements` (filters `product_id`, `movement_type`, `source`, `import_id`, `from`, `to`; rows carry `import_filename` and, for shipments, the `order_id` behind the `order_item:{id}` reference, both derived on read), `GET …/inventory/reconciliation` (P1) | implemented | S-08, S-09, S-10 |
 | Imports | `POST /stores/{id}/imports` (multipart `import_type`, `file`. Validates synchronously and returns `201` with the import in `VALIDATED` or `REJECTED`), `GET …/imports` (filters `import_type`, `status` repeatable; items carry `can_revalidate`), `GET …/imports/{iid}` (`ImportDetailOut` with `summary` and `file_issues`), `GET …/{iid}/issues` (filters `severity`, `code`, `row_number`), `GET …/{iid}/issues.csv`, `POST …/{iid}/apply {mode, confirm_skipped_rows}` (`Idempotency-Key`), `POST …/{iid}/discard`, `GET …/imports/templates/{import_type}` | implemented | S-11, S-12, S-13 |
 | Import retry | `POST …/imports/{iid}/revalidate` (`FAILED → VALIDATING → VALIDATED \| REJECTED` from the stored bytes, synchronous). A failed apply keeps the bytes until the preview's expiry; afterwards `409 IMPORT_CONTENT_MISSING` and `can_revalidate` is false | implemented | S-13 |
 | Copilot | `GET\|POST /stores/{id}/copilot/conversations`, `GET …/conversations/{cid}`, `POST …/conversations/{cid}/messages`, `POST /stores/{id}/copilot/exception-summaries {exception_id, refresh?}`, `POST /stores/{id}/copilot/note-drafts` | API_CONVENTIONS | S-04, S-14 |
-| Audit | `GET /stores/{id}/audit-logs` (filters `action` prefix, `actor_user_id`, `from`, `to`) | implemented | S-15 |
+| Audit | `GET /stores/{id}/audit-logs` (filters `action` prefix, `actor_user_id`, `from`, `to`; items include `actor_name`, the actor's full name without email, `null` for system actions). Store entries plus organization-level entries (`store_id` null, such as `user.*`) | implemented | S-15 |
 
 **JSON documents the investigation UI renders** (JSONB on `operational_exception`, as produced by
 `apps/api/app/domains/exceptions/priority.py` and `rules/base.py`). The UI renders them
@@ -283,6 +283,7 @@ Last imports: Orders Oct 31, 8:02 AM EDT · Order items 8:04 AM · Inventory adj
                                                                | Below reorder point     11 |
                                                                | Approaching reorder pt.  7 |
                                                                | Healthy                 96 |
+                                                               | Data issue               1 |
                                                                +----------------------------+
 +------------------------------------------------------------------------------------------+
 | Shipments per day, on time vs late, last 30 days (ET)                     [Chart | Table] |
@@ -336,7 +337,7 @@ their cell shows "—".
 | Triage count | `GET /stores/{id}/exceptions?status=OPEN&status=REOPENED&page_size=1` → `total` |
 | Active by category: count | `active_exceptions.by_category.{INVENTORY, FULFILLMENT, PAYMENT, DATA_QUALITY}` |
 | Active by category: order value at risk | `active_exceptions.exposure_by_category.{…}` = Σ `exposure_amount` of active exceptions per category (implemented 2026-11-01). Never summed client-side. `DATA_QUALITY` shows "—" because data-quality findings claim no exposure (EXCEPTION_CATALOG). |
-| Stock health | `inventory.{oversold, out_of_stock, below_reorder_point, approaching_reorder_point, healthy}` (ACTIVE products). Products with `on_hand < 0` should be left out of these classes and shown as a sixth row, "Data issue" (BR-402a). `InventoryHealthSummary` has no such count yet. Until it does, the row is not rendered, and those products appear through the Data-quality category count (`DATA_NEGATIVE_ON_HAND`). |
+| Stock health | `inventory.{oversold, out_of_stock, below_reorder_point, approaching_reorder_point, healthy, data_issue}` (ACTIVE products; the six counts add up to `active_products`). `data_issue` counts products with `on_hand < 0`, which are in none of the availability classes (BR-402a). It is the sixth row, "Data issue" (attention tone, `database` icon), after Healthy, and links to `/inventory?health=DATA_ISSUE`. |
 | Shipments chart | `GET /stores/{id}/analytics/trends?days=30` (daily, store-local days, the last one partial) → `days[].{date, shipped_on_time, shipped_late}`, `partial_last_day` |
 | Recent imports | `GET /stores/{id}/imports?page_size=3` |
 
@@ -835,12 +836,12 @@ settings. **Personas.** Manager, Analyst.
 | Supplier | `supplier.name` | left | xl |
 | Reorder point / qty | `reorder_point` / `reorder_quantity` | right | lg |
 | Available | `available` (BR-101) | right | md |
-| Stock | `health` + `on_hand` → `HealthBadge` ("Data issue" when `on_hand < 0`, BR-402a) | left | never |
+| Stock | `health` → `HealthBadge` ("Data issue" for `DATA_ISSUE`, i.e. `on_hand < 0`, BR-402a; `on_hand` only adds the figure to its tooltip) | left | never |
 
 **Actions.** Open product. No catalog editing in v1 (CSV import only).
 **Filters / sort / search.** `q`: substring of SKU or name. Status (default: Active). Category
 (from `GET /stores/{id}/categories`). Supplier (`supplier_id`). Stock health (`health`,
-repeatable). Sort: SKU (default), Name, Recently updated (`-updated_at`), Available.
+repeatable, the five availability classes then Data issue). Sort: SKU (default), Name, Recently updated (`-updated_at`), Available.
 **Pagination:** 25 (25/50/100).
 
 | State | Behaviour |
@@ -861,15 +862,15 @@ recent ledger entries and linked exceptions (IA §3 A3). **Personas.** Staff, Ma
 
 **Layout.**
 1. PageHeader: breadcrumb "Products / KHK-DO55-SGE". Title = `product.name`. Meta: SKU, category,
-   status tag, `HealthBadge` (md; "Data issue" when `on_hand < 0`).
+   status tag, `HealthBadge` (md; "Data issue" when `health` is `DATA_ISSUE`).
 2. **Stock position** (`inventory.read`): a row of `StatTile`s: On hand, Reserved, **Available**
    (danger text when negative, with the minus sign), Incoming (+ ETA), Avg daily
    units (est.), Days of cover (est.). Under the tiles, one formula line in `text-mono`:
    "available = on_hand − reserved = 18 − 22 = −4 (BR-101). Incoming is not counted (BR-103)."
    Health explanation: "Oversold: available is below 0." For the reorder-point classes:
    "Reorder point 10. Approaching from 11 to 13 (reorder point × 1.25, rounded up)." (from
-   `approaching_threshold`). When `on_hand < 0`: an attention-tone callout replaces the health
-   explanation: "Data issue: on hand is −3, which is physically impossible. Stock health and
+   `approaching_threshold`). When `health` is `DATA_ISSUE` (`on_hand < 0`, any product status): an
+   attention-tone callout replaces the health explanation: "Data issue: on hand is −3, which is physically impossible. Stock health and
    inventory exceptions are suspended for this product until a cycle count corrects it (BR-402a).
    See EXC-1051 (Negative on-hand)." The Available tile shows the value with "not reliable" in
    muted text. Days of cover shows "—" with "not reliable", since it is derived from the same
@@ -897,7 +898,7 @@ Movements: `GET …/inventory/movements?product_id={id}&page_size=10`. Exception
 | State | Behaviour |
 |---|---|
 | Initial loading | Standard. |
-| Empty sub-sections | No reservations: "No units are reserved for paid orders." No movements: "No ledger entries yet. Stock arrives through inventory adjustment imports." Days of cover null: "Not enough sales history" (BR-151). Non-ACTIVE product: health "Not tracked" with "Stock health is computed for active products only." |
+| Empty sub-sections | No reservations: "No units are reserved for paid orders." No movements: "No ledger entries yet. Stock arrives through inventory adjustment imports." Days of cover null: "Not enough sales history" (BR-151). Non-ACTIVE product with valid stock (health null): "Not tracked" with "Stock health is computed for active products only." A non-ACTIVE product with `on_hand < 0` is still `DATA_ISSUE` and gets the callout. |
 | Not found | Standard. |
 | API error / permission denied | Standard. Sections omitted per permission. |
 | Search / filtered / validation / toast / pending / confirmation / disabled | N/A. |
@@ -910,11 +911,13 @@ Movements: `GET …/inventory/movements?product_id={id}&page_size=10`. Exception
 **Purpose.** See stock risk across all SKUs at once, ranked by health. **Personas.** Manager,
 Staff.
 
-**Layout.** PageHeader "Inventory" → **Health summary bar**: five toggle buttons with counts
-("Oversold 2", "Out of stock 4", "Below reorder point 11", "Approaching 7", "Healthy 96"), from the
-dashboard's `inventory` counts. Each is a real `button` with `aria-pressed` and sets the `health`
-filter. Products with `on_hand < 0` show "Data issue" in the Health column, whatever `health` the
-API returns, because their inventory rules are suppressed (BR-402a). Then a caption: "Available = on
+**Layout.** PageHeader "Inventory" → **Health summary bar**: six toggle buttons with counts
+("Oversold 2", "Out of stock 4", "Below reorder point 11", "Approaching 7", "Healthy 96", then,
+after a divider, "Data issue 1"), from the dashboard's `inventory` counts. Each is a real `button`
+with `aria-pressed` and sets the `health` filter. The API classifies products with `on_hand < 0` as
+`DATA_ISSUE` instead of by `available`, because their inventory rules are suppressed (BR-402a), so
+they are counted and filtered as "Data issue", never as Oversold. The divider marks that it is not
+an availability class. Then a caption: "Available = on
 hand − reserved. Incoming stock is shown separately and never counted as available (BR-101,
 BR-103)." → FilterBar → DataTable (compact default) → Pagination.
 
@@ -922,7 +925,7 @@ BR-103)." → FilterBar → DataTable (compact default) → Pagination.
 |---|---|---|---|
 | SKU | `product.sku` (link to S-08) | left | never |
 | Product | `product.name` | left | md |
-| Health | `health` + `on_hand` → `HealthBadge` ("Data issue" when `on_hand < 0`) | left | never |
+| Health | `health` → `HealthBadge` ("Data issue" for `DATA_ISSUE`) | left | never |
 | On hand | `inventory_balance.on_hand` | right | md |
 | Reserved | `reserved` | right | md |
 | Available | `available` (BR-101, danger text if < 0) | right | never |
@@ -932,9 +935,9 @@ BR-103)." → FilterBar → DataTable (compact default) → Pagination.
 | Days of cover (est.) | `days_of_cover` (1 dp, or "—" with a tooltip "Not enough sales history"). Hidden for "Data issue" rows | right | lg |
 | Last count (ET) | `last_cycle_count_at` | left | xl |
 
-**Filters / sort / search.** `q`: substring of SKU or name. Health (multi, repeated `health`).
-Category. **Include inactive products** toggle (`include_inactive=true`; they show "Not
-tracked"). Sort (`PositionSort`): Available, lowest first (default, which puts oversold and
+**Filters / sort / search.** `q`: substring of SKU or name. Health (multi, repeated `health`,
+including `DATA_ISSUE`). Category. **Include inactive products** toggle (`include_inactive=true`;
+they show "Not tracked", or "Data issue" when on-hand is negative). Sort (`PositionSort`): Available, lowest first (default, which puts oversold and
 out-of-stock first), Days of cover (lowest first), SKU. **Pagination:** 50 default (50/100), since
 the table is compact.
 
@@ -942,7 +945,7 @@ the table is compact.
 |---|---|
 | Initial loading | Standard. The summary bar shows skeleton chips. |
 | Empty | "No stock positions yet". "Import products, then inventory adjustments (a CYCLE_COUNT sets on-hand)." Action **Import inventory adjustments** (`imports.run`). |
-| Populated / search / filtered | Standard. "Oversold" filter with no rows: success tone, "No oversold products". |
+| Populated / search / filtered | Standard. "Oversold" filter with no rows: success tone, "No oversold products". "Data issue" filter with no rows: success tone, "No data issues", "No active product has a negative on-hand figure." |
 | Validation / toast / pending / confirmation / disabled | N/A. |
 | API error / permission denied | Standard (`inventory.read`). |
 | Responsive | < 768: stacked rows. Line 1: SKU + health. Line 2: name. Line 3: "Available −4 · On hand 18 · Incoming 40 (Nov 4)". The summary bar scrolls horizontally. |
@@ -1378,34 +1381,42 @@ column) to show metadata.
 
 | Column | Source | Align | Hide below |
 |---|---|---|---|
-| Time (ET) | `audit_log.occurred_at` | left | never |
-| Actor | `actor_user_id` → name (from `GET /stores/{id}/members`, no emails). "System" when null. "Former member" when the ID is unknown. | left | never |
+| Time (ET) | `audit_log.occurred_at`, with the row's disclosure button. Pinned while the table scrolls sideways | left | never |
+| Actor | `actor_name` from the audit response (no emails). "System" when `actor_user_id` is null. "Former member" when the API returns an ID without a name. | left | never |
 | Action | `action` → label + code in mono (e.g. "Resolved exception" `exception.resolve`) | left | never |
-| Target | `target_type` + `target_id` → link label when resolvable (exception reference `EXC-1042`, order number, import file, "Store settings", member name). Otherwise the type plus a short ID. | left | md |
+| Target | `target_type` + `target_id` → label, linked when the record belongs to this store and its page is open to the person: exception reference (`details.reference`, `EXC-1042`) → exception detail, import (`details.import_type`, "Orders import") → import detail, the store → "Store settings", a member → `details.full_name`. Otherwise the type plus a short ID. | left | md |
 | Request ID | `request_id` (mono, copy button) | left | lg |
-| Expanded row | `details` as a key–value list (mono values). Secrets are never present (server guarantee). `AuditLogOut` has no IP field, so no IP is shown (IA Q-IA-2). | | |
+| Expanded row | Action code, target and request ID (so narrow screens see the hidden columns), then `details` as a key–value list (mono values). A `before` / `after` pair (settings) is shown per key as "48 → 36". Secrets are never present (server guarantee). `AuditLogOut` has no IP field, so no IP is shown (IA Q-IA-2). | | |
 
-**Action labels** (prefix groups for the filter, from ROLE_AND_PERMISSION_WORKFLOW §11): Auth
-(`auth.login`, `auth.login_failed`, `auth.logout`, `auth.session_revoked`,
-`auth.demo_session_started`), Authorization (`authz.denied`), Users (`user.role_change`, and the
-other `user.*` actions if they appear), Settings (`settings.update`), Exceptions
-(`exception.acknowledge`, `.claim`, `.start`, `.resolve`, `.dismiss`, `.reopen`, `.assign`,
-`.unassign`, `.due_date_change`, `.note_add`), Imports (`import.apply`, `import.discard`),
-Evaluations (`evaluation.run`). Unknown actions fall back to the raw code.
+**Action labels** (prefix groups for the filter). The labels cover the actions the API records today:
+Sign-in and sessions (`auth.login`, `auth.demo_login`, `auth.logout`, `auth.login_failed`,
+`auth.session_revoked`), Users (`user.create`, `user.role_change`, `user.deactivate`,
+`user.reactivate`), Settings (`settings.update`), Exceptions (`exception.acknowledge`, `.start`,
+`.resolve`, `.dismiss`, `.reopen`, `.assign` (shown as "Claimed exception" when `details.claimed`,
+"Unassigned exception" when `details.to_assignee_id` is null), `.note`, `.due_date`), Imports
+(`import.applied`, `import.failed`, `import.discarded`), Analysis runs (`evaluation.run`). Unknown
+actions fall back to the raw code. `auth.login_failed` rows have no organization, so they never
+appear in a store's log. **Deviation (T-066):** the names follow the implemented API, not the
+proposal in ROLE_AND_PERMISSION_WORKFLOW §11 (`authz.denied` is not recorded, so it has no filter
+group). The labels live in `features/admin/audit-actions.ts`.
 
-**Filters / sort / search.** Date range (`from` / `to`; default last 7 days, presets 24 h / 7 d /
-30 d / custom). Action group (single select, sent as the `action` prefix, e.g. `exception.`). Actor
-(combobox, `actor_user_id`). No free-text search on this endpoint. Sort: newest first only
-(append-only log). **Pagination:** 50 (50/100).
+**Filters / sort / search.** Period (`period` in the URL: Last 24 hours / Last 7 days (default) /
+Last 30 days / Last 90 days / All time / Custom range). Presets count store-local calendar days
+including today; Last 24 hours is rolling. Custom range: From and To date inputs (`from`, `to` as
+`YYYY-MM-DD`) covering whole store-local days, either end optional; an inverted range shows "The
+start date must be on or before the end date." and is not applied. Action group (single select,
+sent as the `action` prefix, e.g. `exception.`). Actor (select of the store's active members from
+`GET /stores/{id}/members`, `actor_user_id`). No free-text search on this endpoint. Sort: newest
+first only (append-only log). **Pagination:** 50 (50/100).
 
 **Actions.** Expand row, copy request ID. No export (IA-5).
 
 | State | Behaviour |
 |---|---|
 | Initial loading | Standard. |
-| Empty | "No audit events in this period". Widen the date range. |
+| Empty | "No audit events in this period". "Nothing was recorded in the last 7 days. Widen the date range to see older events." **Show all time**. |
 | Populated / search / filtered | Standard. |
-| Validation | Date range as S-05. |
+| Validation | Custom range: "The start date must be on or before the end date." under the date inputs; the inverted range is not applied. Unknown values in a shared link are dropped with the standard toast. |
 | API error / permission denied | Standard (`audit.read`). STAFF never sees the nav item. A pasted URL shows PermissionDenied. |
 | Toast / pending / confirmation / disabled | N/A (read-only). |
 | Responsive | Table kept with Time pinned. The expanded metadata wraps. |
@@ -1462,36 +1473,62 @@ into the form and still requires Save.
 | Empty | N/A (settings always exist, with defaults). |
 | Populated | Form (editors) or definition list (readers). |
 | Search / filtered | N/A. |
-| Validation error | Field and form-level per DESIGN_SYSTEM §14. Server 422 details (`body.priority_weights…`) map to fields. The UI adds no cross-field rules that the backend does not enforce. |
+| Validation error | Field and form-level per DESIGN_SYSTEM §14. Messages: "Enter a whole number from 1 to 8,760." (and the other integer ranges), "Enter a number with at most 2 decimal places.", "Enter a value from 1.00 to 3.00.", "Enter an amount above 0.00 and at most 9,999,999,999.99.". Server 422 details (`loc` `body.priority_weights…`) map to fields. The UI adds no cross-field rules that the backend does not enforce. |
 | API error with retry | Load failure: standard. Save failure: alert in the save bar area with `request_id`. Values are kept. |
-| Conflict | 409 (settings changed by someone else): "Settings were changed by someone else. Reload to see the latest values. Your edits will be lost." **Reload**. |
+| Conflict | The API has no settings version, so there is no 409. **Implemented instead (T-066):** the form keeps the values it was opened with. **Save changes** refetches first, and a background refetch also compares: when the saved values differ (someone else saved), "Settings were changed by someone else. Reload to see the latest values. Your edits will be lost." (the last sentence only when there are edits) with **Reload**, and nothing is sent. The PATCH carries only the changed fields, so a race inside that window is last-write-wins per field. |
 | Permission denied | Standard (`settings.read`, which all roles hold). |
 | Success toast | "Settings saved. They apply from the next evaluation." |
-| Pending action | **Save changes** → "Saving…". |
-| Confirmation dialog | Save (above). Navigation guard: leaving with unsaved changes → "Discard unsaved changes?" with **Discard** / **Keep editing** (and `beforeunload` for tab close). |
+| Pending action | **Save changes** → "Checking…" (the refetch), then "Saving…" in the dialog. |
+| Confirmation dialog | Save (above). Navigation guard: `beforeunload` while there are unsaved changes. **Deferred (T-066):** an in-app "Discard unsaved changes?" dialog for sidebar links (the App Router has no route-change event to intercept). |
 | Disabled action | Readers see no form, so there are no disabled inputs. In demo orgs the read-only note reads "The public demo is read-only." |
 | Responsive | Single column at all widths. The save bar is full width with buttons stacked below 400 px. |
+
+Implementation notes (T-066): the store profile comes from the session's store context. The
+priority weights are grouped (Severity, Affected orders, Value at risk, Deadline, Time unresolved)
+with each group's helper text, and the confirm dialog names a weight as "Severity · Critical". Any
+weight change sends the whole `priority_weights` object, as the API requires. Integers are sent as
+JSON numbers, decimals as strings (BR-503). The defaults shown as hints mirror
+`DEFAULT_PRIORITY_WEIGHTS` and BUSINESS_RULES §7 in `features/admin/settings-fields.ts`; the API
+does not return them.
 
 ---
 
 ## S-17 Users & roles
 
-**Purpose.** See who has access to the organization and what each role can do. In P1, owners can
-change a member's role. **Personas.** Owner, Manager (read). v1 has **no invite, add-member,
-deactivation or password-reset UI** (ROLE_AND_PERMISSION_WORKFLOW §8; orchestrator decision).
+**Purpose.** See who has access to the organization and what each role can do. Owners add
+members, change roles, and deactivate or reactivate members. **Personas.** Owner, Manager (read).
+**Changed in T-066 (orchestrator decision):** add member, deactivation and reactivation are in the
+UI, using the simplest variant of ROLE_AND_PERMISSION_WORKFLOW §8: the owner creates the account
+and hands over a temporary password shown once. There is still no invite email and no
+password-reset or own-password UI.
 
-**Layout.** PageHeader "Users & roles". Subtitle "Kestrel Commerce · organization-wide". Tabs
-(Radix): **Members** · **Roles and permissions**.
+**Layout.** PageHeader "Users & roles" with **Add member** (`users.manage`). Subtitle
+"Kestrel Commerce · organization-wide". Tabs (Radix): **Members** · **Roles and permissions**
+(tab state is local, not in the URL).
 
-**Members tab** (P0, `GET /organizations/{org_id}/members`, `users.read`, per API_CONVENTIONS
-§12.1; not implemented yet). DataTable (comfortable): Name (avatar initials) · Email · Role (plain
-text) · Status (Active / Deactivated, display only, with neutral and muted tags) · row menu (P1,
-`users.manage`): **Change role…**. A "You" tag appears next to the current user. Until the
-organization endpoint exists, the tab renders the store members from `GET /stores/{id}/members`
-(name and role only, no email) with the caption "Showing members of this store's organization."
-Last sign-in is shown only if the endpoint returns it.
+**Members tab** (`GET /organizations/{org_id}/members`, `users.read`). DataTable (comfortable):
+Name (avatar initials) · Email · Role (plain text) · Status (Active / Deactivated, neutral and
+muted tags) · Last sign-in ("Never" when null, hidden below lg) · row menu (`users.manage`):
+**Change role…**, **Deactivate…** or **Reactivate…**. A "You" tag appears next to the current user.
 
-**Change role dialog (P1).** A select of the 5 roles, each with a one-line description: Owner ("Full
+**Add member dialog.** Full name, Email, Role (the five roles with their descriptions, no
+default). Validation mirrors `MemberCreate`: "Enter the member's full name.", "Enter an email
+address.", "Enter an email address such as name@example.com.", "Choose a role.". An info alert
+says RetailOps doesn't send email. `409 MEMBER_EXISTS` / `EMAIL_IN_USE` show the API message on the
+email field (an existing account is never attached, open question O-35). Success: toast "Member
+added: Jordan Lee", then the **Member added** dialog with the sign-in email and the temporary
+password (mono, copy button), "It is shown only once and can't be recovered later." It does not
+close on an outside click; **Done** closes it.
+
+**Deactivate / Reactivate dialog.** Confirmation. Deactivate: "They are signed out everywhere at
+once and can't sign in until reactivated. Their notes, history and audit entries keep their name.
+Exceptions assigned to them stay assigned until a manager reassigns them." (O-27 proposal to
+unassign is not implemented.) **Deactivate member** (destructive), toast "Sam Ortiz deactivated.
+Their sessions were ended." Reactivate: "They can sign in again with their existing password",
+**Reactivate member**, toast "Sam Ortiz reactivated". `409 LAST_OWNER`,
+`409 MEMBER_IN_OTHER_ORGANIZATION` and `403 OWN_MEMBERSHIP` show as an alert in the dialog.
+
+**Change role dialog.** A radio group of the 5 roles (current role preselected), each with a one-line description: Owner ("Full
 access, including users"), Manager ("Runs operations. Everything except managing users"), Staff
 ("Works on exceptions. Reads operational data"), Analyst ("Read-only, plus copilot and audit
 log"), Viewer ("Read-only demo access"). Below the select, a "What changes" list compares the
@@ -1500,7 +1537,8 @@ Submit **Change role**. Confirmation is the dialog itself.
 
 **Roles and permissions tab** (P0). A read-only matrix table from `GET /api/v1/roles`
 (`[{role, permissions[]}]`, any authenticated user). Rows are the 18 permissions (label and
-one-line description from `status-maps.ts`, code in mono). Columns are OWNER, MANAGER, STAFF,
+one-line description from `permissionLabels` / `permissionDescriptions` in `lib/permissions.ts`,
+code in mono). Columns are OWNER, MANAGER, STAFF,
 ANALYST, VIEWER. Cells
 show a check icon with the visually hidden text "Granted", or "—" with "Not granted". Caption:
 "Roles are defined in code (ADR-0007) and can't be edited here."
@@ -1509,26 +1547,32 @@ show a check icon with the visually hidden text "Granted", or "—" with "Not gr
 
 | Action | Permission | Disabled reason |
 |---|---|---|
-| Change role (P1) | `users.manage` (OWNER only) | Own row: "You can't change your own role." Last owner: "At least one owner is required." The UI pre-checks the owner count, and the server enforces it with `409 LAST_OWNER`. |
+| Add member | `users.manage` (OWNER only) | Managers: "Only owners can add members, change roles or deactivate members." Demo: "The public demo is read-only." |
+| Change role | `users.manage` (OWNER only) | Own row: "You can't change your own role." Last active owner: "At least one owner is required." The UI pre-checks the active owner count, and the server enforces it with `409 LAST_OWNER`. |
+| Deactivate / Reactivate | `users.manage` (OWNER only) | Own row: "You can't deactivate your own account." Last active owner: "At least one owner is required." |
 
-**Filters / sort / search.** Client-side over the member list (organizations are small): name or
-email contains, role filter, sort by name. No pagination.
+Disabled menu items show their reason under the label (as in the exception "More" menu).
+
+**Filters / sort / search.** Client-side over the member list (organizations are small), kept in
+the URL (`q`, `role`, `status`): name or email contains, role filter, status filter, sorted by
+name. No pagination.
 
 | State | Behaviour |
 |---|---|
-| Initial loading | Standard. |
+| Initial loading | Standard. Roles tab: row skeletons. |
 | Empty | Not reachable (the current user is a member). Search with no match: standard no-results. |
 | Populated / search / filtered | Standard. |
-| Validation error | Same role selected: "Choose a different role." |
-| API error / conflict | Standard. `409 LAST_OWNER` shows "At least one owner is required. Make another member an owner first." in the dialog. |
+| Validation error | Same role selected: "Choose a different role." Add member: field messages above. |
+| API error / conflict | Standard, with the request ID in dialog alerts. `409 LAST_OWNER` shows "At least one owner is required. Make another member an owner first." in the dialog and refreshes the list. |
 | Permission denied | Standard (`users.read`). Hidden from STAFF, ANALYST and VIEWER navigation. |
-| Success toast | "Role changed: Sam Ortiz is now Manager." |
-| Pending action | "Changing role…". |
-| Confirmation dialog | The Change role dialog (with the "What changes" list). |
-| Disabled action | Per the table. Managers see the matrix and list without the row menu. Before P1 ships, there is no row menu for anyone (IA-5). |
-| Responsive | < 768: stacked rows (name, email, role · last sign-in). The matrix scrolls horizontally with the permission column pinned. |
+| Success toast | "Role changed: Sam Ortiz is now Manager." "Member added: Jordan Lee". "Sam Ortiz deactivated. Their sessions were ended." "Sam Ortiz reactivated". |
+| Pending action | "Changing role…", "Adding…", "Deactivating…", "Reactivating…". |
+| Confirmation dialog | The Change role dialog (with the "What changes" list) and the Deactivate / Reactivate dialog. |
+| Disabled action | Per the table. Managers see the matrix and list without the row menu, and **Add member** disabled with its reason. |
+| Responsive | < 768: stacked rows (name, email, role · status · last sign-in, row menu). The matrix scrolls horizontally with the permission column pinned. |
 
-User provisioning, deactivation and password resets are not in the v1 UI (IA Q-IA-4, Q-IA-5).
+Password resets, own-password change and forcing a new password at first sign-in are not in v1
+(open question O-28). Existing accounts cannot be added to a second organization (O-35).
 
 ---
 

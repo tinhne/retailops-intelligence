@@ -22,7 +22,7 @@ import { storeApi, storeKeys } from "@/lib/api/store-api";
 import { formatDate } from "@/lib/format/datetime";
 import { formatDelta, formatQuantity } from "@/lib/format/number";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
-import { displayHealth, exceptionTypeLabels, movementTypeLabels } from "@/lib/status-maps";
+import { exceptionTypeLabels, movementTypeLabels } from "@/lib/status-maps";
 import { useStore } from "@/lib/store/store-context";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +47,9 @@ export function healthExplanation(product: ProductDetail): string | null {
     case "HEALTHY":
       if (reorder === 0) return "Healthy: stock is available and no reorder point is set.";
       return threshold ? `Healthy: available is above ${threshold}, the approaching threshold for reorder point ${reorder}.` : "Healthy.";
+    // Explained by the data-issue callout instead, which links the exception (BR-402a).
+    case "DATA_ISSUE":
+      return null;
     default:
       return product.status === "ACTIVE" ? null : "Stock health is computed for active products only.";
   }
@@ -55,7 +58,7 @@ export function healthExplanation(product: ProductDetail): string | null {
 function StockPosition({ product, dataIssueException }: { product: ProductDetail; dataIssueException?: ExceptionListItem }) {
   const store = useStore();
   const { stock } = product;
-  const dataIssue = displayHealth(product.health, stock.on_hand) === "DATA_ISSUE";
+  const dataIssue = product.health === "DATA_ISSUE";
   return (
     <Section id="stock" title="Stock position">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">

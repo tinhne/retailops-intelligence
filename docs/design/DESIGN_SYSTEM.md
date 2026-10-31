@@ -319,7 +319,7 @@ change. Domain tokens follow automatically, except priority bars.
 | | `APPROACHING_REORDER_POINT` | Approaching reorder point | `arrow-down-right` | `#A15C07` | `#FEFBE8` | `#FEEE95` |
 | | `HEALTHY` | Healthy | `circle-check` | `#067647` | `#ECFDF3` | `#ABEFC6` |
 | | (non-ACTIVE product) | Not tracked | `minus` | `#555D66` | `#F1F3F5` | `#DEE2E6` |
-| | (`on_hand < 0`, any status) | Data issue | `database` | `#B93815` | `#FEF6EE` | `#F9DBAF` |
+| | `DATA_ISSUE` (`on_hand < 0`, any status) | Data issue | `database` | `#B93815` | `#FEF6EE` | `#F9DBAF` |
 | Order status group | Awaiting payment (`CREATED`, `PAYMENT_PENDING`) | Created / Payment pending | `clock` | `#3F464E` | `#F1F3F5` | `#DEE2E6` |
 | | Payment failed (`PAYMENT_FAILED`) | Payment failed | `circle-x` | `#B42318` | `#FEF3F2` | `#FECDCA` |
 | | To fulfil (`PAID`, `PROCESSING`, `READY_TO_SHIP`) | Paid / Processing / Ready to ship | `package` | `#175CD3` | `#EFF8FF` | `#B2DDFF` |
@@ -334,11 +334,12 @@ a manual resolution can legitimately stay unverified until the next import compl
 pass, so the label must not claim success early. Automatic resolutions read "Resolved · condition
 cleared", and supersessions read "Superseded".
 
-**"Data issue" overrides stock health.** When `on_hand < 0`, the stock figure is invalid input.
-Only `DATA_NEGATIVE_ON_HAND` is raised and every inventory rule is suppressed (BR-402a), so a
-health class computed from `available` would be misleading. `HealthBadge` shows "Data issue" for
-any product status, with the tooltip "On hand is negative (−3). That is physically impossible,
-so stock health can't be computed until a cycle count corrects it (BR-402a)."
+**"Data issue" replaces the availability classes.** When `on_hand < 0`, the stock figure is
+invalid input. Only `DATA_NEGATIVE_ON_HAND` is raised and every inventory rule is suppressed
+(BR-402a), so a health class computed from `available` would be misleading. The API classifies such
+a product as `DATA_ISSUE` for any product status, and `HealthBadge` shows "Data issue" with the
+tooltip "On hand is negative (−3). That is physically impossible, so stock health can't be computed
+until a cycle count corrects it (BR-402a)."
 
 **Order secondary axes** (`payment_status`, `fulfillment_status`) use the same tones, shown as
 smaller text-only pills on the order detail page and as plain text in table columns:
