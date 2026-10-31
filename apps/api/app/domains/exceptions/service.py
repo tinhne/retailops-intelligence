@@ -107,6 +107,10 @@ class ExceptionFilters:
     order_id: uuid.UUID | None = None
     q: str | None = None
     due_to: datetime | None = None  # due_at <= due_to (overdue or due soon)
+    # Used by the copilot's list_exceptions tool (TOOL_CATALOG.md §2.2); not exposed over REST.
+    detected_from: datetime | None = None  # first_detected_at >= detected_from
+    resolved_from: datetime | None = None  # resolved_at >= resolved_from
+    due_before: datetime | None = None  # due_at < due_before
 
 
 def _order_by(sort: str, fields: dict[str, Any]) -> tuple[str, Any]:
@@ -172,6 +176,12 @@ def _filter_conditions(
                 details=[{"loc": ["query", "due_to"], "message": "naive datetime"}],
             )
         conditions.append(E.due_at <= filters.due_to)
+    if filters.detected_from is not None:
+        conditions.append(E.first_detected_at >= filters.detected_from)
+    if filters.resolved_from is not None:
+        conditions.append(E.resolved_at >= filters.resolved_from)
+    if filters.due_before is not None:
+        conditions.append(E.due_at < filters.due_before)
     if filters.q and filters.q.strip():
         term = filters.q.strip()
         conditions.append(
