@@ -39,6 +39,11 @@ class UserOut(BaseModel):
     full_name: str
 
 
+class RolePermissionsOut(BaseModel):
+    role: str
+    permissions: list[str]
+
+
 class MeResponse(BaseModel):
     user: UserOut
     memberships: list[MembershipOut]

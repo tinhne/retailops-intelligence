@@ -181,3 +181,16 @@ def test_readiness_checks_database(client: TestClient) -> None:
     response = client.get("/api/v1/health/ready")
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "database": "ok"}
+
+
+def test_roles_endpoint_exposes_the_code_defined_matrix(client: TestClient, db: Session) -> None:
+    tenant = create_tenant(db)
+    create_user(db, tenant, Role.STAFF)
+    assert client.get("/api/v1/roles").status_code == 401
+    login(client, "staff@acme.example")
+
+    roles = {r["role"]: set(r["permissions"]) for r in client.get("/api/v1/roles").json()}
+
+    assert set(roles) == {"OWNER", "MANAGER", "STAFF", "ANALYST", "VIEWER"}
+    assert "users.manage" in roles["OWNER"]
+    assert "exceptions.manage" not in roles["STAFF"]

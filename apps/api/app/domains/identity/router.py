@@ -19,11 +19,12 @@ from app.db.session import get_db
 from app.domains.audit import service as audit
 from app.domains.identity import service as identity
 from app.domains.identity.models import User, UserSession
-from app.domains.identity.permissions import Role, permissions_for
+from app.domains.identity.permissions import ROLE_PERMISSIONS, Role, permissions_for
 from app.domains.identity.schemas import (
     LoginRequest,
     MembershipOut,
     MeResponse,
+    RolePermissionsOut,
     StoreSummary,
     UserOut,
 )
@@ -176,3 +177,15 @@ def me(
     settings: Settings = Depends(get_settings),
 ) -> MeResponse:
     return _me(db, principal.user, principal.session, settings)
+
+
+roles_router = APIRouter(tags=["auth"])
+
+
+@roles_router.get("/roles", response_model=list[RolePermissionsOut])
+def list_roles(_: Principal = Depends(get_principal)) -> list[RolePermissionsOut]:
+    """The code-defined role → permission matrix (ADR-0007), for read-only display in the UI."""
+    return [
+        RolePermissionsOut(role=role.value, permissions=sorted(p.value for p in perms))
+        for role, perms in ROLE_PERMISSIONS.items()
+    ]

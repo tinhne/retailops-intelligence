@@ -7,6 +7,7 @@ from app.domains.analytics.router import router as analytics_router
 from app.domains.audit.router import router as audit_router
 from app.domains.catalog.router import router as catalog_router
 from app.domains.exceptions.router import router as exceptions_router
+from app.domains.identity.router import roles_router
 from app.domains.identity.router import router as auth_router
 from app.domains.identity.store_router import router as store_router
 from app.domains.imports.router import router as imports_router
@@ -17,6 +18,7 @@ api_router = APIRouter(prefix="/api/v1")
 for module_router in (
     health.router,
     auth_router,
+    roles_router,
     store_router,
     catalog_router,
     orders_router,
