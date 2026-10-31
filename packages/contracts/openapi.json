@@ -2669,8 +2669,7 @@
             "type": "string"
           },
           "role": {
-            "title": "Role",
-            "type": "string"
+            "$ref": "#/components/schemas/Role"
           }
         },
         "required": [
@@ -2699,14 +2698,13 @@
           },
           "permissions": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/Permission"
             },
             "title": "Permissions",
             "type": "array"
           },
           "role": {
-            "title": "Role",
-            "type": "string"
+            "$ref": "#/components/schemas/Role"
           },
           "stores": {
             "items": {
@@ -3985,6 +3983,30 @@
         "title": "PaymentStatus",
         "type": "string"
       },
+      "Permission": {
+        "enum": [
+          "dashboard.read",
+          "catalog.read",
+          "orders.read",
+          "inventory.read",
+          "exceptions.read",
+          "exceptions.work",
+          "exceptions.assign",
+          "exceptions.manage",
+          "evaluations.run",
+          "imports.read",
+          "imports.run",
+          "analytics.read",
+          "copilot.use",
+          "audit.read",
+          "settings.read",
+          "settings.manage",
+          "users.read",
+          "users.manage"
+        ],
+        "title": "Permission",
+        "type": "string"
+      },
       "PreviewRow": {
         "properties": {
           "action": {
@@ -4558,18 +4580,28 @@
         "title": "ResolveRequest",
         "type": "object"
       },
+      "Role": {
+        "enum": [
+          "OWNER",
+          "MANAGER",
+          "STAFF",
+          "ANALYST",
+          "VIEWER"
+        ],
+        "title": "Role",
+        "type": "string"
+      },
       "RolePermissionsOut": {
         "properties": {
           "permissions": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/Permission"
             },
             "title": "Permissions",
             "type": "array"
           },
           "role": {
-            "title": "Role",
-            "type": "string"
+            "$ref": "#/components/schemas/Role"
           }
         },
         "required": [

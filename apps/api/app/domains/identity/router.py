@@ -39,8 +39,8 @@ def _me(db: Session, user: User, session: UserSession, settings: Settings) -> Me
             organization_id=m.organization_id,
             organization_name=m.organization.name,
             is_demo=m.organization.is_demo,
-            role=m.role.value,
-            permissions=sorted(p.value for p in permissions_for(m.role)),
+            role=m.role,
+            permissions=sorted(permissions_for(m.role)),
             stores=[
                 StoreSummary(
                     id=s.id, name=s.name, code=s.code, currency=s.currency, timezone=s.timezone
@@ -186,6 +186,6 @@ roles_router = APIRouter(tags=["auth"])
 def list_roles(_: Principal = Depends(get_principal)) -> list[RolePermissionsOut]:
     """The code-defined role → permission matrix (ADR-0007), for read-only display in the UI."""
     return [
-        RolePermissionsOut(role=role.value, permissions=sorted(p.value for p in perms))
+        RolePermissionsOut(role=role, permissions=sorted(perms))
         for role, perms in ROLE_PERMISSIONS.items()
     ]
