@@ -192,16 +192,16 @@ stateDiagram-v2
 
 | Transition | Actor | Permission | Preconditions / required input |
 |---|---|---|---|
-| `OPEN → ACKNOWLEDGED` | user | `exceptions.work` | none |
-| `* → IN_PROGRESS` | user | `exceptions.work` | must have an assignee; if none, the actor is assigned automatically. Staff may only start work on exceptions that are unassigned or assigned to them |
+| `OPEN/REOPENED → ACKNOWLEDGED` | user | `exceptions.work` | none |
+| `* → IN_PROGRESS` | user | `exceptions.work` | must have an assignee; if none, the actor is assigned automatically. Staff may only start work on exceptions that are unassigned or assigned to them. A user with `exceptions.assign`/`exceptions.manage` who starts someone else's exception keeps the existing assignee |
 | `* → RESOLVED` (manual) | user | `exceptions.work` | actor is the assignee **or** holds `exceptions.manage`; `resolution_code` and `resolution_note` (≥ 10 chars) are required |
 | `* → RESOLVED` (automatic) | system | n/a | condition no longer detected; `resolution_code = CONDITION_CLEARED` |
 | `* → RESOLVED` (superseded) | system | n/a | a more severe exception for the same entity was raised; `resolution_code = SUPERSEDED`, `superseded_by_id` set |
-| `* → DISMISSED` | user | `exceptions.manage` | `dismissal_reason ∈ {FALSE_POSITIVE, ACCEPTED_RISK, DUPLICATE, NOT_ACTIONABLE}` and a note are required |
+| `* → DISMISSED` | user | `exceptions.manage` | a reason (stored as `dismissed_reason`) `∈ {FALSE_POSITIVE, ACCEPTED_RISK, DUPLICATE, NOT_ACTIONABLE}` and a note are required |
 | `RESOLVED → REOPENED` | system | n/a | see §3.4 |
 | `RESOLVED/DISMISSED → REOPENED` | user | `exceptions.manage` | `reason` note required |
 
-Assignment is a separate attribute, not a state. Assigning or reassigning needs
+Assignment is a separate attribute, not a state. Valid assignees are members of the store's organization whose role grants `exceptions.work`. Assigning or reassigning needs
 `exceptions.assign`. One exception: staff with `exceptions.work` can claim an unassigned
 exception for themselves. Every assignment change is recorded as an `ExceptionAssignment` row and
 an `ASSIGNED` event.
@@ -219,7 +219,7 @@ for each rule it executed, reconciles findings against the latest stored excepti
 |---|---|---|
 | none | **create** `OPEN` exception | nothing |
 | active (`OPEN`/`ACKNOWLEDGED`/`IN_PROGRESS`/`REOPENED`) | **refresh**: update evidence snapshot, `last_detected_at`, `detection_count`, severity, priority. Write an `EVIDENCE_UPDATED` event only if the evidence changed materially, and a `SEVERITY_CHANGED` event if severity changed | **auto-resolve** with `CONDITION_CLEARED` |
-| `RESOLVED` by a user, condition still present at the first evaluation after resolution | **reopen** (`REOPENED`, reason `VERIFICATION_FAILED`) | nothing (resolution verified; `verified_at` set) |
+| `RESOLVED` by a user, not yet verified, condition still present | **reopen** (`REOPENED`, reason `VERIFICATION_FAILED`) **only if** the data has been refreshed since resolution (an import completed after `resolved_at`) or at least 24 h (`VERIFICATION_GRACE_HOURS`) have passed. Otherwise it stays `RESOLVED`, awaiting verification | **verify**: `VERIFIED` event, `verified_at` set |
 | `RESOLVED`, condition cleared and then re-detected within `reopen_window_hours` (default 72) of `resolved_at` | **reopen** (reason `RECURRED_WITHIN_WINDOW`) | nothing |
 | `RESOLVED`, re-detected after the window | **create** a new `OPEN` exception with `previous_occurrence_id` linking the old one | nothing |
 | `DISMISSED`, condition never cleared since dismissal | update `last_detected_at` only; no event, stays dismissed | set `condition_cleared_at` |
@@ -228,11 +228,19 @@ for each rule it executed, reconciles findings against the latest stored excepti
 Only the rules that actually ran in an evaluation can auto-resolve exceptions. A run limited to
 inventory rules never resolves order exceptions.
 
+Evaluation runs have the statuses `RUNNING`, `SUCCEEDED`, `FAILED`, and `SKIPPED`. A store-level
+advisory lock prevents overlapping runs: a run that cannot take the lock is recorded as `SKIPPED`.
+A `FAILED` run commits no exception changes, because the work happens in a savepoint that is rolled
+back. Only the run record itself persists, with its error.
+
 ### 3.4 Why a manual resolution can be reopened
 
 Value proposition #7 ("Was the issue actually resolved?") is enforced here. When a person marks an
 exception resolved, the next evaluation checks the underlying condition. If the condition is still
-there, the exception returns to `REOPENED` with the reason `VERIFICATION_FAILED`. For long-running
+there **and the data has been refreshed since the resolution** (or the 24-hour grace period has
+passed), the exception returns to `REOPENED` with the reason `VERIFICATION_FAILED`. The grace rule
+prevents a correct fix from being reopened only because the source system's export has not been
+re-imported yet. For long-running
 work, such as waiting on a supplier delivery, the owner keeps the exception `IN_PROGRESS` with a
 note. When the stock arrives, the system resolves it automatically (`CONDITION_CLEARED`).
 
@@ -260,8 +268,7 @@ stateDiagram-v2
 
 - A `VALIDATED` import with row errors can be applied in only two ways. In **strict** mode it is
   blocked until the file is corrected and re-uploaded. In **valid-rows-only** mode the user must
-  explicitly confirm the skipped-row count. Skipped rows are persisted as `ImportError` records and
-  can be downloaded as a CSV. Nothing is skipped silently.
+  explicitly confirm the skipped-row count. Skipped rows are stored as `ImportRowIssue` records, and can be downloaded as a CSV. Nothing is skipped silently.
 - `APPLYING` runs in one database transaction. A failure rolls back every business-data change.
 - A preview expires after 24 hours (`DISCARDED`), because data may have changed since validation.
 - After `COMPLETED` / `COMPLETED_WITH_ERRORS`, an exception evaluation run with

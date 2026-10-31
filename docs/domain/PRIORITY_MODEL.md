@@ -20,7 +20,7 @@ priority_score = min(100, S + A + E + D + T)
 | **S**: severity | `CRITICAL` 50 · `HIGH` 35 · `MEDIUM` 20 · `LOW` 8 | 50 max |
 | **A**: affected orders | `min(cap_A, 3 × n)` where `n` = distinct affected orders | cap 15 |
 | **E**: exposure | `0` if `v ≤ 0`, else `round(cap_E × log10(1 + v) / log10(1 + exposure_cap))`, clamped to `cap_E`. `v` is the gross order-line value at risk, in store currency | cap 15, `exposure_cap` = 5000 |
-| **D**: deadline | deadline already passed → 12 · within 24 h → 8 · within 72 h → 4 · otherwise or none → 0 | 12 max |
+| **D**: deadline | passed (`deadline_at ≤ as_of`) → 12 · `0 < deadline_at − as_of ≤ 24 h` → 8 · `≤ 72 h` → 4 · otherwise or none → 0 | 12 max |
 | **T**: time unresolved | `min(cap_T, 2 × whole days since first_detected_at)` | cap 8 |
 
 The maximum is 50 + 15 + 15 + 12 + 8 = **100**.
@@ -42,14 +42,15 @@ values still rank higher.
 `due_at = first_detected_at + response_hours(severity)`, where `CRITICAL` = 4 h, `HIGH` = 24 h,
 `MEDIUM` = 72 h, `LOW` = 168 h. When the finding has a business `deadline_at` that is in the future
 and earlier than that, `due_at = deadline_at`. The due date is set at creation and recalculated
-when severity changes. A user with `exceptions.assign` can override it, and the override is audited.
+when severity changes, unless a user overrode it. A user with `exceptions.assign` can override it
+(`due_at_overridden = true`, audited), and automatic recalculation never replaces an override.
 
 ## Worked examples
 
 | Exception | S | A | E | D | T | Score | Band |
 |---|---|---|---|---|---|---|---|
 | Oversold SKU, 4 committed orders, 600.00 at risk, nearest ship-by in 10 h, new | 50 | 12 | 11 | 8 | 0 | **81** | P1 |
-| Order overdue by 30 h, total 120.00, 2 days open | 35 | 3 | 8 | 12 | 4 | **62** | P2 |
+| Order overdue by 30 h, total 120.00, detected when it became overdue (1 whole day open) | 35 | 3 | 8 | 12 | 2 | **60** | P2 |
 | Below reorder point, medium severity, no orders, 3 days open | 20 | 0 | 0 | 0 | 6 | **26** | P4 |
 | Refund pending on 89.90 order, 26 h after cancellation | 35 | 3 | 8 | 12 | 0 | **58** | P2 |
 

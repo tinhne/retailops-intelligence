@@ -107,6 +107,7 @@ then either fix the code or update the document with an ADR explaining the chang
 | Area | Owner role | Others may |
 |---|---|---|
 | `docs/product`, `docs/workflows` | Product/BA | read |
+| `docs/operations` | QA (test strategy) / DevOps (deployment, runbooks) | read |
 | `docs/domain`, `docs/architecture`, `docs/decisions`, `packages/contracts` | Architect (orchestrator approves) | read |
 | `apps/api` | Backend | read |
 | `apps/web` | Frontend | read |

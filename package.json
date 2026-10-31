@@ -1,0 +1,16 @@
+{
+  "name": "retailops-intelligence",
+  "private": true,
+  "description": "RetailOps Intelligence: e-commerce operations and decision intelligence platform",
+  "author": "Lê Văn Trung Tính",
+  "license": "MIT",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "web:dev": "pnpm --filter @retailops/web dev",
+    "web:build": "pnpm --filter @retailops/web build",
+    "contracts:generate": "pnpm --filter @retailops/contracts generate"
+  }
+}
