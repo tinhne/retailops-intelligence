@@ -3,6 +3,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Boxes, CircleCheck, SearchX } from "lucide-react";
 import Link from "next/link";
+import { Fragment } from "react";
 
 import { DataTable, type Column } from "@/components/data/data-table";
 import { FilterChips, MultiSelectFilter, Pagination, SearchInput, SelectField, type Chip } from "@/components/data/list-controls";
@@ -23,17 +24,15 @@ import { formatCount, formatQuantity } from "@/lib/format/number";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { useListState } from "@/lib/hooks/use-list-state";
 import { defineListParams } from "@/lib/list-params";
-import { displayHealth, stockHealthMeta, type StockHealth } from "@/lib/status-maps";
+import { STOCK_HEALTH_ORDER, stockHealthMeta, stockHealthSummaryKey, type StockHealth } from "@/lib/status-maps";
 import { useStore } from "@/lib/store/store-context";
 import { cn } from "@/lib/utils";
 
-const HEALTH: StockHealth[] = ["OVERSOLD", "OUT_OF_STOCK", "BELOW_REORDER_POINT", "APPROACHING_REORDER_POINT", "HEALTHY"];
-const SUMMARY_KEYS: Record<StockHealth, "oversold" | "out_of_stock" | "below_reorder_point" | "approaching_reorder_point" | "healthy"> = {
-  OVERSOLD: "oversold",
-  OUT_OF_STOCK: "out_of_stock",
-  BELOW_REORDER_POINT: "below_reorder_point",
-  APPROACHING_REORDER_POINT: "approaching_reorder_point",
-  HEALTHY: "healthy",
+const HEALTH = STOCK_HEALTH_ORDER;
+/** A single-class filter with no rows is good news for these classes (S-09). */
+const ALL_CLEAR: Partial<Record<StockHealth, { title: string; description?: string }>> = {
+  OVERSOLD: { title: "No oversold products" },
+  DATA_ISSUE: { title: "No data issues", description: "No active product has a negative on-hand figure." },
 };
 
 export const positionsList = defineListParams(
@@ -139,7 +138,7 @@ export function PositionsScreen() {
       align: "right",
       hideBelow: "lg",
       cell: (p) =>
-        displayHealth(p.health, p.on_hand) === "DATA_ISSUE" ? (
+        p.health === "DATA_ISSUE" ? (
           <NoValue />
         ) : p.days_of_cover === null ? (
           <span title="Not enough sales history" className="text-muted-foreground">—</span>
@@ -157,7 +156,7 @@ export function PositionsScreen() {
 
   const total = list.data?.total ?? 0;
   const summary = dashboard.data?.inventory;
-  const onlyOversold = params.health.length === 1 && params.health[0] === "OVERSOLD" && chips.length === 1;
+  const allClear = params.health.length === 1 && chips.length === 1 ? ALL_CLEAR[params.health[0] as StockHealth] : undefined;
 
   return (
     <div className="flex flex-col gap-6">
@@ -171,11 +170,15 @@ export function PositionsScreen() {
                   const pressed = params.health.includes(h);
                   const Icon = stockHealthMeta[h].icon;
                   return (
-                    <Button key={h} type="button" variant="secondary" size="sm" aria-pressed={pressed} onClick={() => toggleHealth(h)} className={cn("shrink-0", pressed && "border-primary bg-surface-selected")}>
-                      <Icon aria-hidden />
-                      {stockHealthMeta[h].label}{" "}
-                      <span className="tabular-nums text-muted-foreground">{formatQuantity(summary[SUMMARY_KEYS[h]])}</span>
-                    </Button>
+                    <Fragment key={h}>
+                      {/* The data issue is not an availability class (BR-402a), so it stands apart. */}
+                      {h === "DATA_ISSUE" ? <span aria-hidden className="mx-1 w-px shrink-0 self-stretch bg-border" /> : null}
+                      <Button type="button" variant="secondary" size="sm" aria-pressed={pressed} onClick={() => toggleHealth(h)} className={cn("shrink-0", pressed && "border-primary bg-surface-selected")}>
+                        <Icon aria-hidden />
+                        {stockHealthMeta[h].label}{" "}
+                        <span className="tabular-nums text-muted-foreground">{formatQuantity(summary[stockHealthSummaryKey[h]])}</span>
+                      </Button>
+                    </Fragment>
                   );
                 })
               : null}
@@ -235,8 +238,8 @@ export function PositionsScreen() {
             </div>
           )}
           noResults={
-            onlyOversold ? (
-              <EmptyState icon={CircleCheck} variant="success" title="No oversold products" />
+            allClear ? (
+              <EmptyState icon={CircleCheck} variant="success" title={allClear.title} description={allClear.description} />
             ) : (
               <EmptyState
                 icon={SearchX}

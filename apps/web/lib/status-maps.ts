@@ -108,6 +108,32 @@ export const stockHealthMeta: Record<StockHealth, StatusMeta> = {
   BELOW_REORDER_POINT: { label: "Below reorder point", tone: "warning", icon: TrendingDown },
   APPROACHING_REORDER_POINT: { label: "Approaching reorder point", tone: "caution", icon: ArrowDownRight },
   HEALTHY: { label: "Healthy", tone: "success", icon: CircleCheck },
+  DATA_ISSUE: { label: "Data issue", tone: "attention", icon: Database },
+};
+
+/**
+ * Display order for filters, summary bars and the dashboard card: the availability classes from
+ * worst to best, then the data issue, which is not an availability class (BR-402a, S-02, S-09).
+ */
+export const STOCK_HEALTH_ORDER: StockHealth[] = [
+  "OVERSOLD",
+  "OUT_OF_STOCK",
+  "BELOW_REORDER_POINT",
+  "APPROACHING_REORDER_POINT",
+  "HEALTHY",
+  "DATA_ISSUE",
+];
+
+export type InventoryHealthSummary = Schema<"InventoryHealthSummary">;
+
+/** Where each class is counted in the dashboard's `inventory` summary (ACTIVE products). */
+export const stockHealthSummaryKey: Record<StockHealth, Exclude<keyof InventoryHealthSummary, "active_products">> = {
+  OVERSOLD: "oversold",
+  OUT_OF_STOCK: "out_of_stock",
+  BELOW_REORDER_POINT: "below_reorder_point",
+  APPROACHING_REORDER_POINT: "approaching_reorder_point",
+  HEALTHY: "healthy",
+  DATA_ISSUE: "data_issue",
 };
 
 export const importStatusMeta: Record<ImportStatus, StatusMeta> = {
@@ -273,18 +299,23 @@ export const reservationLabels: Record<ReservationStatus, string> = {
   RELEASED: "Released",
 };
 
-/** Health shown to people: the API value, or a state the API does not express as health. */
-export type DisplayHealth = StockHealth | "DATA_ISSUE" | "NOT_TRACKED";
+/** Health shown to people: the API value, or "Not tracked" when the API leaves it null. */
+export type DisplayHealth = StockHealth | "NOT_TRACKED";
 
 export const displayHealthMeta: Record<DisplayHealth, StatusMeta & { description?: string }> = {
   ...stockHealthMeta,
-  DATA_ISSUE: { label: "Data issue", tone: "attention", icon: Database },
+  DATA_ISSUE: {
+    ...stockHealthMeta.DATA_ISSUE,
+    description: "On hand is negative, which is physically impossible, so stock health can't be computed until a cycle count corrects it (BR-402a).",
+  },
   NOT_TRACKED: { label: "Not tracked", tone: "muted", icon: Minus, description: "Stock health is computed for active products only." },
 };
 
-/** On-hand below zero is impossible stock, so it overrides any computed health (BR-402a). */
-export function displayHealth(health: StockHealth | null, onHand: number): DisplayHealth {
-  if (onHand < 0) return "DATA_ISSUE";
+/**
+ * The API classifies negative on-hand as `DATA_ISSUE` for any product status (BR-402a), and
+ * returns null only for inactive products with valid stock.
+ */
+export function displayHealth(health: StockHealth | null): DisplayHealth {
   return health ?? "NOT_TRACKED";
 }
 
