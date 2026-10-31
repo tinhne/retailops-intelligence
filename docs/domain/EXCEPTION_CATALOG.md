@@ -28,7 +28,8 @@ Every rule emits structured findings, never just log lines:
 
 ## Precedence
 
-Inventory rules are mutually exclusive per product (BR-401). The evaluator computes the inventory
+`DATA_NEGATIVE_ON_HAND` comes first. A product with `on_hand < 0` gets only that exception, and
+its inventory rules are suppressed (BR-402a). Inventory rules are mutually exclusive per product (BR-401). The evaluator computes the inventory
 conditions in this order and emits only the first that matches:
 `INVENTORY_OVERSOLD` → `INVENTORY_OVERSELL_RISK` → `INVENTORY_OUT_OF_STOCK` → `INVENTORY_BELOW_REORDER_POINT`.
 
@@ -39,7 +40,7 @@ Order rules: `ORDER_FULFILLMENT_OVERDUE` supersedes `ORDER_STALLED_AFTER_PAYMENT
 ## INVENTORY_OVERSOLD (`INV-OVERSOLD@1`)
 
 - **Category:** INVENTORY · **Entity:** product · **Key:** `INVENTORY_OVERSOLD:product:{id}`
-- **Condition:** active product with `available < 0` (committed demand exceeds on-hand stock).
+- **Condition:** active product with `on_hand ≥ 0` and `available < 0`, so `reserved > on_hand` (committed demand exceeds on-hand stock).
 - **Severity:** `CRITICAL`.
 - **Affected orders:** allocate `on_hand` to committed order lines in FIFO order of `paid_at`
   (ties broken by `order_number`). Lines not fully covered are affected (BR-402).
@@ -70,15 +71,15 @@ Order rules: `ORDER_FULFILLMENT_OVERDUE` supersedes `ORDER_STALLED_AFTER_PAYMENT
 - **Severity:** `HIGH` if `avg_daily_units > 0` (the product is selling); otherwise `MEDIUM`.
 - **Exposure:** 0, because no order is blocked yet. Lost sales are not estimated.
 - **Evidence:** on_hand, reserved, incoming and ETA, avg daily units (estimate), supplier, lead time.
-- **Recommended action:** "Reorder from {supplier} (lead time {n} days) or hide the listing until stock arrives."
+- **Recommended action:** "Reorder from {supplier} (lead time {n} days) or hide the listing until stock arrives." Without a supplier: "Reorder from your supplier …"
 - **Auto-resolves when:** `available > 0`.
 
 ## INVENTORY_BELOW_REORDER_POINT (`INV-BELOW-ROP@1`)
 
 - **Category:** INVENTORY · **Entity:** product · **Key:** `INVENTORY_BELOW_REORDER_POINT:product:{id}`
 - **Condition:** active product, `reorder_point > 0`, `0 < available ≤ reorder_point`.
-- **Severity:** `HIGH` if `days_of_cover < supplier lead_time_days` (it will likely run out before
-  a new order arrives); otherwise `MEDIUM`.
+- **Severity:** `HIGH` if a sales velocity and a supplier lead time both exist and
+  `days_of_cover < lead_time_days` (it will likely run out before a new order arrives); otherwise `MEDIUM`.
 - **Exposure:** 0.
 - **Evidence:** available, reorder point, incoming and ETA, avg daily units, days of cover (estimate), lead time.
 - **Recommended action:** "Place a replenishment order for at least {reorder_quantity or reorder_point × 2 − available − incoming} units."
@@ -114,7 +115,7 @@ Order rules: `ORDER_FULFILLMENT_OVERDUE` supersedes `ORDER_STALLED_AFTER_PAYMENT
 
 - **Category:** PAYMENT · **Entity:** order · **Key:** `ORDER_REFUND_PENDING:order:{id}`
 - **Condition:** `status = CANCELLED`, `payment_status = PAID`, and `as_of − cancelled_at > refund_overdue_hours` (BR-206).
-- **Severity:** `HIGH`; `CRITICAL` after 3 × `refund_overdue_hours`.
+- **Severity:** `HIGH`; `CRITICAL` when `as_of − cancelled_at > 3 × refund_overdue_hours` (both clocks start at `cancelled_at`).
 - **Exposure:** order total (customer money held).
 - **Deadline:** `cancelled_at + refund_overdue_hours`.
 - **Recommended action:** "Issue the refund in the payment system, then re-import the order or record it."

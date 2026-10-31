@@ -40,7 +40,7 @@ Inventory is tracked per `(store, product)` in `inventory_balance`. Each quantit
 | BR-101 | `available = on_hand − reserved`. Pending demand is **not** subtracted from `available`. It is compared against `available` only in the oversell-risk rule (BR-403). Committed demand is already represented by `reserved` and must never be subtracted a second time. | Industry |
 | BR-102 | `available` can be negative. A negative value means committed demand exceeds physical stock (oversold). It is reported, never clamped. | Industry |
 | BR-103 | `incoming` never counts toward `available`. It appears as context in evidence ("40 units expected on 2026-11-04"). | Industry |
-| BR-104 | `inventory_balance` is a cached projection of the ledger and reservations. The reconciliation check (`inventory.reconcile`) recomputes it and reports any drift as a defect. It never silently fixes drift. | MVP |
+| BR-104 | `inventory_balance` is a cached projection of the ledger and reservations. The reconciliation check (`inventory.reconcile`, exposed at `GET /inventory/reconciliation` and on the Data quality page) recomputes it and reports any drift as a defect. It never silently fixes drift. | MVP |
 
 ### 2.2 Inventory movement ledger
 
@@ -115,6 +115,7 @@ The full rule definitions are in `EXCEPTION_CATALOG.md`. Summary:
 | ID | Rule |
 |---|---|
 | BR-401 | One inventory exception at most per product at a time, and it is the most severe: `OVERSOLD` > `OVERSELL_RISK` > `OUT_OF_STOCK` > `BELOW_REORDER_POINT`. When a more severe condition appears, the less severe exception is resolved with `SUPERSEDED` and its assignee carries over. |
+| BR-402a | If `on_hand < 0`, the stock figure is invalid input. Only `DATA_NEGATIVE_ON_HAND` is raised for that product, and every inventory rule is suppressed until on-hand is corrected. `INVENTORY_OVERSOLD` therefore always has `on_hand ≥ 0` and `reserved > on_hand`, so it always has affected orders. |
 | BR-402 | Oversold: affected orders are found by allocating `on_hand` to committed order lines in FIFO order of `paid_at`. Lines that cannot be fully covered are affected. |
 | BR-403 | Oversell risk: `available ≥ 0` and `pending_demand > available`. Potential shortage = `pending_demand − available`. |
 | BR-404 | Exposure figures are **gross order-line value at risk**, not measured financial loss. They must never be labelled as "loss". |
@@ -124,7 +125,7 @@ The full rule definitions are in `EXCEPTION_CATALOG.md`. Summary:
 | ID | Rule | Basis |
 |---|---|---|
 | BR-501 | All timestamps are stored as UTC (`timestamptz`) and displayed in the store time zone with the zone abbreviation. | Industry |
-| BR-502 | Import timestamps must be ISO-8601. If a timestamp has no UTC offset, it is interpreted in the store's time zone, and the import preview flags this with a warning. | MVP |
+| BR-502 | Import timestamps must be ISO-8601. If a timestamp has no UTC offset, it is interpreted in the store's time zone, and the import preview flags this with a warning. Local times that are ambiguous at a daylight-saving change resolve to the first occurrence (`fold=0`). | MVP |
 | BR-503 | Money is stored as `NUMERIC(12,2)` and processed as `Decimal`. Floating point is never used for money. | Industry |
 | BR-504 | Each evaluation receives an explicit `as_of` timestamp. Rules never read the wall clock directly, which keeps them deterministic and testable. | MVP |
 | BR-505 | Customer references in the product are opaque identifiers (e.g. `CUST-10492`). The MVP stores no customer names, addresses, emails, or phone numbers (data minimisation). | MVP |
@@ -140,7 +141,7 @@ The detailed data contracts are in `docs/workflows/IMPORT_PIPELINE.md`. Core rul
 | BR-602 | File limits: UTF-8 (a BOM is accepted), `.csv` only, at most 5 MB and 20,000 data rows. Anything else is rejected before row validation. | MVP |
 | BR-603 | Unknown columns produce a warning and are ignored. Missing required columns reject the whole file. | Industry |
 | BR-604 | Duplicate keys inside one file (e.g. the same SKU twice) are row errors on every occurrence after the first. | Industry |
-| BR-605 | Referential integrity: `order_items` must reference an existing order (in the database or applied earlier in the same import) and an existing SKU. Otherwise the row errors with `UNKNOWN_ORDER` / `UNKNOWN_SKU`. | Industry |
+| BR-605 | Referential integrity: `order_items` must reference an order and a SKU that already exist in the database. Import `orders.csv` first. Otherwise the row errors with `UNKNOWN_ORDER` / `UNKNOWN_SKU`. | Industry |
 | BR-606 | Apply is atomic (one transaction). Strict mode is the default. Valid-rows-only mode needs explicit confirmation of the number of skipped rows. | MVP |
 | BR-607 | A file whose SHA-256 matches an import already completed for the same store and type is flagged in the preview as `DUPLICATE_FILE`. The user can still apply it, because the semantics are upserts and idempotent references. | MVP |
 | BR-608 | Products and orders are upserted by natural key (`sku`, `order_number`). Order status updates obey the reachability rule in `STATE_MACHINES.md §1.2`. | MVP |
