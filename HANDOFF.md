@@ -9,21 +9,24 @@ CSV data. A free-tier LLM copilot explains the evidence and suggests next steps.
 deterministic, and AI is advisory only.
 
 ## 2. Completed
-Backend foundation (auth, sessions, CSRF, permissions, tenancy, audit), full database schema
-(migrations 0001–0002), order state machine, and inventory ledger and reservations, all with tests.
-Canonical domain docs are in `docs/domain/`. See `PROJECT_STATE.md` for the verified list.
+Docs M0–M3 (tagged). Backend: auth, sessions, CSRF, permissions, tenancy, audit; schema
+(migrations 0001–0002); order FSM; inventory ledger and reservations; CSV import pipeline; exception
+engine and lifecycle API; read APIs and analytics; demo dataset generator. `make check` gives 625 tests
+green. The GitHub repo exists and its first CI run passed. See `PROJECT_STATE.md`.
 
 ## 3. Currently being implemented
-Imports pipeline, exception engine and lifecycle API, read APIs and analytics (backend), and the
-M0–M3 documentation set. See `PROJECT_STATE.md → In progress`.
+Next up: the frontend (T-060..T-066), the scheduled evaluation worker (T-055), the compose stack
+(T-090), and the AI copilot (T-071..T-073).
 
 ## 4. Broken or blocked
-GitHub remote not created (owner action), and no hosting chosen. Nothing known broken.
+Nothing known broken. Hosting is not chosen (T-093).
 
 ## 5. Files that matter
 `docs/domain/*` (contracts) · `apps/api/app/domains/orders/state.py` (order FSM) ·
 `apps/api/app/domains/inventory/service.py` (ledger and reservations) ·
-`apps/api/app/domains/exceptions/engine.py` (evaluation entry point) · `apps/api/app/api/deps.py`
+`apps/api/app/domains/exceptions/engine.py` (evaluation and reconciliation) ·
+`apps/api/app/domains/exceptions/rules/` (one pure module per rule) ·
+`apps/api/app/domains/imports/service.py` (import apply) · `packages/contracts/src/schema.ts` (generated API types) · `apps/api/app/api/deps.py`
 (auth/permission dependencies) · `apps/api/migrations/versions/`.
 
 ## 6. Decisions that must be preserved
@@ -36,6 +39,7 @@ same-origin proxy · free-tier LLM only, with a deterministic fallback · no raw
 ```bash
 make setup      # backend deps (uv, Python 3.12)
 make migrate    # starts Postgres (docker) and applies migrations
+make seed       # demo store "Kestrel Home & Kitchen" plus a first evaluation run
 make api-dev    # http://localhost:8000/api/docs
 ```
 

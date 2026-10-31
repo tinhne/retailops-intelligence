@@ -6,69 +6,71 @@
 |---|---|
 | Project | RetailOps Intelligence: E-commerce Operations & Decision Intelligence Platform |
 | Owner | Lê Văn Trung Tính (GitHub `tinhne`) |
-| Current milestone | **M5: Core operational workflows** (in progress). M0–M3 documentation is in review |
-| Current phase | Backend core implementation in parallel (imports, exception engine, read APIs and analytics) |
-| Overall completion | Foundation stage. Backend foundation and domain core merged. No UI yet. Not deployed |
-| Last verified commit | `28e6fbf` (main): `make check` green, 87 tests |
-| Working branch | `main` (feature work merged via `--no-ff` merges) |
-| Architecture version | v1 (modular monolith, see `docs/domain/*`, ADR-0001..0013) |
-| Last update | 2026-10-31 23:30 (UTC+7) |
+| Current milestone | **M5 core operational workflows: backend complete.** Next: M6 frontend, M7 AI |
+| Current phase | Backend core integrated and verified. Frontend scaffold exists, screens not built |
+| Overall completion | M0–M3 documented and tagged. Backend M4–M5 implemented and tested. No UI screens, no copilot, not deployed |
+| Last verified commit | `main` after merging `feat/exception-engine` plus contracts: `make check` green, 625 tests |
+| Remote | https://github.com/tinhne/retailops-intelligence (public). The first CI run passed |
+| Architecture version | v1 (modular monolith; `docs/domain/*`, ADR-0001..0013) |
+| Last update | 2026-11-01 (UTC+7) |
 
 ## Implemented (verified)
 
-- Repository skeleton, agent guide, backlog, persistent state files.
-- Canonical domain contracts: state machines, business rules BR-xxx, exception catalog (9 rules),
-  priority model, domain model.
-- Backend foundation: FastAPI app factory, settings with production guards, JSON logs with request
-  IDs, error envelope, pagination, rate limiting, health live/ready.
-- Identity and security: argon2id, opaque server-side sessions, session-bound CSRF, role → permission
-  matrix, store-scoped access (cross-tenant → 404), demo viewer login, audit log and API.
-- Database: Alembic migrations 0001 (identity, audit) and 0002 (catalog, orders, inventory,
-  imports, exceptions, AI). `alembic check` shows no drift.
-- Order lifecycle: transitions, reachability for import sync, axis matrix, timestamp rules, demand
-  classes, upsert with immutable events, line lock (BR-609).
-- Inventory: ledger with cycle-count-as-of semantics (BR-113), reservations sync (BR-120..123),
-  shipment cutoff (BR-130/131), reconciliation (BR-104), health and velocity math.
+- **Docs:** product discovery, workflows, domain contracts, architecture, ADRs, design system and
+  screens, AI architecture, test strategy. Tags `discovery-complete`, `workflow-v1`, `architecture-v1`.
+- **Identity and security:** argon2id, server-side sessions, session-bound CSRF, role matrix
+  (`GET /api/v1/roles`), cross-tenant 404, rate limits, audit log (no IP addresses exposed), demo viewer login.
+- **Data model:** migrations 0001–0002 (all modules). `alembic check` shows no drift.
+- **Orders and inventory:** order FSM (three axes, reachability), ledger with count-as-of semantics,
+  reservations, shipment cutoff, reconciliation.
+- **Imports:** 4 CSV types, preview, atomic apply (strict or valid-rows-only), idempotency, issue CSV, templates.
+- **Exceptions:** 9 deterministic rules, reconciliation (dedup, refresh, auto-resolve, verify with
+  grace, reopen, recurrence, supersede), priority and due dates, lifecycle API, evaluations API.
+- **Read side:** products, orders, inventory positions and movements, dashboard, trends, exception
+  breakdown, store settings, members.
+- **Demo dataset:** `make seed` generates the fictional "Kestrel Home & Kitchen" store. The engine
+  produces 18 exceptions across all 9 types.
+- **Delivery:** API Dockerfile (non-root, builds), CI workflow (passed on GitHub), OpenAPI → TS contracts.
 
-## In progress
+## In progress / next
 
-| Task | Owner role | Notes |
-|---|---|---|
-| T-001/T-002 product discovery docs | PM agent | `docs/product/*` |
-| T-010 workflow docs | BA agent | `docs/workflows/*` |
-| T-021..T-023 architecture docs, ADRs, ER diagram | Architect agent | Updating ADR-0010 for free-tier LLMs |
-| T-030 design docs | Design agent | `docs/design/*` |
-| T-070/T-080 AI docs and test strategy | AI/QA agent | Updating for free-tier LLMs |
-| T-052 CSV import pipeline | Backend agent | `domains/imports`, `catalog/service.py`, `sample-data/` |
-| T-053/T-054 exception engine and lifecycle API | Backend agent | `domains/exceptions` (except models) |
-| T-050/T-051 read APIs, T-057 analytics, store settings | Backend agent | catalog/orders/inventory routers, `domains/analytics`, store router |
+| Task | Notes |
+|---|---|
+| T-060..T-066 Frontend | Next.js 16 scaffold and libraries installed. Screens are specified in `docs/design/*` |
+| T-071..T-073 AI copilot | Docs complete. Needs migration 0003 (session-scoped demo conversations, tool-call result refs, cache key) |
+| T-055 Scheduled evaluation worker | Promoted to P0: time-based rules only advance when an evaluation runs |
+| T-056 Demo seed history | Add exception history (assigned, in progress, resolved and verified, reopened, dismissed) via the lifecycle service |
+| T-090 Compose stack | Add `api`, `worker`, `web` services and the web Dockerfile |
 
 ## Blocked
 
 | Task | Blocker | Needed from owner |
 |---|---|---|
-| T-093 Deployment | No hosting provider or credentials | Choose a provider (free tier acceptable) |
+| T-093 Deployment | No hosting provider or credentials | Choose a provider (free tier preferred) |
 
-## Known bugs
+## Known bugs / limitations
 
-None recorded.
+- The evaluation engine uses a transaction-scoped advisory lock under READ COMMITTED with row locks.
+  SYSTEM_ARCHITECTURE §8–9 describes REPEATABLE READ plus retry (documented deviation, acceptable at MVP scale).
+- Evaluation and import idempotency keys are stored in audit details or import summary JSON (no dedicated column yet).
+- Import validation and apply run row by row. A 20,000-row performance check has not been run.
 
 ## Latest test results
 
-`make check` on `28e6fbf`: ruff OK, ruff format OK, mypy --strict OK (57 files), pytest **87 passed**.
-
-## Deployment status
-
-Not deployed. Local stack: PostgreSQL via `docker compose up -d db`. The API runs with `make api-dev`.
+`make check` (2026-11-01): ruff OK, ruff format OK, mypy --strict OK, pytest **625 passed** (~73 s).
+GitHub Actions run 41216596429: success.
 
 ## Owner decisions log
 
-- 2026-10-31: The AI copilot must use **free-tier LLM APIs only** (Gemini via an AI Studio key by default,
-  or an OpenAI-compatible free tier such as Groq or OpenRouter), with the deterministic fallback. Recorded in
-  ENVIRONMENT_STATUS.md and ADR-0010.
+- 2026-10-31: The AI copilot uses **free-tier LLM APIs only** (Gemini by default, OpenAI-compatible
+  free tiers as an alternative) with a deterministic fallback.
+- 2026-11-01: The owner created the GitHub repository. Pushes go over SSH.
 
 ## Next three highest-priority actions
 
-1. Review and integrate the three backend agents' work (imports, exception engine, read APIs). Run `make check` and merge.
-2. Review the M0–M3 documentation, fix inconsistencies, commit, and tag `discovery-complete`, `workflow-v1`, `architecture-v1`.
-3. Demo dataset generator (T-056), then the frontend scaffold (T-060) from the design system.
+1. Frontend core (T-060..T-065): app shell, login and demo entry, overview, exception inbox and
+   investigation, orders, inventory, imports, built from `docs/design/*` against `packages/contracts`.
+2. Scheduled evaluation worker (T-055) and the full compose stack with the web image (T-090), plus
+   demo exception history (T-056).
+3. AI copilot (T-071..T-073): migration 0003, tool registry, Gemini / OpenAI-compatible /
+   deterministic providers with fallback, copilot UI.

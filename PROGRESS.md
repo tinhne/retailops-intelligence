@@ -44,3 +44,36 @@ add a correction entry instead.
   revocation, idle expiry, 403 with the missing permission, cross-tenant 404, audit isolation, demo
   viewer login, demo misconfiguration guard, readiness). `alembic check` reports no drift.
 - **Remaining:** user management endpoints (T-066/P1), store settings API, OpenAPI contract generation.
+
+## 2026-11-01 (UTC+7): Orchestrator: documentation milestones M0–M3 (T-001, T-002, T-010, T-021..T-023, T-030, T-070, T-080)
+
+- **Agents:** PM (product discovery), BA (workflows), Architect (architecture, ER, ADR-0001..0013),
+  Design (IA, flows, design system, screens, components), AI/QA (AI docs, test strategy).
+- **Orchestrator review:** resolved about 30 cross-document inconsistencies in the canonical docs:
+  BR-113 cycle count as of occurred_at, BR-402a negative on-hand precedence, BR-609 line lock, the
+  verification grace rule, run statuses, due-date override and reopen, deadline boundaries,
+  refund clocks, DST ambiguity, BR-150 refunded-before-shipping exclusion, and reserved shipment
+  references. Owner decision applied: the AI copilot uses free-tier LLM providers only.
+- **Tags:** `discovery-complete`, `workflow-v1`, `architecture-v1` (verified docs; schema implemented).
+
+## 2026-11-01 (UTC+7): Orchestrator: demo dataset, infrastructure, GitHub (T-056 partial, T-090 partial, T-091, T-092)
+
+- Demo generator `app/demo` (`make seed`): 114 products, ~1,540 orders, ~2,600 ledger movements,
+  zero reconciliation drift. Every exception scenario is engineered. 2 integration tests.
+- API multi-stage non-root Dockerfile (builds). GitHub Actions CI (API, web, audits, Docker).
+  Next.js 16 web scaffold. OpenAPI → TypeScript contracts generator.
+- GitHub repo created by the owner. `main` and the tags pushed over SSH. **The first CI run passed** (run
+  41216596429 on 4f38073).
+
+## 2026-11-01 (UTC+7): Backend agents, integrated by the orchestrator (T-050, T-051, T-052, T-053, T-054, T-057)
+
+- **Imports (T-052):** 4 CSV types, preview, strict and valid-rows-only atomic apply, re-validation
+  guard, idempotency, issue CSV export, templates and sample data. 150 tests. Verified alone on clean main (241 passed).
+- **Read APIs and analytics (T-050/T-051 read side, T-057, settings):** 18 endpoints. 116 tests.
+  The orchestrator fixed BR-150 velocity via the shared `orders.sql.counts_as_sale` and updated 3 tests.
+  Verified alone on clean main (357 passed).
+- **Exception engine and lifecycle (T-053, T-054):** 9 rules, reconciliation per STATE_MACHINES §3.3,
+  priority and due dates, lifecycle API with concurrency, evaluations API. 267 tests. The orchestrator added:
+  negative on-hand supersedes inventory exceptions, with 1 test.
+- **Integrated result:** `make check` → ruff OK, mypy --strict OK, **625 passed**. `make seed` plus
+  engine run → 18 exceptions covering all 9 types. Contracts regenerated: 43 paths, 47 operations, 126 schemas.
