@@ -1763,8 +1763,7 @@ export interface components {
              * Format: uuid
              */
             id: string;
-            /** Role */
-            role: string;
+            role: components["schemas"]["Role"];
         };
         /** MembershipOut */
         MembershipOut: {
@@ -1778,9 +1777,8 @@ export interface components {
             /** Organization Name */
             organization_name: string;
             /** Permissions */
-            permissions: string[];
-            /** Role */
-            role: string;
+            permissions: components["schemas"]["Permission"][];
+            role: components["schemas"]["Role"];
             /** Stores */
             stores: components["schemas"]["StoreSummary"][];
         };
@@ -2255,6 +2253,11 @@ export interface components {
          * @enum {string}
          */
         PaymentStatus: "PENDING" | "PAID" | "FAILED" | "REFUNDED";
+        /**
+         * Permission
+         * @enum {string}
+         */
+        Permission: "dashboard.read" | "catalog.read" | "orders.read" | "inventory.read" | "exceptions.read" | "exceptions.work" | "exceptions.assign" | "exceptions.manage" | "evaluations.run" | "imports.read" | "imports.run" | "analytics.read" | "copilot.use" | "audit.read" | "settings.read" | "settings.manage" | "users.read" | "users.manage";
         /** PreviewRow */
         PreviewRow: {
             action: components["schemas"]["RowAction"];
@@ -2454,12 +2457,16 @@ export interface components {
             /** Resolution Note */
             resolution_note: string;
         };
+        /**
+         * Role
+         * @enum {string}
+         */
+        Role: "OWNER" | "MANAGER" | "STAFF" | "ANALYST" | "VIEWER";
         /** RolePermissionsOut */
         RolePermissionsOut: {
             /** Permissions */
-            permissions: string[];
-            /** Role */
-            role: string;
+            permissions: components["schemas"]["Permission"][];
+            role: components["schemas"]["Role"];
         };
         /**
          * RowAction

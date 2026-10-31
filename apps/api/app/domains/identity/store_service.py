@@ -133,7 +133,7 @@ def list_members(db: Session, organization_id: uuid.UUID) -> MemberList:
             MemberOut(
                 id=user_id,
                 full_name=full_name,
-                role=role.value,
+                role=role,
                 can_work_exceptions=Permission.EXCEPTIONS_WORK in permissions_for(role),
             )
             for user_id, full_name, role in rows

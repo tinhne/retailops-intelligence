@@ -8,6 +8,7 @@ from typing import Annotated, Self
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.domains.analytics.schemas import DataFreshness
+from app.domains.identity.permissions import Role
 
 # Integers in settings are strict: JSON booleans, floats and numeric strings are rejected.
 Weight = Annotated[int, Field(strict=True, ge=0, le=100)]
@@ -146,7 +147,7 @@ class MemberOut(BaseModel):
 
     id: uuid.UUID
     full_name: str
-    role: str
+    role: Role
     can_work_exceptions: bool
 
 

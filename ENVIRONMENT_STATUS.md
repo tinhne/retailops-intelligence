@@ -1,6 +1,6 @@
 # ENVIRONMENT_STATUS
 
-> Names only. **Never write secret values in this file.** Last updated: 2026-10-31.
+> Names only. **Never write secret values in this file.** Last updated: 2026-11-01.
 
 ## Local development requirements
 
@@ -21,16 +21,17 @@
 | `DATABASE_URL` | api, worker | yes | PostgreSQL connection string (psycopg 3 driver) |
 | `SESSION_SECRET` | api | yes (prod) | HMAC key for CSRF token derivation |
 | `COOKIE_SECURE` | api | no | `true` in production (HTTPS) |
-| `CORS_ALLOWED_ORIGINS` | api | no | Only needed if the API is called cross-origin (not the default setup) |
+| `TRUST_PROXY_HEADERS` | api | no | `true` when the API sits behind a trusted proxy (the Next.js server or a load balancer), so rate limits and audit use the forwarded client IP. Default `false` |
 | `LOG_LEVEL` | api, worker | no | default `INFO` |
 | `DEMO_MODE_ENABLED` | api | no | Enables the "Explore the demo" read-only sign-in |
+| `DEMO_STAFF_PASSWORD` | `make seed` | no | Password for the seeded staff accounts (`owner@`, `manager@`, `staff@`, `sofia@`, `analyst@kestrel.example`). Unset means a random password, so those accounts cannot sign in. Local and test use only |
 | `LLM_PROVIDER` | api | no | `deterministic` (default, no key) \| `gemini` \| `openai_compatible`. Free-tier providers only (ADR-0010) |
 | `GEMINI_API_KEY` | api | no | Free key from Google AI Studio. Server-side only, never exposed to the frontend |
 | `LLM_MODEL` | api | no | Model identifier (defaults to a Flash-class Gemini model) |
 | `LLM_BASE_URL` / `LLM_API_KEY` | api | no | `openai_compatible` only (e.g. Groq, OpenRouter free models) |
 | `LLM_TIMEOUT_SECONDS` | api | no | Live-provider timeout before falling back to deterministic (default 20) |
 | `COPILOT_RATE_LIMIT_PER_MINUTE` | api | no | Per-user copilot limit to protect the free quota (default 20) |
-| `API_INTERNAL_URL` | web | yes | Where the Next.js server proxies `/api/*` (e.g. `http://api:8000`) |
+| `API_INTERNAL_URL` | web (build) | yes (deploy) | Where the Next.js server proxies `/api/*` (e.g. `http://api:8000`). Read when the web app is built, because rewrites are compiled. Defaults to `http://localhost:8000` for local development |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | db (compose) | yes (local) | Local database container only |
 
 ## External dependencies and connected services

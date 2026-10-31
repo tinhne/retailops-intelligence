@@ -3,6 +3,8 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field, StringConstraints
 
+from app.domains.identity.permissions import Permission, Role
+
 Email = Annotated[
     str,
     StringConstraints(
@@ -28,8 +30,8 @@ class MembershipOut(BaseModel):
     organization_id: uuid.UUID
     organization_name: str
     is_demo: bool
-    role: str
-    permissions: list[str]
+    role: Role
+    permissions: list[Permission]
     stores: list[StoreSummary]
 
 
@@ -40,8 +42,8 @@ class UserOut(BaseModel):
 
 
 class RolePermissionsOut(BaseModel):
-    role: str
-    permissions: list[str]
+    role: Role
+    permissions: list[Permission]
 
 
 class MeResponse(BaseModel):

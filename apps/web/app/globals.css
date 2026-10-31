@@ -1,26 +1,216 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "../styles/tokens.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:where(.dark, .dark *));
 
+/* Tailwind theme mapping (DESIGN_SYSTEM §19). Tokens live in styles/tokens.css. */
 @theme inline {
+  --font-sans:
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-hover: var(--destructive-hover);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-input-hover: var(--input-hover);
+  --color-ring: var(--ring);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-placeholder: var(--text-placeholder);
+  --color-text-disabled: var(--text-disabled);
+  --color-link: var(--text-link);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-selected: var(--surface-selected);
+  --color-surface-disabled: var(--surface-disabled);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-active-foreground: var(--sidebar-active-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-overlay: var(--overlay);
+  --color-demo-banner: var(--demo-banner);
+  --color-demo-banner-foreground: var(--demo-banner-foreground);
+  --color-demo-banner-muted: var(--demo-banner-muted);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  --color-tone-neutral-fg: var(--tone-neutral-fg);
+  --color-tone-neutral-bg: var(--tone-neutral-bg);
+  --color-tone-neutral-border: var(--tone-neutral-border);
+  --color-tone-outline-fg: var(--tone-outline-fg);
+  --color-tone-outline-bg: var(--tone-outline-bg);
+  --color-tone-outline-border: var(--tone-outline-border);
+  --color-tone-muted-fg: var(--tone-muted-fg);
+  --color-tone-muted-bg: var(--tone-muted-bg);
+  --color-tone-muted-border: var(--tone-muted-border);
+  --color-tone-primary-fg: var(--tone-primary-fg);
+  --color-tone-primary-bg: var(--tone-primary-bg);
+  --color-tone-primary-border: var(--tone-primary-border);
+  --color-tone-info-fg: var(--tone-info-fg);
+  --color-tone-info-bg: var(--tone-info-bg);
+  --color-tone-info-border: var(--tone-info-border);
+  --color-tone-success-fg: var(--tone-success-fg);
+  --color-tone-success-bg: var(--tone-success-bg);
+  --color-tone-success-border: var(--tone-success-border);
+  --color-tone-warning-fg: var(--tone-warning-fg);
+  --color-tone-warning-bg: var(--tone-warning-bg);
+  --color-tone-warning-border: var(--tone-warning-border);
+  --color-tone-caution-fg: var(--tone-caution-fg);
+  --color-tone-caution-bg: var(--tone-caution-bg);
+  --color-tone-caution-border: var(--tone-caution-border);
+  --color-tone-attention-fg: var(--tone-attention-fg);
+  --color-tone-attention-bg: var(--tone-attention-bg);
+  --color-tone-attention-border: var(--tone-attention-border);
+  --color-tone-danger-fg: var(--tone-danger-fg);
+  --color-tone-danger-bg: var(--tone-danger-bg);
+  --color-tone-danger-border: var(--tone-danger-border);
+  --color-tone-danger-solid-fg: var(--tone-danger-solid-fg);
+  --color-tone-danger-solid-bg: var(--tone-danger-solid-bg);
+  --color-tone-danger-solid-border: var(--tone-danger-solid-border);
+
+  --color-priority-p1: var(--priority-p1-fg);
+  --color-priority-p1-bar: var(--priority-p1-bar);
+  --color-priority-p2: var(--priority-p2-fg);
+  --color-priority-p2-bar: var(--priority-p2-bar);
+  --color-priority-p3: var(--priority-p3-fg);
+  --color-priority-p3-bar: var(--priority-p3-bar);
+  --color-priority-p4: var(--priority-p4-fg);
+  --color-priority-p4-bar: var(--priority-p4-bar);
+  --color-priority-bar-empty: var(--priority-bar-empty);
+  --color-overdue: var(--overdue-fg);
+  --color-mark-danger: var(--mark-danger);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-neutral: var(--chart-neutral);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-axis: var(--chart-axis);
+  --color-chart-emphasis: var(--chart-emphasis);
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  --text-display: 1.75rem;
+  --text-display--line-height: 2.125rem;
+  --text-display--font-weight: 600;
+  --text-display--letter-spacing: -0.015em;
+  --text-title-lg: 1.25rem;
+  --text-title-lg--line-height: 1.75rem;
+  --text-title-lg--font-weight: 600;
+  --text-title-lg--letter-spacing: -0.01em;
+  --text-title: 1rem;
+  --text-title--line-height: 1.5rem;
+  --text-title--font-weight: 600;
+  --text-title--letter-spacing: -0.005em;
+  --text-title-sm: 0.875rem;
+  --text-title-sm--line-height: 1.25rem;
+  --text-title-sm--font-weight: 600;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.25rem;
+  --text-body-strong: 0.875rem;
+  --text-body-strong--line-height: 1.25rem;
+  --text-body-strong--font-weight: 500;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.125rem;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-xs--font-weight: 500;
+  --text-xs--letter-spacing: 0.005em;
+  --text-overline: 0.6875rem;
+  --text-overline--line-height: 1rem;
+  --text-overline--font-weight: 600;
+  --text-overline--letter-spacing: 0.06em;
+  --text-prose: 0.875rem;
+  --text-prose--line-height: 1.375rem;
+  --text-mono: 0.75rem;
+  --text-mono--line-height: 1rem;
+
+  --shadow-popover: 0 4px 12px -2px rgb(16 24 40 / 0.1), 0 2px 4px -2px rgb(16 24 40 / 0.06);
+  --shadow-dialog: 0 16px 32px -8px rgb(16 24 40 / 0.18), 0 4px 8px -4px rgb(16 24 40 / 0.08);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  --animate-skeleton: skeleton-pulse 2s ease-in-out infinite;
+
+  @keyframes skeleton-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.6;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 14px;
+    line-height: 20px;
+    font-variant-numeric: tabular-nums; /* every number in the product aligns (§4.1) */
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  /* Below 640 px form controls use 16 px so iOS Safari does not zoom on focus (§4.2). */
+  @media (max-width: 639px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .motion-essential {
+    animation-duration: 1s !important;
+    animation-iteration-count: infinite !important;
+  }
 }
