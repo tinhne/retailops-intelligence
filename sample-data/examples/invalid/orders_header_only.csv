@@ -1,0 +1,1 @@
+order_number,channel,customer_ref,placed_at,status,payment_status,fulfillment_status,paid_at,ship_by,shipped_at,delivered_at,cancelled_at,currency,subtotal,discount_total,shipping_total,tax_total,total,carrier,tracking_number

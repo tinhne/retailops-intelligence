@@ -1,0 +1,9 @@
+sku,name,category,status,unit_price,unit_cost,reorder_point,reorder_quantity,supplier_name,supplier_lead_time_days
+KHK-SPN-WD-3PK,"Wooden Spoons, 3-Pack",Utensils,ACTIVE,18.00,5.25,10,40,Greenbough Woodworks,14
+KHK-SPN-WD-3PK,"Wooden Spoons, 3-Pack (duplicate)",Utensils,ACTIVE,18.00,5.25,10,40,Greenbough Woodworks,14
+KHK-WHK-SS-12,Balloon Whisk 12 in,Utensils,ACTIVE,-12.00,4.00,8,24,,
+KHK-TNG-SS-9,Locking Tongs 9 in,Utensils,DISCONTINUED,15.00,4.80,8,24,,
+KHK-LDL-SS,Soup Ladle,Utensils,ACTIVE,11.995,3.10,8,24,,
+KHK-GRT-BOX,Box Grater,Prep,ACTIVE,24.00,8.10,-3,24,,
+KHK-SMP-GIFT,Gift Wrap Sample,Promo,ACTIVE,0.00,,0,,,
+KHK-MILL-PEP,"Pepper Mill, Walnut",Prep,ACTIVE,32.00,36.50,6,18,Greenbough Woodworks,14

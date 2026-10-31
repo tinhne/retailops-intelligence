@@ -1,0 +1,3 @@
+sku,name,category,status,unit_price,unit_cost,reorder_point,reorder_quantity,supplier_name,supplier_lead_time_days
+KHK-MUG-12OZ-SAGE,"Stoneware Mug 12 oz, Sage",Drinkware,ACTIVE,16.00,5.40,24,72,Harbor Ceramics Co.,21
+KHK-KNF-CHEF-8,"Chef's Knife 8 in, Carbon Steel",Cutlery,ACTIVE,89.00,34.50,6,18,Northfield Blades,35
