@@ -244,6 +244,7 @@ def add_exception_note(
         body=body.body,
         expected_version=body.expected_version,
         now=utcnow(),
+        source=body.source,
     )
 
 

@@ -221,6 +221,11 @@ class ReopenRequest(VersionedRequest):
 
 class NoteCreate(VersionedRequest):
     body: RequiredText
+    source: NoteSource = Field(
+        default=NoteSource.USER,
+        description="AI_DRAFT_ACCEPTED when the person accepts (and may have edited) a copilot "
+        "note draft; the author is still the person.",
+    )
 
 
 class AssignRequest(VersionedRequest):
