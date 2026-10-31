@@ -723,8 +723,8 @@ FilterBar → DataTable → Pagination.
 
 **Actions.** Open order (`orders.read`). No create, edit or delete (IA-5).
 
-**Filters / sort / search.** Search `q`: order number. Customer references are not searchable
-(BR-505). Status (multi, repeated `status`, grouped by status group). Payment status. Fulfillment
+**Filters / sort / search.** Search `q`: order number or customer reference (customer references are
+opaque IDs per BR-505, and are searchable here only, never in global search, IA §8). Status (multi, repeated `status`, grouped by status group). Payment status. Fulfillment
 status. Channel. Placed (`placed_from` / `placed_to`; presets Today, Last 7 days, Last 30 days,
 Last 60 days, Custom range in store-local dates). **Overdue only** toggle (`overdue=true`). Sort:
 the sorts `OrderSort` accepts, default Placed newest (`-placed_at`), also Placed oldest, Ship by

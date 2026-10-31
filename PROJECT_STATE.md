@@ -6,10 +6,10 @@
 |---|---|
 | Project | RetailOps Intelligence: E-commerce Operations & Decision Intelligence Platform |
 | Owner | Lê Văn Trung Tính (GitHub `tinhne`) |
-| Current milestone | **M6 frontend: foundation, Overview and exceptions done (T-060..T-062).** Next: T-063..T-065, then M7 AI |
-| Current phase | Backend core complete. Web sign-in, shell, Overview, exceptions inbox and investigation built and verified. Orders, inventory and imports screens not built |
-| Overall completion | M0–M3 documented and tagged. Backend M4–M5 implemented and tested. Web shell, sign-in, Overview and the full exception workflow done. Orders, inventory and imports screens, copilot and deployment not done |
-| Last verified commit | `main` after merging `feat/exceptions-ui`: backend `make check` green (629 tests), web lint, typecheck, 120 tests and build green |
+| Current milestone | **M6 frontend: foundation, Overview, exceptions and orders done (T-060..T-063).** Next: T-064, T-065, then M7 AI |
+| Current phase | Backend core complete. Web sign-in, shell, Overview, exceptions and orders built and verified. Products, inventory and imports screens not built |
+| Overall completion | M0–M3 documented and tagged. Backend M4–M5 implemented and tested. Web shell, sign-in, Overview, the full exception workflow and orders done. Products, inventory and imports screens, copilot and deployment not done |
+| Last verified commit | `main` after merging `feat/orders-ui`: backend `make check` green (629 tests), web lint, typecheck, 134 tests and build green |
 | Remote | https://github.com/tinhne/retailops-intelligence (public). The first CI run passed |
 | Architecture version | v1 (modular monolith; `docs/domain/*`, ADR-0001..0013) |
 | Last update | 2026-11-01 (UTC+7) |
@@ -46,14 +46,17 @@
   lifecycle banner, activity with notes). Every lifecycle command from the UI, laid out from the API's
   `available_actions`/`blocked_actions`, with stale-version handling. API gained a `due_to` filter and
   closing fields on list items.
+- **Orders (T-063):** S-05 list (filters incl. store-local placed presets and overdue) and S-06 detail
+  (three status axes with callouts, dates, lines with reservation and stock health, totals with the
+  BR-205 mismatch, linked exceptions, history). Read-only, as orders change through imports.
 - **Delivery:** API Dockerfile (non-root, builds), CI workflow (passed on GitHub), OpenAPI → TS contracts.
 
 ## In progress / next
 
 | Task | Notes |
 |---|---|
-| T-063..T-065 Frontend screens | READY. Next up: orders (T-063). Flip `ready: true` in `components/shell/nav-config.ts` as each page lands |
-| T-067 Exceptions UI follow-ups | BACKLOG (P1): sticky mobile action bar and filter sheet, queue Previous/Next, jump menu, density, VIEWER explainer, evidence source links |
+| T-064, T-065 Frontend screens | READY. Next up: products and inventory (T-064). Flip `ready: true` in `components/shell/nav-config.ts` as each page lands |
+| T-067 List and detail UI follow-ups | BACKLOG (P1): exceptions mobile action bar and filter sheet, queue Previous/Next, jump menu, density, VIEWER explainer, evidence links; orders custom date range, import file links, Ask the copilot |
 | T-058 Stock health data issue | READY (P1, backend). Negative on-hand products count as Oversold today (BR-402a) |
 | T-071..T-073 AI copilot | T-071 READY. Needs migration 0003 (session-scoped demo conversations, tool-call result refs, cache key) |
 | T-056 Demo seed history | Add exception history (assigned, in progress, resolved and verified, reopened, dismissed) via the lifecycle service |
@@ -86,12 +89,13 @@
 ## Latest test results
 
 - `make check` (2026-11-01, after the exceptions API changes): ruff OK, ruff format OK, mypy --strict OK, pytest **629 passed**.
-- Web (2026-11-01, after T-062): `pnpm --filter @retailops/web lint`, `typecheck`, `build` green; vitest **120 passed**.
+- Web (2026-11-01, after T-063): `pnpm --filter @retailops/web lint`, `typecheck`, `build` green; vitest **134 passed**.
   `pnpm audit --prod --audit-level high`: no known vulnerabilities.
 - Browser check against the seeded local API: password and demo sign-in, `next` redirect, invalid
   credentials, session expiry, sign-out, unknown store, and the 375, 768 and 1280 px layouts.
   Overview as demo viewer and as manager (Run analysis), at 1440 and 375 px. Exceptions: acknowledge,
-  start, resolve, Closed view and reopen as manager; read-only demo viewer; 1440 and 375 px.
+  start, resolve, Closed view and reopen as manager; read-only demo viewer; 1440 and 375 px. Orders:
+  overdue filter, search, cancelled-but-paid and total-mismatch orders, 375 px with no sideways scroll.
 - GitHub Actions run 41227323682 (5e24711, first run with the web foundation): success. API, web,
   dependency audit and Docker image jobs all passed.
 
@@ -103,7 +107,7 @@
 
 ## Next three highest-priority actions
 
-1. Orders list and detail (T-063), then products and inventory (T-064) and imports (T-065), built from
+1. Products, inventory positions and movements (T-064), then imports (T-065), built from
    `docs/design/*` against `packages/contracts`; flip each nav `ready` flag as pages land.
 2. Exceptions UI follow-ups (T-067) and the stock-health data-issue fix (T-058).
 3. Compose stack with the web image (T-090) and demo exception history (T-056), then the AI copilot
