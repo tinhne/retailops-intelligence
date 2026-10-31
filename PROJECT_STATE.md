@@ -38,9 +38,14 @@
 |---|---|
 | T-060..T-066 Frontend | Next.js 16 scaffold and libraries installed. Screens are specified in `docs/design/*` |
 | T-071..T-073 AI copilot | Docs complete. Needs migration 0003 (session-scoped demo conversations, tool-call result refs, cache key) |
-| T-055 Scheduled evaluation worker | Promoted to P0: time-based rules only advance when an evaluation runs |
+| T-055 Scheduled evaluation worker | **Done**: `app/workers/scheduler.py` with 2 tests. Not yet in the compose stack |
 | T-056 Demo seed history | Add exception history (assigned, in progress, resolved and verified, reopened, dismissed) via the lifecycle service |
 | T-090 Compose stack | Add `api`, `worker`, `web` services and the web Dockerfile |
+
+## Uncommitted partial work (2026-11-01)
+
+The frontend (apps/web) and AI copilot (apps/api/app/domains/ai) agents were stopped mid-task on a usage
+limit. Their files are in the working tree, uncommitted and unverified. See HANDOFF.md §3.
 
 ## Blocked
 

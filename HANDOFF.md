@@ -15,8 +15,15 @@ engine and lifecycle API; read APIs and analytics; demo dataset generator. `make
 green. The GitHub repo exists and its first CI run passed. See `PROJECT_STATE.md`.
 
 ## 3. Currently being implemented
-Next up: the frontend (T-060..T-066), the scheduled evaluation worker (T-055), the compose stack
-(T-090), and the AI copilot (T-071..T-073).
+Done since the last update: the scheduled evaluation worker (T-055, `python -m app.workers.scheduler`).
+
+**Partial, uncommitted work in the working tree (session stopped on a usage limit, 2026-11-01):**
+- `apps/web/**`: frontend foundations and core screens (T-060..T-062), stopped mid-way. Treat
+  it as a draft. Re-run lint, typecheck, test and build, then finish or redo it from `docs/design/*`.
+- `apps/api/app/domains/ai/**` and possibly `app/core/config.py`, `app/api/router.py`, a migration
+  `0003`, `Makefile`: AI copilot backend (T-071..T-074), stopped mid-way. Not verified. Run
+  `make check` before keeping any of it; `git stash` or discard it if it is broken.
+Still to do: compose stack plus the web Dockerfile (T-090), demo exception history (T-056), and the copilot UI (T-073).
 
 ## 4. Broken or blocked
 Nothing known broken. Hosting is not chosen (T-093).

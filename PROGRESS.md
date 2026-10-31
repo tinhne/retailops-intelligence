@@ -77,3 +77,11 @@ add a correction entry instead.
   negative on-hand supersedes inventory exceptions, with 1 test.
 - **Integrated result:** `make check` → ruff OK, mypy --strict OK, **625 passed**. `make seed` plus
   engine run → 18 exceptions covering all 9 types. Contracts regenerated: 43 paths, 47 operations, 126 schemas.
+
+## 2026-11-01 (UTC+7): Orchestrator: scheduled worker (T-055); session paused on usage limit
+
+- `app/workers/scheduler.py`: evaluates each store once per `evaluation_interval_minutes` (any
+  trigger resets the clock) under the engine's advisory lock. Supports `--once` and graceful
+  SIGTERM. 2 integration tests pass. ruff and mypy are clean.
+- The frontend and AI copilot agents were stopped mid-task on a usage limit. Their work is uncommitted
+  and unverified in the working tree (see HANDOFF.md §3).
