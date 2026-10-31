@@ -102,3 +102,12 @@ jobs:
           push: false
           cache-from: type=gha,scope=api
           cache-to: type=gha,mode=max,scope=api
+      - name: Build web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/web.Dockerfile
+          push: false
+          build-args: API_INTERNAL_URL=http://api:8000
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web

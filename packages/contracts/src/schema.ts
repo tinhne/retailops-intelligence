@@ -2,6 +2,30 @@
 // Do not edit by hand. Run `pnpm contracts:generate` after changing API schemas.
 
 export interface paths {
+    "/api/v1/auth/csrf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Csrf Token
+         * @description Issue the CSRF token the sign-in forms send as ``X-CSRF-Token`` (ADR-0004).
+         *
+         *     Signed in, this is the session-bound token, so calling it never invalidates the token of a
+         *     live session. Otherwise it is a fresh random token for the double-submit check of
+         *     ``POST /auth/login`` and ``POST /auth/demo``. Sign-in replaces it with the session-bound one.
+         */
+        get: operations["csrf_token_api_v1_auth_csrf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/demo": {
         parameters: {
             query?: never;
@@ -981,6 +1005,14 @@ export interface components {
          * @enum {string}
          */
         ChangeSource: "IMPORT" | "USER" | "SYSTEM";
+        /**
+         * CsrfTokenOut
+         * @description The value to send as ``X-CSRF-Token``; the same value is set in the ``ro_csrf`` cookie.
+         */
+        CsrfTokenOut: {
+            /** Csrf Token */
+            csrf_token: string;
+        };
         /** DashboardOut */
         DashboardOut: {
             active_exceptions: components["schemas"]["ActiveExceptionSummary"];
@@ -3008,6 +3040,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    csrf_token_api_v1_auth_csrf_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CsrfTokenOut"];
+                };
+            };
+        };
+    };
     demo_login_api_v1_auth_demo_post: {
         parameters: {
             query?: never;

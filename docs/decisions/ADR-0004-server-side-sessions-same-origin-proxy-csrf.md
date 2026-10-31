@@ -74,14 +74,43 @@ password. Requirements:
 - One indexed database lookup per request (cheap at target scale; a cache is possible later).
 - `web` and `api` must stay behind one public origin.
 - The proxy hop must forward the client IP correctly (`FORWARDED_ALLOW_IPS`) and pass 5 MB uploads
-  (**Needs validation** in T-060).
+  (**Needs validation** in T-060). *Resolved by Amendment 1: the setting is `TRUST_PROXY_HEADERS`,
+  and uploads were validated.*
 - The frontend fetch wrapper must send the CSRF header on every unsafe request.
 - An XSS can still act as the user while the page is open; the cookie protects the token, not its
   use. CSP and React's escaping are the mitigation.
 - No MFA or SSO in v1.
 
+## Amendment 1 (2026-11-01, security review T-082)
+
+The decision stands. The review closed three gaps between this record and the code.
+
+1. **Pre-login CSRF token implemented as decided.** `GET /api/v1/auth/csrf` did not exist, and
+   `POST /auth/login` and `POST /auth/demo` had no CSRF check (they were protected only because
+   they accept JSON bodies alone, which a cross-site form cannot send without a preflight). The
+   endpoint now sets a random `ro_csrf` cookie and returns the same value; both sign-in endpoints
+   require `X-CSRF-Token` to equal the cookie, and the web sign-in fetches a fresh token before
+   every attempt. When a live session calls the endpoint, it returns the session-bound token
+   instead, so a stray call never invalidates a signed-in tab. Implementing it was small and keeps
+   one rule for every state-changing request, so amending the record to drop the token was not
+   chosen.
+2. **Client address: `TRUST_PROXY_HEADERS`, not `FORWARDED_ALLOW_IPS`.** The code has a boolean
+   `TRUST_PROXY_HEADERS`: when true, the API uses the right-most `X-Forwarded-For` entry. Testing the
+   compose stack showed that the Next.js rewrite proxy forwards the browser's `X-Forwarded-For`
+   unchanged and appends nothing. A list of trusted peers (uvicorn's `FORWARDED_ALLOW_IPS`) would not
+   help: the peer is always the `web` container, which never adds the client address. So the setting
+   stays `false` when `web` faces the internet directly (every request then shares the `web`
+   address), and is `true` only behind an edge proxy that appends the client address, with the API
+   unreachable from outside. The API image runs uvicorn with `--no-proxy-headers` so that this is the
+   only switch. A custom Next.js server that appends the header was rejected: it replaces the
+   standalone server for a problem the hosting edge already solves. Details: `SECURITY.md` §5.
+3. **5 MB uploads through the proxy validated.** On the compose stack a 5.1 MB CSV reached the API
+   and was recorded as `REJECTED` (`FILE_TOO_LARGE`); a 7 MB request was refused by the API's new
+   6 MB body limit with 413.
+
 ## Related documents
 
+- [`SECURITY.md`](../../SECURITY.md) §3, §5, §6
 - [`SECURITY_ARCHITECTURE.md`](../architecture/SECURITY_ARCHITECTURE.md) §5
 - [`DATA_FLOW.md`](../architecture/DATA_FLOW.md) flow 1
 - [`API_CONVENTIONS.md`](../architecture/API_CONVENTIONS.md) §3

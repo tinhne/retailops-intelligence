@@ -1,5 +1,23 @@
 name: retailops
 
+# Full stack:   docker compose up --build        → web on http://localhost:3000 (demo seeded)
+# Database only (local development with `make api-dev`): docker compose up -d --wait db
+#
+# Host ports (all overridable from the environment or .env):
+#   POSTGRES_HOST_PORT (54329) · API_HOST_PORT (8000) · WEB_HOST_PORT (3000)
+# The api and web ports bind to 127.0.0.1 only. Runbook: docs/operations/RUNBOOK.md
+
+# The api, demo-seed and worker services share one image. Only `api` builds it (parallel builds of
+# the same tag collide); the others reuse it and never try to pull it from a registry.
+x-api-image: &api-image
+  image: retailops-api:local
+  pull_policy: never
+
+x-app-env: &app-env
+  APP_ENV: ${APP_ENV:-local}
+  DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-retailops}:${POSTGRES_PASSWORD:-retailops}@db:5432/${POSTGRES_DB:-retailops}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
 services:
   db:
     image: postgres:16-alpine
@@ -17,6 +35,101 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # FastAPI. Applies migrations, then serves on :8000 (non-root user `app`).
+  api:
+    image: retailops-api:local
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+    command:
+      - sh
+      - -c
+      - alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-server-header --no-proxy-headers
+    environment:
+      <<: *app-env
+      # Local default only. APP_ENV=production refuses it (and anything shorter than 32 chars).
+      SESSION_SECRET: ${SESSION_SECRET:-dev-only-insecure-session-secret}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      # Keep false unless an edge proxy in front of `web` appends the client address to
+      # X-Forwarded-For and the api port is unreachable from outside (SECURITY.md, §Proxy).
+      TRUST_PROXY_HEADERS: ${TRUST_PROXY_HEADERS:-false}
+      DEMO_MODE_ENABLED: ${DEMO_MODE_ENABLED:-true}
+      LLM_PROVIDER: ${LLM_PROVIDER:-deterministic}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-20}
+      COPILOT_RATE_LIMIT_PER_MINUTE: ${COPILOT_RATE_LIMIT_PER_MINUTE:-20}
+    ports:
+      - "127.0.0.1:${API_HOST_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/ready', timeout=2)
+      interval: 10s
+      timeout: 3s
+      start_period: 30s
+      retries: 5
+
+  # One-shot: seeds the demo organization when none exists, then exits. It never overwrites
+  # existing data; the demo reset is `docker compose run --rm demo-seed python -m app.demo`.
+  demo-seed:
+    <<: *api-image
+    command: ["python", "-m", "app.demo", "--if-missing"]
+    environment:
+      <<: *app-env
+      # Unset: the seeded staff accounts get random passwords and cannot sign in.
+      DEMO_STAFF_PASSWORD: ${DEMO_STAFF_PASSWORD:-}
+    depends_on:
+      api:
+        condition: service_healthy  # migrations are applied
+    healthcheck:
+      disable: true  # a one-shot job; the image's HTTP check is for the api
+    restart: "no"
+
+  # Scheduled evaluation (ADR-0009). The heartbeat file is touched after every pass.
+  worker:
+    <<: *api-image
+    command: ["python", "-m", "app.workers.scheduler", "--heartbeat", "/tmp/worker-heartbeat"]
+    environment:
+      <<: *app-env
+    depends_on:
+      demo-seed:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import os, sys, time; sys.exit(0 if time.time() - os.path.getmtime('/tmp/worker-heartbeat') < 180 else 1)
+      interval: 30s
+      timeout: 3s
+      start_period: 30s
+      retries: 3
+
+  # Next.js standalone server (non-root user `node`). The browser talks only to this origin;
+  # `/api/*` is proxied to the api service (ADR-0004). API_INTERNAL_URL is compiled into the build.
+  web:
+    image: retailops-web:local
+    build:
+      context: .
+      dockerfile: infra/docker/web.Dockerfile
+      args:
+        API_INTERNAL_URL: http://api:8000
+    ports:
+      - "127.0.0.1:${WEB_HOST_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+      demo-seed:
+        condition: service_completed_successfully
 
 volumes:
   pgdata:

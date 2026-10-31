@@ -1,6 +1,7 @@
 """Scheduled evaluation worker (T-055, ADR-0009)."""
 
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 from sqlalchemy import select
@@ -8,7 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.clock import utcnow
 from app.domains.exceptions.models import EvaluationRun, EvaluationStatus, EvaluationTrigger
-from app.workers.scheduler import due_store_ids, run_once
+from app.workers.scheduler import due_store_ids, run_once, touch_heartbeat
 from tests.factories import create_tenant
 
 pytestmark = pytest.mark.integration
@@ -57,3 +58,13 @@ def test_run_once_records_scheduled_runs_and_is_quiet_when_nothing_is_due(
     assert first[0].status is EvaluationStatus.SUCCEEDED
     assert second == []
     assert len(db.scalars(select(EvaluationRun)).all()) == 1
+
+
+def test_heartbeat_file_is_touched_and_failures_never_stop_the_worker(tmp_path: Path) -> None:
+    beat = tmp_path / "worker-heartbeat"
+
+    touch_heartbeat(beat)
+    touch_heartbeat(None)  # health checks off
+    touch_heartbeat(tmp_path / "missing-dir" / "beat")  # logged, not raised
+
+    assert beat.exists()

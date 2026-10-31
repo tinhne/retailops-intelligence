@@ -85,6 +85,21 @@ and each session gets its own budget. This needs no new user rows; the session r
 - Timestamps in the seed age between resets; the scheduled evaluation keeps exceptions consistent with
   the passing time, but the reset cadence decides how "fresh" the story looks.
 
+## Amendment 1 (2026-11-01, T-056 and T-094)
+
+- The reset job is `python -m app.demo` ([`DEMO_RESET.md`](../operations/DEMO_RESET.md)), recommended
+  daily at 07:00 UTC from the host's or platform's scheduler, still not from the worker. Only one
+  reset runs at a time (advisory lock). A reset signs out current demo visitors, because the demo
+  accounts are recreated.
+- The seed refuses to purge an organization with the demo slug that is not flagged `is_demo`, and it
+  refuses `DEMO_STAFF_PASSWORD` when `APP_ENV=production`.
+- The seed now includes a scripted team history played through the lifecycle service and the import
+  pipeline (assignments, work in progress, resolutions verified by the engine, a resolution the
+  engine reopens, a dismissal, two CSV imports), so visitors see a store that is being worked, not
+  only fresh detections.
+- The read-only guarantee is tested against the real demo build by calling every mutating operation
+  of the OpenAPI document as the demo viewer (`tests/integration/test_demo_read_only.py`).
+
 ## Related documents
 
 - [`SECURITY_ARCHITECTURE.md`](../architecture/SECURITY_ARCHITECTURE.md) §5, §16

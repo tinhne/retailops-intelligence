@@ -3,7 +3,7 @@ API_DIR := apps/api
 UV := uv --directory $(API_DIR)
 
 .DEFAULT_GOAL := help
-.PHONY: help setup db-up db-down migrate seed api-dev api-test api-lint api-typecheck check test down reset
+.PHONY: help setup db-up db-down migrate seed api-dev api-test api-lint api-typecheck check test stack-up stack-demo-reset down reset
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -20,7 +20,7 @@ db-down: ## Stop PostgreSQL
 migrate: db-up ## Apply database migrations
 	$(UV) run alembic upgrade head
 
-seed: migrate ## (Re)generate the demo dataset for "Kestrel Home & Kitchen"
+seed: migrate ## (Re)generate the demo organization: dataset, evaluations and team history
 	$(UV) run python -m app.demo
 
 api-dev: migrate ## Run the API with auto-reload on http://localhost:8000
@@ -39,6 +39,12 @@ api-test: db-up ## Run backend unit + integration tests
 check: api-lint api-typecheck api-test ## All backend quality gates
 
 test: api-test ## Run every test suite
+
+stack-up: ## Build and start db, api, worker and web (http://localhost:3000), seeding the demo once
+	docker compose up --build -d --wait db api worker web
+
+stack-demo-reset: ## Reset the demo organization inside the running compose stack
+	docker compose run --rm --no-deps demo-seed python -m app.demo
 
 down: ## Stop all services
 	docker compose down

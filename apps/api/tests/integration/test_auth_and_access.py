@@ -11,7 +11,7 @@ from app.core.clock import utcnow
 from app.domains.audit.models import AuditLog
 from app.domains.identity.models import UserSession
 from app.domains.identity.permissions import Role
-from tests.factories import create_tenant, create_user, login
+from tests.factories import create_tenant, create_user, login, pre_session_csrf
 
 pytestmark = pytest.mark.integration
 
@@ -25,6 +25,7 @@ def test_login_sets_httponly_session_cookie_and_returns_profile(
     response = client.post(
         "/api/v1/auth/login",
         json={"email": "  manager@acme.EXAMPLE ", "password": "correct-horse-battery-staple"},
+        headers=pre_session_csrf(client),
     )
 
     assert response.status_code == 200
@@ -46,11 +47,16 @@ def test_invalid_credentials_are_generic_and_audited(client: TestClient, db: Ses
     tenant = create_tenant(db)
     create_user(db, tenant, Role.STAFF)
 
+    csrf = pre_session_csrf(client)
     wrong_password = client.post(
-        "/api/v1/auth/login", json={"email": "staff@acme.example", "password": "nope"}
+        "/api/v1/auth/login",
+        json={"email": "staff@acme.example", "password": "nope"},
+        headers=csrf,
     )
     unknown_user = client.post(
-        "/api/v1/auth/login", json={"email": "ghost@acme.example", "password": "nope"}
+        "/api/v1/auth/login",
+        json={"email": "ghost@acme.example", "password": "nope"},
+        headers=csrf,
     )
 
     for response in (wrong_password, unknown_user):
@@ -65,10 +71,70 @@ def test_login_is_rate_limited_per_ip_and_email(client: TestClient, db: Session)
     create_user(db, tenant, Role.STAFF)
     payload = {"email": "staff@acme.example", "password": "wrong"}
 
-    statuses = [client.post("/api/v1/auth/login", json=payload).status_code for _ in range(6)]
+    csrf = pre_session_csrf(client)
+    statuses = [
+        client.post("/api/v1/auth/login", json=payload, headers=csrf).status_code for _ in range(6)
+    ]
 
     assert statuses[:5] == [401] * 5
     assert statuses[5] == 429
+
+
+def test_sign_in_requires_the_pre_session_csrf_token(client: TestClient, db: Session) -> None:
+    """ADR-0004: login and demo sign-in are double-submit protected (no login CSRF)."""
+    tenant = create_tenant(db, "kestrel", is_demo=True)
+    create_user(db, tenant, Role.STAFF)
+    create_user(db, tenant, Role.VIEWER, email="demo@kestrel.example")
+    payload = {"email": "staff@kestrel.example", "password": "correct-horse-battery-staple"}
+
+    no_token = client.post("/api/v1/auth/login", json=payload)
+    no_token_demo = client.post("/api/v1/auth/demo")
+    issued = client.get("/api/v1/auth/csrf")
+    token = issued.json()["csrf_token"]
+    forged = client.post("/api/v1/auth/login", json=payload, headers={"X-CSRF-Token": "x" + token})
+    non_ascii = client.post(
+        "/api/v1/auth/login", json=payload, headers={"X-CSRF-Token": "é".encode("latin-1")}
+    )
+    accepted = client.post("/api/v1/auth/login", json=payload, headers={"X-CSRF-Token": token})
+
+    for response in (no_token, no_token_demo, forged, non_ascii):
+        assert response.status_code == 403
+        assert response.json()["error"]["code"] == "CSRF_FAILED"
+    assert issued.status_code == 200
+    assert client.cookies.get("ro_csrf") is not None
+    set_cookie = issued.headers["set-cookie"].lower()
+    assert "httponly" not in set_cookie
+    assert "samesite=lax" in set_cookie
+    assert accepted.status_code == 200
+    # Sign-in replaces the random token with the session-bound one.
+    assert accepted.json()["csrf_token"] != token
+    assert client.cookies.get("ro_csrf") == accepted.json()["csrf_token"]
+
+
+def test_csrf_endpoint_keeps_the_token_of_a_live_session(client: TestClient, db: Session) -> None:
+    tenant = create_tenant(db)
+    create_user(db, tenant, Role.OWNER)
+    session_token = login(client, "owner@acme.example")
+
+    again = client.get("/api/v1/auth/csrf")
+
+    assert again.json()["csrf_token"] == session_token
+    assert (
+        client.post("/api/v1/auth/logout", headers={"X-CSRF-Token": session_token}).status_code
+        == 204
+    )
+
+
+def test_rejected_sign_ins_do_not_consume_the_rate_limit(client: TestClient, db: Session) -> None:
+    tenant = create_tenant(db)
+    create_user(db, tenant, Role.STAFF)
+    payload = {"email": "staff@acme.example", "password": "correct-horse-battery-staple"}
+    for _ in range(10):
+        assert client.post("/api/v1/auth/login", json=payload).status_code == 403
+
+    response = client.post("/api/v1/auth/login", json=payload, headers=pre_session_csrf(client))
+
+    assert response.status_code == 200
 
 
 def test_me_requires_authentication(client: TestClient) -> None:
@@ -158,7 +224,7 @@ def test_demo_login_signs_in_read_only_viewer(client: TestClient, db: Session) -
     tenant = create_tenant(db, "kestrel", is_demo=True)
     create_user(db, tenant, Role.VIEWER, email="demo@kestrel.example")
 
-    response = client.post("/api/v1/auth/demo")
+    response = client.post("/api/v1/auth/demo", headers=pre_session_csrf(client))
 
     assert response.status_code == 200
     membership = response.json()["memberships"][0]
@@ -171,7 +237,7 @@ def test_demo_login_refuses_account_with_mutating_role(client: TestClient, db: S
     tenant = create_tenant(db, "kestrel", is_demo=True)
     create_user(db, tenant, Role.MANAGER, email="demo@kestrel.example")
 
-    response = client.post("/api/v1/auth/demo")
+    response = client.post("/api/v1/auth/demo", headers=pre_session_csrf(client))
 
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "DEMO_MISCONFIGURED"

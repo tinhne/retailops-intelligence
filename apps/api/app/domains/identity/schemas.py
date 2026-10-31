@@ -50,3 +50,9 @@ class MeResponse(BaseModel):
     user: UserOut
     memberships: list[MembershipOut]
     csrf_token: str
+
+
+class CsrfTokenOut(BaseModel):
+    """The value to send as ``X-CSRF-Token``; the same value is set in the ``ro_csrf`` cookie."""
+
+    csrf_token: str

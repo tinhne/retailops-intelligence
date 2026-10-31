@@ -430,6 +430,20 @@
         "title": "ChangeSource",
         "type": "string"
       },
+      "CsrfTokenOut": {
+        "description": "The value to send as ``X-CSRF-Token``; the same value is set in the ``ro_csrf`` cookie.",
+        "properties": {
+          "csrf_token": {
+            "title": "Csrf Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "csrf_token"
+        ],
+        "title": "CsrfTokenOut",
+        "type": "object"
+      },
       "DashboardOut": {
         "properties": {
           "active_exceptions": {
@@ -5778,6 +5792,28 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/auth/csrf": {
+      "get": {
+        "description": "Issue the CSRF token the sign-in forms send as ``X-CSRF-Token`` (ADR-0004).\n\nSigned in, this is the session-bound token, so calling it never invalidates the token of a\nlive session. Otherwise it is a fresh random token for the double-submit check of\n``POST /auth/login`` and ``POST /auth/demo``. Sign-in replaces it with the session-bound one.",
+        "operationId": "csrf_token_api_v1_auth_csrf_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CsrfTokenOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Csrf Token",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/auth/demo": {
       "post": {
         "description": "Sign in as the read-only public demo viewer (ADR-0011).",
