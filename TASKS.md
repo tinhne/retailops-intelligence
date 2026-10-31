@@ -75,7 +75,7 @@ Agent roles: **ORCH** orchestrator · **PM** product/BA · **ARCH** architect ·
 |---|---|---|---|---|---|---|---|---|
 | T-070 | P0 | AI docs: architecture, tool catalog, prompt design, evaluation strategy, safety and limitations | T-022 | AI | READY | Grounding contract defined (facts / metrics / estimates / recommendations / references) | `docs/ai/*.md` | Review |
 | T-071 | P0 | Tool registry (allowlisted, validated, permission-checked, store-scoped, size-limited, logged) | T-054, T-057 | AI | BACKLOG | Each tool has a permission test and a scope test | `domains/ai/tools/` | pytest |
-| T-072 | P0 | Provider abstraction: LLM provider plus deterministic fallback (intent routing to tools to templated grounded answers) | T-071 | AI | BACKLOG | The product works with no API key | `domains/ai/providers/` | pytest |
+| T-072 | P0 | Provider abstraction with **free-tier providers only**: `gemini` (default live), `openai_compatible` (Groq/OpenRouter free models), and `deterministic` (no key). Automatic fallback to deterministic on 429/timeout/outage with a visible notice. Summary cache per exception evidence version | T-071 | AI | BACKLOG | The product works with no API key. A quota-exhausted provider never breaks the copilot | `domains/ai/providers/` | pytest with a mocked 429 |
 | T-073 | P0 | Copilot API and UI, exception investigation summary, note drafting (human accepts before save) | T-072, T-062 | AI/FE | BACKLOG | Answers show labelled sections and record references | `domains/ai`, `features/copilot` | Playwright |
 | T-074 | P1 | Evaluation dataset and runner (tool selection, factual correctness, attribution, unsupported-answer rate, permission enforcement, latency) | T-072 | AI | BACKLOG | Results stored with date and provider, never fabricated | `apps/api/evals/` | `make ai-eval` |
 
@@ -111,4 +111,4 @@ Agent roles: **ORCH** orchestrator · **PM** product/BA · **ARCH** architect ·
 |---|---|---|
 | T-092 | Create the empty GitHub repo `tinhne/retailops-intelligence` **or** install and authenticate the `gh` CLI (`gh auth login`) | Repo creation needs an API token. SSH push access already works |
 | T-093 | Choose a hosting provider and supply credentials or a token (no paid resources without approval) | Deployment |
-| T-072 | (Optional) LLM API key in a local `.env` | The live LLM provider. The deterministic fallback works without it |
+| T-072 | (Optional) A free Gemini API key from Google AI Studio | The live LLM provider (free tier). The deterministic fallback works without it |

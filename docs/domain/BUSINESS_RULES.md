@@ -49,6 +49,7 @@ Inventory is tracked per `(store, product)` in `inventory_balance`. Each quantit
 | BR-110 | Every change to `on_hand` or `incoming` is an append-only `inventory_movement` row with `movement_type`, `on_hand_delta`, `incoming_delta`, `occurred_at`, `source` (`IMPORT`, `ORDER`, `SYSTEM`), `reference`, and `created_by`. Rows are never updated or deleted. Mistakes are corrected with a compensating `CORRECTION` movement. | Industry |
 | BR-111 | Movement types: `CYCLE_COUNT` (absolute count; delta = counted − current on_hand), `RECEIPT` (+on_hand, −incoming down to 0), `INCOMING_EXPECTED` (+incoming), `INCOMING_CANCELLED` (−incoming), `DAMAGE` (−), `SHRINKAGE` (−), `RETURN_RESTOCK` (+), `CORRECTION` (±), `SHIPMENT` (−, system-generated from orders). | Industry |
 | BR-112 | Imported adjustments carry an external `reference` that is unique per store. Re-importing a row with a reference that has already been applied is reported as `ALREADY_APPLIED` and has no effect. This makes adjustment imports idempotent. | MVP |
+| BR-113 | A `CYCLE_COUNT` sets on-hand **as of its `occurred_at`**: `delta = counted − (on_hand − Σ on_hand_delta of movements with occurred_at > count time)`. A count imported late therefore does not erase receipts or shipments recorded after it was taken. A count older than the product's latest count is rejected (`STALE_CYCLE_COUNT`). | MVP |
 
 ### 2.3 Reservations
 
@@ -143,6 +144,7 @@ The detailed data contracts are in `docs/workflows/IMPORT_PIPELINE.md`. Core rul
 | BR-606 | Apply is atomic (one transaction). Strict mode is the default. Valid-rows-only mode needs explicit confirmation of the number of skipped rows. | MVP |
 | BR-607 | A file whose SHA-256 matches an import already completed for the same store and type is flagged in the preview as `DUPLICATE_FILE`. The user can still apply it, because the semantics are upserts and idempotent references. | MVP |
 | BR-608 | Products and orders are upserted by natural key (`sku`, `order_number`). Order status updates obey the reachability rule in `STATE_MACHINES.md §1.2`. | MVP |
+| BR-609 | Order lines are upserted by `(order_number, line_number)`. A line that has already been recorded on an order that has shipped (`fulfillment_status ∈ {SHIPPED, DELIVERED, RETURNED}`) cannot change (`ORDER_LINE_LOCKED`). Recording a line for the first time is always allowed, because historical shipped orders arrive in `orders.csv` before their lines arrive in `order_items.csv`. | MVP |
 
 ## 7. Configuration defaults
 
