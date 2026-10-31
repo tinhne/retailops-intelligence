@@ -298,6 +298,7 @@ def create_exception(
     affected: Sequence[Product | Order] = (),
     reopened_at: Sequence[datetime] = (),
     title: str | None = None,
+    exposure_amount: Decimal = Decimal("0.00"),
 ) -> OperationalException:
     """Insert an exception row with its entity links (and REOPENED events, if any)."""
     entity_type = EntityType.PRODUCT if isinstance(entity, Product) else EntityType.ORDER
@@ -319,7 +320,7 @@ def create_exception(
         evidence={},
         calculation={},
         recommended_action="Investigate.",
-        exposure_amount=Decimal("0"),
+        exposure_amount=exposure_amount,
         affected_order_count=0,
         due_at=due_at or first_detected_at + timedelta(hours=24),
         assignee_id=assignee.id if assignee else None,

@@ -787,6 +787,13 @@ export interface components {
                 [key: string]: number;
             };
             /**
+             * Exposure By Category
+             * @description Σ exposure_amount of active exceptions per category: gross order-line value at risk (BR-404), not loss. Not additive across categories, because one order can count in several exceptions, so no total is provided.
+             */
+            exposure_by_category: {
+                [key: string]: string;
+            };
+            /**
              * Past Due
              * @description Active exceptions with due_at < as_of.
              */

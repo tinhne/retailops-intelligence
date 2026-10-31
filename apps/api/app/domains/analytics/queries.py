@@ -118,6 +118,7 @@ class ActiveExceptionGroup:
     past_due: bool
     reopened: bool
     count: int
+    exposure: Decimal
 
 
 def active_exception_groups(
@@ -129,7 +130,14 @@ def active_exception_groups(
     reopened = e.status == ExceptionStatus.REOPENED
     rows = db.execute(
         select(
-            e.severity, e.priority_band, e.category, unassigned, past_due, reopened, func.count()
+            e.severity,
+            e.priority_band,
+            e.category,
+            unassigned,
+            past_due,
+            reopened,
+            func.count(),
+            func.coalesce(func.sum(e.exposure_amount), 0),
         )
         .where(e.store_id == store_id, e.status.in_(ACTIVE_STATUSES))
         .group_by(e.severity, e.priority_band, e.category, unassigned, past_due, reopened)

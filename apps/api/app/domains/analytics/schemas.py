@@ -62,6 +62,13 @@ class ActiveExceptionSummary(BaseModel):
     by_severity: dict[Severity, int]
     by_band: dict[PriorityBand, int]
     by_category: dict[ExceptionCategory, int]
+    exposure_by_category: dict[ExceptionCategory, Decimal] = Field(
+        description=(
+            "Σ exposure_amount of active exceptions per category: gross order-line value at risk "
+            "(BR-404), not loss. Not additive across categories, because one order can count in "
+            "several exceptions, so no total is provided."
+        )
+    )
     unassigned: int
     past_due: int = Field(description="Active exceptions with due_at < as_of.")
     reopened: int = Field(description="Active exceptions currently in REOPENED.")
