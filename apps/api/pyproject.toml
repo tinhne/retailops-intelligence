@@ -27,7 +27,8 @@ src = ["."]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF", "N", "DTZ", "PT"]
-ignore = ["S101", "RUF012", "B008"]
+# RUF001-003: docstrings deliberately use the same math symbols as docs/domain (−, ×, →).
+ignore = ["S101", "RUF012", "B008", "RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app", "tests"]

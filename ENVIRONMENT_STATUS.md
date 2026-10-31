@@ -24,9 +24,12 @@
 | `CORS_ALLOWED_ORIGINS` | api | no | Only needed if the API is called cross-origin (not the default setup) |
 | `LOG_LEVEL` | api, worker | no | default `INFO` |
 | `DEMO_MODE_ENABLED` | api | no | Enables the "Explore the demo" read-only sign-in |
-| `LLM_PROVIDER` | api | no | `deterministic` (default) \| `anthropic` |
-| `ANTHROPIC_API_KEY` | api | no | Server-side only. Never exposed to the frontend |
-| `LLM_MODEL` | api | no | Model identifier for the LLM provider |
+| `LLM_PROVIDER` | api | no | `deterministic` (default, no key) \| `gemini` \| `openai_compatible`. Free-tier providers only (ADR-0010) |
+| `GEMINI_API_KEY` | api | no | Free key from Google AI Studio. Server-side only, never exposed to the frontend |
+| `LLM_MODEL` | api | no | Model identifier (defaults to a Flash-class Gemini model) |
+| `LLM_BASE_URL` / `LLM_API_KEY` | api | no | `openai_compatible` only (e.g. Groq, OpenRouter free models) |
+| `LLM_TIMEOUT_SECONDS` | api | no | Live-provider timeout before falling back to deterministic (default 20) |
+| `COPILOT_RATE_LIMIT_PER_MINUTE` | api | no | Per-user copilot limit to protect the free quota (default 20) |
 | `API_INTERNAL_URL` | web | yes | Where the Next.js server proxies `/api/*` (e.g. `http://api:8000`) |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | db (compose) | yes (local) | Local database container only |
 
@@ -37,11 +40,12 @@
 | GitHub repository `tinhne/retailops-intelligence` | **Not created** | SSH push access as `tinhne` verified. The `gh` CLI is not installed, so the repo can't be created from this machine without a token (T-092) |
 | Hosting provider | **Not chosen** | Evaluation pending (T-093). No paid resources without approval |
 | Managed PostgreSQL | **Not provisioned** | Local Docker Postgres only |
-| LLM provider | **No key configured** | The product runs on the deterministic provider |
+| LLM provider | **No key configured** | Free-tier only (owner decision, 2026-10-31): Google Gemini (AI Studio key) by default, any OpenAI-compatible free tier as an alternative. The product runs on the deterministic provider until a key is added |
 
 ## Missing credentials / manual setup steps
 
 1. Create an empty public repository `tinhne/retailops-intelligence` on GitHub (no README or license,
    to avoid a history conflict), or install `gh` and run `gh auth login`.
 2. (Later) Choose a hosting provider and add deployment secrets to GitHub Actions.
-3. (Optional) Put an LLM API key in a local `.env` to enable the LLM provider.
+3. (Optional) Create a free Gemini API key in Google AI Studio and set `LLM_PROVIDER=gemini` and
+   `GEMINI_API_KEY` in `.env` (local) or in the host's secret store (deployment).

@@ -28,9 +28,14 @@ class Settings(BaseSettings):
     demo_mode_enabled: bool = True
     demo_user_email: str = "demo@kestrel.example"
 
-    llm_provider: Literal["deterministic", "anthropic"] = "deterministic"
-    anthropic_api_key: SecretStr | None = None
+    # Free-tier providers only (ADR-0010). "deterministic" needs no key and is the fallback.
+    llm_provider: Literal["deterministic", "gemini", "openai_compatible"] = "deterministic"
+    gemini_api_key: SecretStr | None = None
     llm_model: str | None = None
+    llm_base_url: str | None = None  # openai_compatible only (e.g. Groq, OpenRouter)
+    llm_api_key: SecretStr | None = None  # openai_compatible only
+    llm_timeout_seconds: float = 20.0
+    copilot_rate_limit_per_minute: int = 20
 
     @model_validator(mode="after")
     def _production_safety(self) -> "Settings":
