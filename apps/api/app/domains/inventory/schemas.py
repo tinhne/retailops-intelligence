@@ -14,6 +14,11 @@ from app.domains.inventory.models import MovementSource, MovementType
 PositionSort = Literal["available", "-available", "days_of_cover", "-days_of_cover", "sku", "-sku"]
 MovementSort = Literal["-recorded_at", "recorded_at", "-occurred_at", "occurred_at"]
 
+HEALTH_DESCRIPTION = (
+    "§2.5. DATA_ISSUE when on_hand < 0, whatever the product status: the stock figure is invalid, "
+    "so no availability class applies (BR-402a). Otherwise null for products that are not ACTIVE."
+)
+
 
 class InventoryPositionOut(BaseModel):
     product_id: uuid.UUID
@@ -27,7 +32,7 @@ class InventoryPositionOut(BaseModel):
     incoming: int = Field(description="Never counted in available (BR-103).")
     incoming_eta: datetime | None
     reorder_point: int
-    health: StockHealth | None = Field(description="§2.5; null for products that are not ACTIVE.")
+    health: StockHealth | None = Field(description=HEALTH_DESCRIPTION)
     avg_daily_units: Decimal = Field(description="Estimate (BR-150, BR-152).")
     days_of_cover: Decimal | None = Field(
         description="Estimate (BR-151, BR-152); null means not enough sales history."

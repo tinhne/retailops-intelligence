@@ -1667,6 +1667,8 @@ export interface components {
         /**
          * InventoryHealthSummary
          * @description ACTIVE products by health from current balances (§2.5), not from exceptions.
+         *
+         *     The six counts are disjoint and add up to ``active_products``.
          */
         InventoryHealthSummary: {
             /** Active Products */
@@ -1675,11 +1677,19 @@ export interface components {
             approaching_reorder_point: number;
             /** Below Reorder Point */
             below_reorder_point: number;
+            /**
+             * Data Issue
+             * @description ACTIVE products with on_hand < 0 (BR-402a). The stock figure is invalid, so they are in none of the availability classes above until a cycle count corrects them.
+             */
+            data_issue: number;
             /** Healthy */
             healthy: number;
             /** Out Of Stock */
             out_of_stock: number;
-            /** Oversold */
+            /**
+             * Oversold
+             * @description available < 0 with on_hand ≥ 0.
+             */
             oversold: number;
         };
         /** InventoryPositionOut */
@@ -1701,7 +1711,7 @@ export interface components {
              * @description Estimate (BR-151, BR-152); null means not enough sales history.
              */
             days_of_cover: string | null;
-            /** @description §2.5; null for products that are not ACTIVE. */
+            /** @description §2.5. DATA_ISSUE when on_hand < 0, whatever the product status: the stock figure is invalid, so no availability class applies (BR-402a). Otherwise null for products that are not ACTIVE. */
             health: components["schemas"]["StockHealth"] | null;
             /**
              * Incoming
@@ -2354,7 +2364,7 @@ export interface components {
              */
             created_at: string;
             days_of_cover: components["schemas"]["Estimate"];
-            /** @description §2.5; null for products that are not ACTIVE. */
+            /** @description §2.5. DATA_ISSUE when on_hand < 0, whatever the product status: the stock figure is invalid, so no availability class applies (BR-402a). Otherwise null for products that are not ACTIVE. */
             health: components["schemas"]["StockHealth"] | null;
             /**
              * Id
@@ -2391,7 +2401,7 @@ export interface components {
             available: number;
             /** Category */
             category: string | null;
-            /** @description §2.5; null for products that are not ACTIVE. */
+            /** @description §2.5. DATA_ISSUE when on_hand < 0, whatever the product status: the stock figure is invalid, so no availability class applies (BR-402a). Otherwise null for products that are not ACTIVE. */
             health: components["schemas"]["StockHealth"] | null;
             /**
              * Id
@@ -2559,9 +2569,10 @@ export interface components {
         ShipBySource: "IMPORTED" | "STORE_SLA";
         /**
          * StockHealth
+         * @description §2.5 classes in evaluation order. DATA_ISSUE is not an availability class (BR-402a).
          * @enum {string}
          */
-        StockHealth: "OVERSOLD" | "OUT_OF_STOCK" | "BELOW_REORDER_POINT" | "APPROACHING_REORDER_POINT" | "HEALTHY";
+        StockHealth: "DATA_ISSUE" | "OVERSOLD" | "OUT_OF_STOCK" | "BELOW_REORDER_POINT" | "APPROACHING_REORDER_POINT" | "HEALTHY";
         /** StockSnapshot */
         StockSnapshot: {
             /** Available */
@@ -4102,7 +4113,7 @@ export interface operations {
             query?: {
                 /** @description Substring of SKU or name. */
                 q?: string | null;
-                /** @description Repeatable. */
+                /** @description Repeatable. DATA_ISSUE selects products with on_hand < 0 (BR-402a). */
                 health?: components["schemas"]["StockHealth"][] | null;
                 category?: string | null;
                 /** @description Include DRAFT and ARCHIVED products. */
@@ -4291,7 +4302,7 @@ export interface operations {
                 status?: components["schemas"]["ProductStatus"] | null;
                 category?: string | null;
                 supplier_id?: string | null;
-                /** @description Repeatable. ACTIVE products. */
+                /** @description Repeatable. The availability classes cover ACTIVE products; DATA_ISSUE covers on_hand < 0 for any status (BR-402a). */
                 health?: components["schemas"]["StockHealth"][] | null;
                 sort?: "sku" | "-sku" | "name" | "-name" | "updated_at" | "-updated_at" | "available" | "-available";
                 page?: number;

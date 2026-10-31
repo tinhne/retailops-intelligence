@@ -79,6 +79,17 @@ describe("OverviewScreen (S-02)", () => {
     expect(screen.getByText(/Not a measure of loss/)).toBeInTheDocument();
   });
 
+  it("shows negative on-hand as a sixth stock health row, outside oversold (BR-402a)", async () => {
+    routes();
+    renderInStore(<OverviewScreen />, testStore({ permissions: VIEWER }));
+    const card = await screen.findByRole("region", { name: "Stock health" });
+    const rows = within(card)
+      .getAllByRole("listitem")
+      .map((row) => row.textContent);
+    expect(rows).toEqual(["Oversold3", "Out of stock1", "Below reorder point4", "Approaching reorder point0", "Healthy98", "Data issue1"]);
+    expect(within(card).getByText("107 active products")).toBeInTheDocument();
+  });
+
   it("links to built screens only", async () => {
     routes();
     renderInStore(<OverviewScreen />, testStore({ permissions: VIEWER }));
@@ -88,6 +99,7 @@ describe("OverviewScreen (S-02)", () => {
     expect(hrefs.filter((href) => href.includes("/copilot"))).toEqual([]);
     expect(hrefs).toContain("/s/f0da0f22-b9e0-4483-b144-e9f0f8703d13/imports");
     expect(hrefs).toContain("/s/f0da0f22-b9e0-4483-b144-e9f0f8703d13/inventory?health=OVERSOLD");
+    expect(hrefs).toContain("/s/f0da0f22-b9e0-4483-b144-e9f0f8703d13/inventory?health=DATA_ISSUE");
     expect(hrefs).toContain("/s/f0da0f22-b9e0-4483-b144-e9f0f8703d13/orders?overdue=true&sort=ship_by");
     expect(hrefs).toContain("/s/f0da0f22-b9e0-4483-b144-e9f0f8703d13/exceptions?view=active");
     expect(screen.getByRole("link", { name: /EXC-1010, Order KHK-12023/ })).toHaveAttribute(

@@ -35,7 +35,25 @@ def test_br101_available_does_not_subtract_pending_demand() -> None:
     ],
 )
 def test_health_classification_boundaries(avail: int, rop: int, expected: StockHealth) -> None:
-    assert classify_health(avail, rop, FACTOR) is expected
+    on_hand = max(avail, 0) + 5  # valid stock: 5 reserved, or more when available is negative
+    assert classify_health(on_hand, avail, rop, FACTOR) is expected
+
+
+@pytest.mark.parametrize(
+    ("on_hand", "reserved", "rop", "expected"),
+    [
+        (-1, 0, 10, StockHealth.DATA_ISSUE),  # available −1 would read as oversold
+        (-4, 3, 0, StockHealth.DATA_ISSUE),  # BW-003 shape: available −7
+        (0, 2, 10, StockHealth.OVERSOLD),  # on_hand 0 is valid: reserved > on_hand is oversold
+        (0, 0, 10, StockHealth.OUT_OF_STOCK),
+    ],
+)
+def test_br402a_negative_on_hand_is_a_data_issue_not_an_availability_class(
+    on_hand: int, reserved: int, rop: int, expected: StockHealth
+) -> None:
+    """BR-402a: on_hand < 0 is invalid input, so no availability class (above all OVERSOLD)
+    applies until a cycle count corrects it. OVERSOLD always has on_hand ≥ 0."""
+    assert classify_health(on_hand, available(on_hand, reserved), rop, FACTOR) is expected
 
 
 def test_br150_velocity_and_br151_days_of_cover() -> None:

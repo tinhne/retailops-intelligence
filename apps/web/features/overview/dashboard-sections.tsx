@@ -12,7 +12,14 @@ import { ExceptionStatusPill, PriorityIndicator, SeverityBadge } from "@/compone
 import { storeApi, storeKeys, type AttentionItem, type Dashboard } from "@/lib/api/store-api";
 import { formatDateTimeCompact } from "@/lib/format/datetime";
 import { formatPercentValue, formatQuantity } from "@/lib/format/number";
-import { categoryLabels, stockHealthMeta, type ExceptionCategory, type StockHealth } from "@/lib/status-maps";
+import {
+  STOCK_HEALTH_ORDER,
+  categoryLabels,
+  stockHealthMeta,
+  stockHealthSummaryKey,
+  type ExceptionCategory,
+  type StockHealth,
+} from "@/lib/status-maps";
 import { useStore } from "@/lib/store/store-context";
 import { cn } from "@/lib/utils";
 
@@ -238,20 +245,13 @@ export function CategoryCard({ dashboard }: { dashboard: Dashboard }) {
   );
 }
 
-const HEALTH_ROWS: Array<{ health: StockHealth; key: keyof Dashboard["inventory"] }> = [
-  { health: "OVERSOLD", key: "oversold" },
-  { health: "OUT_OF_STOCK", key: "out_of_stock" },
-  { health: "BELOW_REORDER_POINT", key: "below_reorder_point" },
-  { health: "APPROACHING_REORDER_POINT", key: "approaching_reorder_point" },
-  { health: "HEALTHY", key: "healthy" },
-];
-
 const healthIconTone: Record<StockHealth, string> = {
   OVERSOLD: "text-tone-danger-fg",
   OUT_OF_STOCK: "text-tone-danger-fg",
   BELOW_REORDER_POINT: "text-tone-warning-fg",
   APPROACHING_REORDER_POINT: "text-tone-caution-fg",
   HEALTHY: "text-tone-success-fg",
+  DATA_ISSUE: "text-tone-attention-fg",
 };
 
 /** Active products by stock health from current balances (S-02 "Stock health"). */
@@ -266,7 +266,8 @@ export function StockHealthCard({ dashboard }: { dashboard: Dashboard }) {
         {formatQuantity(dashboard.inventory.active_products)} active products
       </p>
       <ul className="mt-3 flex flex-col">
-        {HEALTH_ROWS.map(({ health, key }) => {
+        {/* Five availability classes, then the data issue: on-hand below zero (BR-402a). */}
+        {STOCK_HEALTH_ORDER.map((health) => {
           const meta = stockHealthMeta[health];
           const Icon = meta.icon;
           return (
@@ -278,7 +279,7 @@ export function StockHealthCard({ dashboard }: { dashboard: Dashboard }) {
               >
                 {meta.label}
               </MaybeLink>
-              <span className="tabular-nums">{formatQuantity(dashboard.inventory[key])}</span>
+              <span className="tabular-nums">{formatQuantity(dashboard.inventory[stockHealthSummaryKey[health]])}</span>
             </li>
           );
         })}

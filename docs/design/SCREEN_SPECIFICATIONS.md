@@ -144,8 +144,8 @@ exist.
 | Exception commands | `POST …/{eid}/acknowledge`, `/start`, `/resolve {resolution_code, resolution_note}`, `/dismiss {dismissal_reason, note}`, `/reopen {reason}`, `/assign {assignee_id}` (claim = assign yourself, unassign = `assignee_id: null`), `PATCH …/{eid}/due-date {due_at, note?}`. Every body also carries `expected_version`. A mismatch returns `409 STALE_VERSION`. The detail response lists `available_actions` and `blocked_actions {action, code, reason}` for the caller | implemented | S-04 |
 | Evaluation runs | `POST /stores/{id}/evaluations` ("Run analysis", synchronous, `Idempotency-Key`, returns the run. Status `SKIPPED` when another run holds the store lock), `GET …/evaluations`, `GET …/evaluations/{rid}`. Statuses `RUNNING`, `SUCCEEDED`, `FAILED`, `SKIPPED` | API_CONVENTIONS | S-02, S-03, S-21 |
 | Orders | `GET /stores/{id}/orders` (filters `q` = order number, `status`, `payment_status`, `fulfillment_status`, `channel`, `placed_from`, `placed_to`, `overdue`. Items include `line_count`, `is_overdue`), `GET …/orders/{oid}` (lines with reservation, amounts with `expected_total`, `difference`, `has_total_mismatch`, events, linked exceptions with `reference`) | implemented | S-05, S-06 |
-| Products | `GET /stores/{id}/products` (filters `q` = SKU or name substring, `status`, `category`, `supplier_id`, `health` repeatable. Items include `on_hand`, `reserved`, `available`, `health`), `GET …/products/{pid}` (stock snapshot, `health`, `approaching_threshold`, `avg_daily_units` and `days_of_cover` as `Estimate {value, basis, window_days}`, `active_exception_count`), `GET /stores/{id}/suppliers`, `GET /stores/{id}/categories` | implemented | S-07, S-08 |
-| Inventory | `GET /stores/{id}/inventory/positions` (filters `health`, `category`, `q`), `GET …/inventory/movements` (filters `product_id`, `movement_type`, `source`, `from`, `to`; no `import_id` filter yet), `GET …/inventory/reconciliation` (P1) | implemented | S-08, S-09, S-10 |
+| Products | `GET /stores/{id}/products` (filters `q` = SKU or name substring, `status`, `category`, `supplier_id`, `health` repeatable. Items include `on_hand`, `reserved`, `available`, `health`; `health` is `DATA_ISSUE` when `on_hand < 0`, any status, BR-402a), `GET …/products/{pid}` (stock snapshot, `health`, `approaching_threshold`, `avg_daily_units` and `days_of_cover` as `Estimate {value, basis, window_days}`, `active_exception_count`), `GET /stores/{id}/suppliers`, `GET /stores/{id}/categories` | implemented | S-07, S-08 |
+| Inventory | `GET /stores/{id}/inventory/positions` (filters `health` including `DATA_ISSUE`, `category`, `q`), `GET …/inventory/movements` (filters `product_id`, `movement_type`, `source`, `from`, `to`; no `import_id` filter yet), `GET …/inventory/reconciliation` (P1) | implemented | S-08, S-09, S-10 |
 | Imports | `POST /stores/{id}/imports` (multipart `import_type`, `file`. Validates synchronously and returns `201` with the import in `VALIDATED` or `REJECTED`), `GET …/imports` (filters `import_type`, `status`), `GET …/imports/{iid}` (`ImportDetailOut` with `summary` and `file_issues`), `GET …/{iid}/issues` (filters `severity`, `code`), `GET …/{iid}/issues.csv`, `POST …/{iid}/apply {mode, confirm_skipped_rows}` (`Idempotency-Key`), `POST …/{iid}/discard`, `GET …/imports/templates/{import_type}` | implemented | S-11, S-12, S-13 |
 | Import retry | `POST …/imports/{iid}/revalidate` (`FAILED → VALIDATING`, stored bytes) | API_CONVENTIONS | S-13 |
 | Copilot | `GET\|POST /stores/{id}/copilot/conversations`, `GET …/conversations/{cid}`, `POST …/conversations/{cid}/messages`, `POST /stores/{id}/copilot/exception-summaries {exception_id, refresh?}`, `POST /stores/{id}/copilot/note-drafts` | API_CONVENTIONS | S-04, S-14 |
@@ -283,6 +283,7 @@ Last imports: Orders Oct 31, 8:02 AM EDT · Order items 8:04 AM · Inventory adj
                                                                | Below reorder point     11 |
                                                                | Approaching reorder pt.  7 |
                                                                | Healthy                 96 |
+                                                               | Data issue               1 |
                                                                +----------------------------+
 +------------------------------------------------------------------------------------------+
 | Shipments per day, on time vs late, last 30 days (ET)                     [Chart | Table] |
@@ -336,7 +337,7 @@ their cell shows "—".
 | Triage count | `GET /stores/{id}/exceptions?status=OPEN&status=REOPENED&page_size=1` → `total` |
 | Active by category: count | `active_exceptions.by_category.{INVENTORY, FULFILLMENT, PAYMENT, DATA_QUALITY}` |
 | Active by category: order value at risk | `active_exceptions.exposure_by_category.{…}` = Σ `exposure_amount` of active exceptions per category (implemented 2026-11-01). Never summed client-side. `DATA_QUALITY` shows "—" because data-quality findings claim no exposure (EXCEPTION_CATALOG). |
-| Stock health | `inventory.{oversold, out_of_stock, below_reorder_point, approaching_reorder_point, healthy}` (ACTIVE products). Products with `on_hand < 0` should be left out of these classes and shown as a sixth row, "Data issue" (BR-402a). `InventoryHealthSummary` has no such count yet. Until it does, the row is not rendered, and those products appear through the Data-quality category count (`DATA_NEGATIVE_ON_HAND`). |
+| Stock health | `inventory.{oversold, out_of_stock, below_reorder_point, approaching_reorder_point, healthy, data_issue}` (ACTIVE products; the six counts add up to `active_products`). `data_issue` counts products with `on_hand < 0`, which are in none of the availability classes (BR-402a). It is the sixth row, "Data issue" (attention tone, `database` icon), after Healthy, and links to `/inventory?health=DATA_ISSUE`. |
 | Shipments chart | `GET /stores/{id}/analytics/trends?days=30` (daily, store-local days, the last one partial) → `days[].{date, shipped_on_time, shipped_late}`, `partial_last_day` |
 | Recent imports | `GET /stores/{id}/imports?page_size=3` |
 
@@ -818,12 +819,12 @@ settings. **Personas.** Manager, Analyst.
 | Supplier | `supplier.name` | left | xl |
 | Reorder point / qty | `reorder_point` / `reorder_quantity` | right | lg |
 | Available | `available` (BR-101) | right | md |
-| Stock | `health` + `on_hand` → `HealthBadge` ("Data issue" when `on_hand < 0`, BR-402a) | left | never |
+| Stock | `health` → `HealthBadge` ("Data issue" for `DATA_ISSUE`, i.e. `on_hand < 0`, BR-402a; `on_hand` only adds the figure to its tooltip) | left | never |
 
 **Actions.** Open product. No catalog editing in v1 (CSV import only).
 **Filters / sort / search.** `q`: substring of SKU or name. Status (default: Active). Category
 (from `GET /stores/{id}/categories`). Supplier (`supplier_id`). Stock health (`health`,
-repeatable). Sort: SKU (default), Name, Recently updated (`-updated_at`), Available.
+repeatable, the five availability classes then Data issue). Sort: SKU (default), Name, Recently updated (`-updated_at`), Available.
 **Pagination:** 25 (25/50/100).
 
 | State | Behaviour |
@@ -844,15 +845,15 @@ recent ledger entries and linked exceptions (IA §3 A3). **Personas.** Staff, Ma
 
 **Layout.**
 1. PageHeader: breadcrumb "Products / KHK-DO55-SGE". Title = `product.name`. Meta: SKU, category,
-   status tag, `HealthBadge` (md; "Data issue" when `on_hand < 0`).
+   status tag, `HealthBadge` (md; "Data issue" when `health` is `DATA_ISSUE`).
 2. **Stock position** (`inventory.read`): a row of `StatTile`s: On hand, Reserved, **Available**
    (danger text when negative, with the minus sign), Incoming (+ ETA), Avg daily
    units (est.), Days of cover (est.). Under the tiles, one formula line in `text-mono`:
    "available = on_hand − reserved = 18 − 22 = −4 (BR-101). Incoming is not counted (BR-103)."
    Health explanation: "Oversold: available is below 0." For the reorder-point classes:
    "Reorder point 10. Approaching from 11 to 13 (reorder point × 1.25, rounded up)." (from
-   `approaching_threshold`). When `on_hand < 0`: an attention-tone callout replaces the health
-   explanation: "Data issue: on hand is −3, which is physically impossible. Stock health and
+   `approaching_threshold`). When `health` is `DATA_ISSUE` (`on_hand < 0`, any product status): an
+   attention-tone callout replaces the health explanation: "Data issue: on hand is −3, which is physically impossible. Stock health and
    inventory exceptions are suspended for this product until a cycle count corrects it (BR-402a).
    See EXC-1051 (Negative on-hand)." The Available tile shows the value with "not reliable" in
    muted text. Days of cover shows "—" with "not reliable", since it is derived from the same
@@ -880,7 +881,7 @@ Movements: `GET …/inventory/movements?product_id={id}&page_size=10`. Exception
 | State | Behaviour |
 |---|---|
 | Initial loading | Standard. |
-| Empty sub-sections | No reservations: "No units are reserved for paid orders." No movements: "No ledger entries yet. Stock arrives through inventory adjustment imports." Days of cover null: "Not enough sales history" (BR-151). Non-ACTIVE product: health "Not tracked" with "Stock health is computed for active products only." |
+| Empty sub-sections | No reservations: "No units are reserved for paid orders." No movements: "No ledger entries yet. Stock arrives through inventory adjustment imports." Days of cover null: "Not enough sales history" (BR-151). Non-ACTIVE product with valid stock (health null): "Not tracked" with "Stock health is computed for active products only." A non-ACTIVE product with `on_hand < 0` is still `DATA_ISSUE` and gets the callout. |
 | Not found | Standard. |
 | API error / permission denied | Standard. Sections omitted per permission. |
 | Search / filtered / validation / toast / pending / confirmation / disabled | N/A. |
@@ -893,11 +894,13 @@ Movements: `GET …/inventory/movements?product_id={id}&page_size=10`. Exception
 **Purpose.** See stock risk across all SKUs at once, ranked by health. **Personas.** Manager,
 Staff.
 
-**Layout.** PageHeader "Inventory" → **Health summary bar**: five toggle buttons with counts
-("Oversold 2", "Out of stock 4", "Below reorder point 11", "Approaching 7", "Healthy 96"), from the
-dashboard's `inventory` counts. Each is a real `button` with `aria-pressed` and sets the `health`
-filter. Products with `on_hand < 0` show "Data issue" in the Health column, whatever `health` the
-API returns, because their inventory rules are suppressed (BR-402a). Then a caption: "Available = on
+**Layout.** PageHeader "Inventory" → **Health summary bar**: six toggle buttons with counts
+("Oversold 2", "Out of stock 4", "Below reorder point 11", "Approaching 7", "Healthy 96", then,
+after a divider, "Data issue 1"), from the dashboard's `inventory` counts. Each is a real `button`
+with `aria-pressed` and sets the `health` filter. The API classifies products with `on_hand < 0` as
+`DATA_ISSUE` instead of by `available`, because their inventory rules are suppressed (BR-402a), so
+they are counted and filtered as "Data issue", never as Oversold. The divider marks that it is not
+an availability class. Then a caption: "Available = on
 hand − reserved. Incoming stock is shown separately and never counted as available (BR-101,
 BR-103)." → FilterBar → DataTable (compact default) → Pagination.
 
@@ -905,7 +908,7 @@ BR-103)." → FilterBar → DataTable (compact default) → Pagination.
 |---|---|---|---|
 | SKU | `product.sku` (link to S-08) | left | never |
 | Product | `product.name` | left | md |
-| Health | `health` + `on_hand` → `HealthBadge` ("Data issue" when `on_hand < 0`) | left | never |
+| Health | `health` → `HealthBadge` ("Data issue" for `DATA_ISSUE`) | left | never |
 | On hand | `inventory_balance.on_hand` | right | md |
 | Reserved | `reserved` | right | md |
 | Available | `available` (BR-101, danger text if < 0) | right | never |
@@ -915,9 +918,9 @@ BR-103)." → FilterBar → DataTable (compact default) → Pagination.
 | Days of cover (est.) | `days_of_cover` (1 dp, or "—" with a tooltip "Not enough sales history"). Hidden for "Data issue" rows | right | lg |
 | Last count (ET) | `last_cycle_count_at` | left | xl |
 
-**Filters / sort / search.** `q`: substring of SKU or name. Health (multi, repeated `health`).
-Category. **Include inactive products** toggle (`include_inactive=true`; they show "Not
-tracked"). Sort (`PositionSort`): Available, lowest first (default, which puts oversold and
+**Filters / sort / search.** `q`: substring of SKU or name. Health (multi, repeated `health`,
+including `DATA_ISSUE`). Category. **Include inactive products** toggle (`include_inactive=true`;
+they show "Not tracked", or "Data issue" when on-hand is negative). Sort (`PositionSort`): Available, lowest first (default, which puts oversold and
 out-of-stock first), Days of cover (lowest first), SKU. **Pagination:** 50 default (50/100), since
 the table is compact.
 
@@ -925,7 +928,7 @@ the table is compact.
 |---|---|
 | Initial loading | Standard. The summary bar shows skeleton chips. |
 | Empty | "No stock positions yet". "Import products, then inventory adjustments (a CYCLE_COUNT sets on-hand)." Action **Import inventory adjustments** (`imports.run`). |
-| Populated / search / filtered | Standard. "Oversold" filter with no rows: success tone, "No oversold products". |
+| Populated / search / filtered | Standard. "Oversold" filter with no rows: success tone, "No oversold products". "Data issue" filter with no rows: success tone, "No data issues", "No active product has a negative on-hand figure." |
 | Validation / toast / pending / confirmation / disabled | N/A. |
 | API error / permission denied | Standard (`inventory.read`). |
 | Responsive | < 768: stacked rows. Line 1: SKU + health. Line 2: name. Line 3: "Available −4 · On hand 18 · Incoming 40 (Nov 4)". The summary bar scrolls horizontally. |

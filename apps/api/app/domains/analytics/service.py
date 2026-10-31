@@ -265,6 +265,7 @@ def get_dashboard_summary(
             below_reorder_point=health.get(StockHealth.BELOW_REORDER_POINT.value, 0),
             approaching_reorder_point=health.get(StockHealth.APPROACHING_REORDER_POINT.value, 0),
             healthy=health.get(StockHealth.HEALTHY.value, 0),
+            data_issue=health.get(StockHealth.DATA_ISSUE.value, 0),
         ),
         sales_today=_sales_summary(db, store_id, local_day_window(as_of, timezone, 1)),
         sales_last_7_days=_sales_summary(db, store_id, local_day_window(as_of, timezone, 7)),

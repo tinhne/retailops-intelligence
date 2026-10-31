@@ -53,8 +53,8 @@ export type IsoDateTime = string;                  // UTC ISO-8601 from the API
 export type Tone = "neutral" | "outline" | "muted" | "primary" | "info" | "success"
   | "warning" | "caution" | "attention" | "danger" | "danger-solid";
 export type Gate = { allowed: true } | { allowed: false; reason: string };
-// What HealthBadge shows: API health, or a UI state the API does not express as a health value
-export type DisplayHealth = StockHealth | "DATA_ISSUE" /* on_hand < 0, BR-402a */ | "NOT_TRACKED" /* health null */;
+// What HealthBadge shows: API health (DATA_ISSUE included, BR-402a), or "Not tracked" when it is null
+export type DisplayHealth = StockHealth | "NOT_TRACKED" /* health null */;
 export type ApiError = { status: number; code: string; message: string;
   details?: Array<{ field?: string; message: string }>; requestId?: string; retryAfterSeconds?: number };
 export type LoadStatus = "loading" | "error" | "success";
@@ -225,15 +225,15 @@ Bars are `aria-hidden`. **Used by.** S-02, S-03, S-04, S-06, S-08.
 
 ### C-13 HealthBadge
 ```ts
-type HealthBadgeProps = { health: StockHealth | null; onHand: number; size?: "sm" | "md"; iconOnly?: boolean };
-// resolves to a DisplayHealth: onHand < 0 → "DATA_ISSUE" (any product status); health null → "NOT_TRACKED"
+type HealthBadgeProps = { health: StockHealth | null; onHand?: number; size?: "sm" | "md"; iconOnly?: boolean };
+// resolves to a DisplayHealth: the API value; health null → "NOT_TRACKED"
 ```
-`onHand < 0` → "Data issue" (attention tone, `database` icon) with the tooltip "On hand is
-negative ({onHand}). That is physically impossible, so stock health can't be computed until a
-cycle count corrects it (BR-402a)." This takes precedence over any `health` value. `null` (non-ACTIVE
-product) → "Not tracked" (muted) with a tooltip "Stock health is computed for active products
-only." OVERSOLD is solid danger. If the API later returns a data-issue value itself, the mapping
-switches to it and the `onHand` rule is removed. **Used by.** S-06, S-07, S-08, S-09, and
+`DATA_ISSUE` (the API's class for `on_hand < 0`, any product status, BR-402a) → "Data issue"
+(attention tone, `database` icon) with the tooltip "On hand is negative ({onHand}). That is
+physically impossible, so stock health can't be computed until a cycle count corrects it
+(BR-402a)." `onHand` only adds the figure to that tooltip; the badge never derives health from it.
+`null` (non-ACTIVE product with valid stock) → "Not tracked" (muted) with a tooltip "Stock health
+is computed for active products only." OVERSOLD is solid danger. **Used by.** S-06, S-07, S-08, S-09, and
 C-26 search results.
 
 ### C-14 OrderStatusPill (+ PaymentStatusText, FulfillmentStatusText)

@@ -62,6 +62,17 @@ describe("ProductsScreen (S-07)", () => {
     expect(screen.queryByRole("button", { name: /^Stock/ })).not.toBeInTheDocument();
   });
 
+  it("shows the data-issue class and offers it as a stock filter (BR-402a)", async () => {
+    routes([productListItemFixture({ on_hand: -4, reserved: 0, available: -4, health: "DATA_ISSUE" })]);
+    renderInStore(<ProductsScreen />, testStore({ permissions: VIEWER }));
+    const table = (await screen.findAllByRole("table"))[0];
+    expect(await within(table).findByText("Data issue")).toBeInTheDocument();
+    expect(within(table).queryByText("Oversold")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Stock" }));
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Data issue" }));
+    expect(replace).toHaveBeenCalledWith(`${STORE}/products?health=DATA_ISSUE`, { scroll: false });
+  });
+
   it("shows the import empty state for a store with no products", async () => {
     routes([]);
     renderInStore(<ProductsScreen />, testStore({ permissions: VIEWER }));
@@ -99,7 +110,7 @@ describe("ProductScreen (S-08)", () => {
 
   it("calls negative on-hand a data issue, not oversold (BR-402a)", async () => {
     routes(
-      productDetailFixture({ health: "OVERSOLD", stock: { on_hand: -4, reserved: 0, available: -4, incoming: 0, incoming_eta: null, last_cycle_count_at: null } }),
+      productDetailFixture({ health: "DATA_ISSUE", stock: { on_hand: -4, reserved: 0, available: -4, incoming: 0, incoming_eta: null, last_cycle_count_at: null } }),
       [listItemFixture({ id: "e9", reference: "EXC-1042", exception_type: "DATA_NEGATIVE_ON_HAND" })],
     );
     renderInStore(<ProductScreen />, testStore({ permissions: VIEWER }));
@@ -122,6 +133,31 @@ describe("PositionsScreen (S-09)", () => {
       "/analytics/dashboard": jsonResponse(dashboardFixture()),
       "/categories": jsonResponse({ items: ["Kitchen"] }),
     });
+
+  it("counts data issues apart from oversold and filters by them (BR-402a)", async () => {
+    routes();
+    renderInStore(<PositionsScreen />, testStore({ permissions: VIEWER }));
+    const group = await screen.findByRole("group", { name: "Filter by stock health" });
+    const toggles = await within(group).findAllByRole("button");
+    expect(toggles.map((button) => button.textContent)).toEqual([
+      "Oversold 3",
+      "Out of stock 1",
+      "Below reorder point 4",
+      "Approaching reorder point 0",
+      "Healthy 98",
+      "Data issue 1",
+    ]);
+    await userEvent.click(within(group).getByRole("button", { name: /Data issue\s*1/ }));
+    expect(replace).toHaveBeenCalledWith(`${STORE}/inventory?health=DATA_ISSUE`, { scroll: false });
+  });
+
+  it("treats an empty data-issue filter as good news", async () => {
+    search = new URLSearchParams("health=DATA_ISSUE");
+    routes([]);
+    renderInStore(<PositionsScreen />, testStore({ permissions: VIEWER }));
+    expect(await screen.findByText("No data issues")).toBeInTheDocument();
+    expect(screen.getByText("No active product has a negative on-hand figure.")).toBeInTheDocument();
+  });
 
   it("counts each health bucket and toggles it as a filter", async () => {
     routes();
@@ -151,12 +187,14 @@ describe("PositionsScreen (S-09)", () => {
     expect(within(sizes).getAllByRole("option").map((option) => option.textContent)).toEqual(["50", "100"]);
   });
 
-  it("shows a negative on-hand row as a data issue without days of cover", async () => {
-    routes([positionFixture({ on_hand: -4, available: -4, health: "OVERSOLD", days_of_cover: null })]);
+  it("shows a data-issue row without days of cover", async () => {
+    // The API still computes days of cover from the impossible figure; the screen hides it.
+    routes([positionFixture({ on_hand: -4, available: -4, health: "DATA_ISSUE", days_of_cover: "0.0" })]);
     renderInStore(<PositionsScreen />, testStore({ permissions: VIEWER }));
     const table = (await screen.findAllByRole("table"))[0];
     expect(await within(table).findByText("Data issue")).toBeInTheDocument();
     expect(within(table).queryByText("Oversold")).not.toBeInTheDocument();
+    expect(within(table).queryByText("0.0")).not.toBeInTheDocument();
   });
 });
 

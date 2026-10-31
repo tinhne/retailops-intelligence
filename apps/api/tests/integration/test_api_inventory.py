@@ -186,6 +186,37 @@ def test_positions_filters_and_pagination(client: TestClient, stock: Stock) -> N
     assert (page_two["total"], _skus(page_two)) == (5, ["C-KNIFE", "D-BOWL"])
 
 
+def test_br402a_negative_on_hand_is_a_data_issue_in_positions_and_filters(
+    client: TestClient, db: Session, stock: Stock
+) -> None:
+    """BR-402a: a product with on_hand < 0 is DATA_ISSUE, never OVERSOLD, in rows and filters."""
+    tenant = stock.tenant
+    neg = create_product(db, tenant, "G-NEG", name="Negative", category="Kitchen", reorder_point=3)
+    old_neg = create_product(db, tenant, "H-OLDNEG", status=ProductStatus.ARCHIVED)
+    count_stock(db, tenant, neg, 1, NOW - 10 * DAY)
+    move_stock(db, tenant, neg, MovementType.DAMAGE, 3, NOW - 2 * DAY)  # on hand 1 → −2
+    count_stock(db, tenant, old_neg, 0, NOW - 10 * DAY)
+    move_stock(db, tenant, old_neg, MovementType.SHRINKAGE, 1, NOW - 2 * DAY)  # on hand −1
+    db.commit()
+    create_order(
+        db, tenant, "S-5", status=OrderStatus.PAID, lines=[Line(neg, 2)], placed_at=NOW - DAY
+    )
+
+    rows = {item["sku"]: item for item in _positions(client, stock, sort="sku")["items"]}
+    g = rows["G-NEG"]
+    assert (g["on_hand"], g["reserved"], g["available"], g["health"]) == (-2, 2, -4, "DATA_ISSUE")
+    assert rows["C-KNIFE"]["health"] == "OVERSOLD"  # on_hand 3 ≥ 0, reserved 5
+
+    assert _skus(_positions(client, stock, health="OVERSOLD")) == ["C-KNIFE"]
+    assert _skus(_positions(client, stock, health="DATA_ISSUE")) == ["G-NEG"]  # ACTIVE only
+    inactive = _positions(client, stock, health="DATA_ISSUE", include_inactive="true", sort="sku")
+    assert [(i["sku"], i["status"], i["health"]) for i in inactive["items"]] == [
+        ("G-NEG", "ACTIVE", "DATA_ISSUE"),
+        ("H-OLDNEG", "ARCHIVED", "DATA_ISSUE"),  # like DATA_NEGATIVE_ON_HAND, any status
+    ]
+    assert _positions(client, stock, health=["OVERSOLD", "DATA_ISSUE"])["total"] == 2
+
+
 def test_movements_list_ledger_rows_with_filters(client: TestClient, stock: Stock) -> None:
     store_id = stock.tenant.store.id
     url = f"/api/v1/stores/{store_id}/inventory/movements"
@@ -291,18 +322,26 @@ def test_velocity_window_and_status_filter_br150(db: Session) -> None:
     "factor", [Decimal("1.00"), Decimal("1.25"), Decimal("1.50"), Decimal("3.00")]
 )
 def test_health_sql_matches_classify_health_section_2_5(db: Session, factor: Decimal) -> None:
-    """BR-141: the SQL used for filtering classifies exactly like ``classify_health``."""
-    grid = list(itertools.product(range(-3, 35), [0, 1, 2, 4, 5, 7, 10]))
-    table = values(column("avail", Integer), column("rop", Integer), name="grid").data(grid)
+    """BR-141: the SQL used for filtering classifies exactly like ``product_health``, including
+    the BR-402a data issue (on_hand < 0) for every product status."""
+    grid = list(itertools.product([-2, -1, 0, 3, 40], range(-3, 35), [0, 1, 2, 4, 5, 7, 10]))
+    table = values(
+        column("on_hand", Integer), column("avail", Integer), column("rop", Integer), name="grid"
+    ).data(grid)
     for status in ProductStatus:
         expression = inventory_queries.health_sql(
-            table.c.avail, table.c.rop, literal(status.value), factor
+            table.c.on_hand, table.c.avail, table.c.rop, literal(status.value), factor
         )
-        rows = db.execute(select(table.c.avail, table.c.rop, expression)).all()
+        rows = db.execute(select(table.c.on_hand, table.c.avail, table.c.rop, expression)).all()
         assert len(rows) == len(grid)
-        for avail, rop, sql_health in rows:
-            expected = inventory_queries.product_health(status, avail, rop, factor)
-            assert sql_health == (expected.value if expected else None), (status, avail, rop)
+        for on_hand, avail, rop, sql_health in rows:
+            expected = inventory_queries.product_health(status, on_hand, avail, rop, factor)
+            assert sql_health == (expected.value if expected else None), (
+                status,
+                on_hand,
+                avail,
+                rop,
+            )
 
 
 def test_days_of_cover_sql_matches_python_br151(db: Session) -> None:

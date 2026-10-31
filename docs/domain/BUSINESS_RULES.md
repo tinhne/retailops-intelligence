@@ -74,15 +74,23 @@ well would decrement stock twice.
 
 ### 2.5 Stock health classification
 
-Applies only to products with `status = ACTIVE`. It is evaluated top-down and the first match wins.
+Health is evaluated top-down and the first match wins. `DATA_ISSUE` applies to products of any status,
+like `DATA_NEGATIVE_ON_HAND`. The availability classes below it apply only to products with
+`status = ACTIVE`; other products are not classified (health `null`).
 
 | Health | Condition | Raises exception? |
 |---|---|---|
-| `OVERSOLD` | `available < 0` | yes: `INVENTORY_OVERSOLD` |
+| `DATA_ISSUE` | `on_hand < 0`, any product status. Not an availability class: the stock figure is invalid input (BR-402a) | yes: `DATA_NEGATIVE_ON_HAND` only; every inventory rule is suppressed |
+| `OVERSOLD` | `available < 0` (with `on_hand ≥ 0`, so `reserved > on_hand`) | yes: `INVENTORY_OVERSOLD` |
 | `OUT_OF_STOCK` | `available = 0` | yes: `INVENTORY_OUT_OF_STOCK` |
 | `BELOW_REORDER_POINT` | `0 < available ≤ reorder_point` | yes: `INVENTORY_BELOW_REORDER_POINT` |
 | `APPROACHING_REORDER_POINT` | `reorder_point < available ≤ ceil(reorder_point × approaching_factor)` (default factor 1.25) | no, shown in the inventory view only |
 | `HEALTHY` | otherwise | no |
+
+A product with `on_hand < 0` is therefore never counted or filtered as `OVERSOLD` or any other
+availability class until a cycle count corrects it. Health filters select it as `DATA_ISSUE`, and
+the dashboard's stock health summary counts it separately (`data_issue`, ACTIVE products, so the
+six counts add up to the number of active products).
 
 | ID | Rule | Basis |
 |---|---|---|
