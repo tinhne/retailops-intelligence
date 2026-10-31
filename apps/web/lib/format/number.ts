@@ -80,3 +80,9 @@ export function formatBytes(bytes: number): string {
   }
   return unit === 0 ? `${value} B` : `${value.toFixed(1)} ${units[unit]}`;
 }
+
+/** Ledger deltas are always signed: "+40", "−3", "0" (DESIGN_SYSTEM §13). */
+export function formatDelta(value: number): string {
+  if (value === 0) return "0";
+  return value > 0 ? `+${formatQuantity(value)}` : formatQuantity(value);
+}

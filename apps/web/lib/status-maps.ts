@@ -287,3 +287,28 @@ export function displayHealth(health: StockHealth | null, onHand: number): Displ
   if (onHand < 0) return "DATA_ISSUE";
   return health ?? "NOT_TRACKED";
 }
+
+export type ProductStatus = Schema<"ProductStatus">;
+export type MovementType = Schema<"MovementType">;
+export type MovementSource = Schema<"MovementSource">;
+
+/** Product status is a tag, not a state colour (S-07): Active neutral, Draft outline, Archived muted. */
+export const productStatusMeta: Record<ProductStatus, { label: string; tone: Tone }> = {
+  ACTIVE: { label: "Active", tone: "neutral" },
+  DRAFT: { label: "Draft", tone: "outline" },
+  ARCHIVED: { label: "Archived", tone: "muted" },
+};
+
+export const movementTypeLabels: Record<MovementType, string> = {
+  CYCLE_COUNT: "Cycle count",
+  RECEIPT: "Receipt",
+  INCOMING_EXPECTED: "Incoming expected",
+  INCOMING_CANCELLED: "Incoming cancelled",
+  DAMAGE: "Damage",
+  SHRINKAGE: "Shrinkage",
+  RETURN_RESTOCK: "Return restock",
+  CORRECTION: "Correction",
+  SHIPMENT: "Shipment",
+};
+
+export const movementSourceLabels: Record<MovementSource, string> = { IMPORT: "Import", ORDER: "Order", SYSTEM: "System" };

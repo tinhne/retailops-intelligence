@@ -19,13 +19,14 @@ client (CSRF header, `ApiError`), QueryClient policy (retries, 401 → sign-in),
 shell. **Overview (T-061):** the S-02 dashboard with formatters, status maps and atoms, KPI cards,
 chart frame and Run analysis; the dashboard API gained `exposure_by_category`. **Exceptions (T-062):**
 inbox and investigation with every lifecycle action; the list API gained `due_to` and closing fields.
-**Orders (T-063):** read-only list and detail. 134 vitest tests. See `PROJECT_STATE.md`.
+**Orders (T-063):** read-only list and detail. **Products and inventory (T-064):** products list
+and detail, inventory positions, movements ledger. 151 vitest tests. See `PROJECT_STATE.md`.
 
 ## 3. Currently being implemented
 Nothing is in flight. The working tree is clean. (An earlier handoff described uncommitted
 frontend and AI work; it was not in the tree on 2026-11-01, so T-071..T-074 start from scratch.)
-Next up: products, inventory positions and movements (T-064). T-065, T-071 and T-058 are also READY;
-T-067 holds the deferred list and detail UI details.
+Next up: imports (T-065). T-071 and T-058 are also READY; T-067 holds the deferred list and detail
+UI details.
 
 **Notes for the next frontend task:**
 - The sidebar lists only built pages, and `sectionHref` returns a link only for built pages the role
@@ -38,9 +39,15 @@ T-067 holds the deferred list and detail UI details.
 - Every page component calls `useStore()` and renders `PermissionDenied` when its route
   permission is missing (see `features/overview/overview-screen.tsx`). Query keys start with
   `["store", storeId, …]` (IA §7).
-- List screens: reuse `components/data/data-table.tsx` and `list-controls.tsx`, and copy the URL-state
-  pattern in `features/orders/order-params.ts` (parse, validate, serialize, `to…Query`, store-local
-  date presets via `storeMidnight`). `HealthBadge` already applies the BR-402a data-issue rule.
+- List screens: reuse `components/data/data-table.tsx` (compact density, `pinned` first column,
+  `hideBelow` up to `2xl`) and `list-controls.tsx`. For URL state, declare the fields with
+  `defineListParams` (`lib/list-params.ts`) and bind them with `useListState`, as the three
+  `features/inventory/*-screen.tsx` lists do; store-local date presets use `storeMidnight`. The older
+  exceptions and orders param modules work the same way by hand. `HealthBadge` already applies the
+  BR-402a data-issue rule.
+- Imports (T-065): when S-11..S-13 land, add the import actions the specs list for the empty states
+  (S-02, S-05, S-07, S-09, S-10) through `sectionHref(store.id, "imports", …)`, so they appear only
+  for roles that may open the page.
 - Any horizontal scroll container must be `relative`, and page grids need `grid-cols-1` as a base, or
   phones get sideways page scroll (fixed in T-063).
 - Mutations on exceptions go through `features/exceptions/detail/use-exception-command.ts`; follow the

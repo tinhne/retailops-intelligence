@@ -215,3 +215,36 @@ add a correction entry instead.
   747441b → 0fba20f, 5a108e5 → e942e71, 2d58630 → 82bdb4f, 574cec1 → 8b6f967, 1f7e1d5 → 43239c7,
   5e24711 → f97a8af, 6d534b2 → c5b7e57. CI run IDs recorded earlier still exist on GitHub and refer to
   the old IDs of the same code.
+
+## 2026-11-01 (UTC+7): Orchestrator: products, inventory positions and movements (T-064)
+
+- **Web, shared:** `lib/list-params.ts` describes a list screen's URL state as field specs (text, one,
+  many, flag, id) and derives parse, validation, serialisation, "is filtered" and clear-all from them;
+  `useListState` binds a definition to the router and drops unknown values from shared links. The
+  three new lists use it instead of hand-written param modules. `DataTable` gained a pinned first
+  column, a 2xl breakpoint and tighter cell padding in compact density. `EstimateValue` renders
+  BR-152 estimates with their basis. `formatDelta` and `storeMidnight` moved into `lib/format`.
+- **Products (S-07):** read-only catalog with search, status, category, supplier and stock filters,
+  cost-above-price warning, stock columns only with `inventory.read`, stacked rows below 768 px.
+- **Product detail (S-08):** stock tiles, the BR-101 formula line, a health explanation from the API's
+  `approaching_threshold`, the BR-402a data-issue callout linking its exception (Available and Days
+  of cover marked not reliable), product details, exceptions (active and last 5 closed) and the last
+  10 ledger rows with a link to the filtered ledger.
+- **Inventory positions (S-09):** health summary toggles (`aria-pressed`, counts from the dashboard),
+  the BR-101/BR-103 caption, search, health, category, include-inactive, sort, 50/100 page sizes,
+  "No oversold products" success state, negative on-hand rows shown as Data issue.
+- **Movements (S-10):** ledger with the Occurred column pinned while scrolling sideways, signed deltas,
+  running on-hand, type, source, reference (shipments link to the order search), note, recorded by
+  (members, "Former member", or System). Filters: product (from S-08 links), type, source, occurred
+  presets in store-local days; sorts by occurred or recorded time.
+- **Found in the browser:** at 1440 px the positions table overflowed and squeezed product names to
+  92 px; fixed with compact padding, two-line names and Avg daily units from 1536 px. Health toggle
+  names read "Oversold3" to screen readers; fixed. Days of cover showed "0.0 days" for a data-issue
+  product; now "—" with "not reliable".
+- **Spec synced:** S-08 days of cover for data issues; S-09 Avg daily units breakpoint; S-10 filter
+  names (`from`/`to`, `source`), On hand after and Recorded columns, shipment references, deferred
+  Import column and filter. Products, Inventory and Movements are live in the nav, so Overview's
+  health rows now link to filtered positions.
+- **Deferred to T-067:** ledger product combobox and custom range, Import filter and column, exact
+  order-line links, import actions in the empty states (with T-065).
+- **Tests:** web lint, typecheck and build green; vitest **151 passed**. Backend unchanged.

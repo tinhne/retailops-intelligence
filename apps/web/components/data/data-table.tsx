@@ -9,7 +9,9 @@ export type Column<T> = {
   header: string;
   cell: (row: T) => React.ReactNode;
   align?: "left" | "right";
-  hideBelow?: "md" | "lg" | "xl";
+  hideBelow?: "md" | "lg" | "xl" | "2xl";
+  /** Stays in view while the table scrolls sideways (the first column only). */
+  pinned?: boolean;
   className?: string;
 };
 
@@ -37,6 +39,7 @@ const hide: Record<NonNullable<Column<unknown>["hideBelow"]>, string> = {
   md: "hidden md:table-cell",
   lg: "hidden lg:table-cell",
   xl: "hidden xl:table-cell",
+  "2xl": "hidden 2xl:table-cell",
 };
 
 /**
@@ -65,6 +68,7 @@ export function DataTable<T>({
   if (status === "success" && rows && rows.length === 0) return <>{isFiltered ? noResults : empty}</>;
 
   const rowHeight = density === "comfortable" ? "h-11" : "h-9";
+  const cellX = density === "comfortable" ? "px-3" : "px-2";
   const loading = status === "loading";
 
   return (
@@ -94,9 +98,11 @@ export function DataTable<T>({
                   key={column.id}
                   scope="col"
                   className={cn(
-                    "h-9 border-b px-3 text-xs font-medium whitespace-nowrap text-muted-foreground first:pl-4 last:pr-4",
+                    "h-9 border-b text-xs font-medium whitespace-nowrap text-muted-foreground first:pl-4 last:pr-4",
+                    cellX,
                     column.align === "right" ? "text-right" : "text-left",
                     column.hideBelow && hide[column.hideBelow],
+                    column.pinned && "sticky left-0 z-[1] bg-surface-subtle",
                   )}
                 >
                   {column.header}
@@ -109,21 +115,23 @@ export function DataTable<T>({
               ? Array.from({ length: 8 }, (_, index) => (
                   <tr key={index} className={cn("border-b", rowHeight)}>
                     {columns.map((column) => (
-                      <td key={column.id} className={cn("px-3 first:pl-4 last:pr-4", column.hideBelow && hide[column.hideBelow])}>
+                      <td key={column.id} className={cn(cellX, "first:pl-4 last:pr-4", column.hideBelow && hide[column.hideBelow])}>
                         <Skeleton className="h-4 w-full max-w-40" />
                       </td>
                     ))}
                   </tr>
                 ))
               : rows?.map((row) => (
-                  <tr key={getRowId(row)} className={cn("relative border-b last:border-b-0 hover:bg-surface-hover", rowHeight)}>
+                  <tr key={getRowId(row)} className={cn("group/row relative border-b last:border-b-0 hover:bg-surface-hover", rowHeight)}>
                     {columns.map((column) => (
                       <td
                         key={column.id}
                         className={cn(
-                          "px-3 py-2 align-middle first:pl-4 last:pr-4",
+                          cellX,
+                          "py-2 align-middle first:pl-4 last:pr-4",
                           column.align === "right" ? "text-right tabular-nums" : "text-left",
                           column.hideBelow && hide[column.hideBelow],
+                          column.pinned && "sticky left-0 z-[1] bg-card group-hover/row:bg-surface-hover",
                           column.className,
                         )}
                       >

@@ -173,3 +173,10 @@ export function utcToZonedInputs(iso: string, timeZone: string): { date: string;
   const time = new Intl.DateTimeFormat("en-GB", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(at);
   return { date: localDateKey(at, timeZone), time };
 }
+
+/** Midnight in the store zone, `daysBack` store-local days before today (BR-501). */
+export function storeMidnight(now: Date, timeZone: string, daysBack: number): Date {
+  const [year, month, day] = localDateKey(now, timeZone).split("-").map(Number);
+  const start = new Date(Date.UTC(year, month - 1, day - daysBack));
+  return zonedTimeToUtc(start.toISOString().slice(0, 10), "00:00", timeZone);
+}

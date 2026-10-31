@@ -145,7 +145,7 @@ exist.
 | Evaluation runs | `POST /stores/{id}/evaluations` ("Run analysis", synchronous, `Idempotency-Key`, returns the run. Status `SKIPPED` when another run holds the store lock), `GET …/evaluations`, `GET …/evaluations/{rid}`. Statuses `RUNNING`, `SUCCEEDED`, `FAILED`, `SKIPPED` | API_CONVENTIONS | S-02, S-03, S-21 |
 | Orders | `GET /stores/{id}/orders` (filters `q` = order number, `status`, `payment_status`, `fulfillment_status`, `channel`, `placed_from`, `placed_to`, `overdue`. Items include `line_count`, `is_overdue`), `GET …/orders/{oid}` (lines with reservation, amounts with `expected_total`, `difference`, `has_total_mismatch`, events, linked exceptions with `reference`) | implemented | S-05, S-06 |
 | Products | `GET /stores/{id}/products` (filters `q` = SKU or name substring, `status`, `category`, `supplier_id`, `health` repeatable. Items include `on_hand`, `reserved`, `available`, `health`), `GET …/products/{pid}` (stock snapshot, `health`, `approaching_threshold`, `avg_daily_units` and `days_of_cover` as `Estimate {value, basis, window_days}`, `active_exception_count`), `GET /stores/{id}/suppliers`, `GET /stores/{id}/categories` | implemented | S-07, S-08 |
-| Inventory | `GET /stores/{id}/inventory/positions` (filters `health`, `category`, `q`), `GET …/inventory/movements` (filters `product_id`, `movement_type`, `occurred_from`, `occurred_to`, `import_id`), `GET …/inventory/reconciliation` (P1) | implemented | S-08, S-09, S-10 |
+| Inventory | `GET /stores/{id}/inventory/positions` (filters `health`, `category`, `q`), `GET …/inventory/movements` (filters `product_id`, `movement_type`, `source`, `from`, `to`; no `import_id` filter yet), `GET …/inventory/reconciliation` (P1) | implemented | S-08, S-09, S-10 |
 | Imports | `POST /stores/{id}/imports` (multipart `import_type`, `file`. Validates synchronously and returns `201` with the import in `VALIDATED` or `REJECTED`), `GET …/imports` (filters `import_type`, `status`), `GET …/imports/{iid}` (`ImportDetailOut` with `summary` and `file_issues`), `GET …/{iid}/issues` (filters `severity`, `code`), `GET …/{iid}/issues.csv`, `POST …/{iid}/apply {mode, confirm_skipped_rows}` (`Idempotency-Key`), `POST …/{iid}/discard`, `GET …/imports/templates/{import_type}` | implemented | S-11, S-12, S-13 |
 | Import retry | `POST …/imports/{iid}/revalidate` (`FAILED → VALIDATING`, stored bytes) | API_CONVENTIONS | S-13 |
 | Copilot | `GET\|POST /stores/{id}/copilot/conversations`, `GET …/conversations/{cid}`, `POST …/conversations/{cid}/messages`, `POST /stores/{id}/copilot/exception-summaries {exception_id, refresh?}`, `POST /stores/{id}/copilot/note-drafts` | API_CONVENTIONS | S-04, S-14 |
@@ -855,7 +855,8 @@ recent ledger entries and linked exceptions (IA §3 A3). **Personas.** Staff, Ma
    explanation: "Data issue: on hand is −3, which is physically impossible. Stock health and
    inventory exceptions are suspended for this product until a cycle count corrects it (BR-402a).
    See EXC-1051 (Negative on-hand)." The Available tile shows the value with "not reliable" in
-   muted text.
+   muted text. Days of cover shows "—" with "not reliable", since it is derived from the same
+   impossible figure.
 3. **Product** (DescriptionList): price, cost, reorder point, reorder quantity, supplier (name,
    lead time), last cycle count.
 4. **Exceptions** (`exceptions.read`): `active_exception_count` in the heading, then the list from
@@ -910,7 +911,7 @@ BR-103)." → FilterBar → DataTable (compact default) → Pagination.
 | Available | `available` (BR-101, danger text if < 0) | right | never |
 | Incoming | `incoming` + "ETA Nov 4" (`incoming_eta`) | right | lg |
 | Reorder point | `product.reorder_point` | right | lg |
-| Avg daily units (est.) | `avg_daily_units` (1 dp) | right | xl |
+| Avg daily units (est.) | `avg_daily_units` (1 dp) | right | 2xl (1536 px; at 1280–1535 px the eleven columns squeeze the product name. The value stays on S-08) |
 | Days of cover (est.) | `days_of_cover` (1 dp, or "—" with a tooltip "Not enough sales history"). Hidden for "Data issue" rows | right | lg |
 | Last count (ET) | `last_cycle_count_at` | left | xl |
 
@@ -947,16 +948,19 @@ entries."). FilterBar → DataTable (compact) → Pagination.
 | On hand Δ | `on_hand_delta` → `formatDelta` | right | never |
 | Incoming Δ | `incoming_delta` → `formatDelta` | right | md |
 | Source | `source` (Import, Order, System) | left | lg |
-| Reference | `reference`: `order_item:{id}` renders as "Order KHK-10482 · line 2" (link to S-06). Others as plain text in mono. | left | md |
-| Note | `note` (truncated, tooltip) | left | xl |
-| Import | `import_id` → file name (link to S-13) | left | xl |
-| Recorded by | `created_by` → name, or "System" | left | xl |
+| On hand after | `on_hand_after` (the running balance) | right | md |
+| Reference | `reference`. Shipments (`order_item:{id}`) render their note, "Order KHK-10482", as a link to the Orders list searched for that number: the movement carries no order ID, so the exact line link waits for the API (T-067). Others as plain text in mono. | left | md |
+| Note | `note` (truncated, tooltip). Omitted for shipments, whose note is already the reference | left | xl |
+| Import | `import_id` → file name (link to S-13). Not rendered until S-13 exists (T-065, T-067) | left | xl |
+| Recorded by | `created_by` → name via `GET /stores/{id}/members`, "Former member" if absent, or "System" | left | xl |
+| Recorded (ET) | `recorded_at` | left | 2xl |
 
-**Filters / sort / search.** Product (combobox, `product_id`; chip "KHK-DO55-SGE"). Type (multi,
-repeated `movement_type`). Occurred (`occurred_from` / `occurred_to`; presets + custom). Import
-(`import_id`; set by links from S-13, chip with the file name). Sort (`MovementSort`): Occurred
-newest (default), Occurred oldest, Recorded newest (`-recorded_at`). There is no free-text search
-on this endpoint. **Pagination:** 50 (50/100).
+**Filters / sort / search.** Product (`product_id`; set by links from S-08, chip "KHK-DO55-SGE";
+a combobox is T-067). Type (multi, repeated `movement_type`). Source (`source`). Occurred (`from`;
+store-local presets Today, Last 7, 30 and 90 days; a custom range with `to` is T-067). Import
+(`import_id`; set by links from S-13, chip with the file name) waits for an API filter. Sort
+(`MovementSort`): Occurred newest (default), Occurred oldest, Recorded newest (`-recorded_at`).
+There is no free-text search on this endpoint. **Pagination:** 50 (50/100).
 
 | State | Behaviour |
 |---|---|
