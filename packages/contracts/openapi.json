@@ -2466,7 +2466,7 @@
         "type": "string"
       },
       "InventoryHealthSummary": {
-        "description": "ACTIVE products by health from current balances (\u00a72.5), not from exceptions.",
+        "description": "ACTIVE products by health from current balances (\u00a72.5), not from exceptions.\n\nThe six counts are disjoint and add up to ``active_products``.",
         "properties": {
           "active_products": {
             "title": "Active Products",
@@ -2480,6 +2480,11 @@
             "title": "Below Reorder Point",
             "type": "integer"
           },
+          "data_issue": {
+            "description": "ACTIVE products with on_hand < 0 (BR-402a). The stock figure is invalid, so they are in none of the availability classes above until a cycle count corrects them.",
+            "title": "Data Issue",
+            "type": "integer"
+          },
           "healthy": {
             "title": "Healthy",
             "type": "integer"
@@ -2489,6 +2494,7 @@
             "type": "integer"
           },
           "oversold": {
+            "description": "available < 0 with on_hand \u2265 0.",
             "title": "Oversold",
             "type": "integer"
           }
@@ -2499,7 +2505,8 @@
           "out_of_stock",
           "below_reorder_point",
           "approaching_reorder_point",
-          "healthy"
+          "healthy",
+          "data_issue"
         ],
         "title": "InventoryHealthSummary",
         "type": "object"
@@ -2548,7 +2555,7 @@
                 "type": "null"
               }
             ],
-            "description": "\u00a72.5; null for products that are not ACTIVE."
+            "description": "\u00a72.5. DATA_ISSUE when on_hand < 0, whatever the product status: the stock figure is invalid, so no availability class applies (BR-402a). Otherwise null for products that are not ACTIVE."
           },
           "incoming": {
             "description": "Never counted in available (BR-103).",
@@ -4294,7 +4301,7 @@
                 "type": "null"
               }
             ],
-            "description": "\u00a72.5; null for products that are not ACTIVE."
+            "description": "\u00a72.5. DATA_ISSUE when on_hand < 0, whatever the product status: the stock figure is invalid, so no availability class applies (BR-402a). Otherwise null for products that are not ACTIVE."
           },
           "id": {
             "format": "uuid",
@@ -4411,7 +4418,7 @@
                 "type": "null"
               }
             ],
-            "description": "\u00a72.5; null for products that are not ACTIVE."
+            "description": "\u00a72.5. DATA_ISSUE when on_hand < 0, whatever the product status: the stock figure is invalid, so no availability class applies (BR-402a). Otherwise null for products that are not ACTIVE."
           },
           "id": {
             "format": "uuid",
@@ -4861,7 +4868,9 @@
         "type": "string"
       },
       "StockHealth": {
+        "description": "\u00a72.5 classes in evaluation order. DATA_ISSUE is not an availability class (BR-402a).",
         "enum": [
+          "DATA_ISSUE",
           "OVERSOLD",
           "OUT_OF_STOCK",
           "BELOW_REORDER_POINT",
@@ -8175,7 +8184,7 @@
             }
           },
           {
-            "description": "Repeatable.",
+            "description": "Repeatable. DATA_ISSUE selects products with on_hand < 0 (BR-402a).",
             "in": "query",
             "name": "health",
             "required": false,
@@ -8191,7 +8200,7 @@
                   "type": "null"
                 }
               ],
-              "description": "Repeatable.",
+              "description": "Repeatable. DATA_ISSUE selects products with on_hand < 0 (BR-402a).",
               "title": "Health"
             }
           },
@@ -8769,7 +8778,7 @@
             }
           },
           {
-            "description": "Repeatable. ACTIVE products.",
+            "description": "Repeatable. The availability classes cover ACTIVE products; DATA_ISSUE covers on_hand < 0 for any status (BR-402a).",
             "in": "query",
             "name": "health",
             "required": false,
@@ -8785,7 +8794,7 @@
                   "type": "null"
                 }
               ],
-              "description": "Repeatable. ACTIVE products.",
+              "description": "Repeatable. The availability classes cover ACTIVE products; DATA_ISSUE covers on_hand < 0 for any status (BR-402a).",
               "title": "Health"
             }
           },
