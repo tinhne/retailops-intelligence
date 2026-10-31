@@ -2668,22 +2668,52 @@
             "title": "Reference",
             "type": "string"
           },
+          "resolution_code": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResolutionCode"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "RESOLVED only. With verified_at it decides how the resolution is shown."
+          },
           "severity": {
             "$ref": "#/components/schemas/Severity"
           },
           "status": {
             "$ref": "#/components/schemas/ExceptionStatus"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified At"
           }
         },
         "required": [
           "id",
           "reference",
+          "title",
           "exception_type",
           "severity",
           "status",
           "priority_band",
           "link_role",
-          "is_active"
+          "is_active",
+          "resolution_code",
+          "verified_at"
         ],
         "title": "LinkedException",
         "type": "object"

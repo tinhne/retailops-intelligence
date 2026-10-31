@@ -21,6 +21,7 @@ from app.domains.exceptions.models import (
     ACTIVE_STATUSES,
     EntityType,
     ExceptionEntityLink,
+    ExceptionStatus,
     OperationalException,
 )
 from app.domains.inventory import queries as inventory_queries
@@ -234,12 +235,15 @@ def linked_exceptions(
         LinkedException(
             id=exc.id,
             reference=exc.reference,
+            title=exc.title,
             exception_type=exc.exception_type,
             severity=exc.severity,
             status=exc.status,
             priority_band=exc.priority_band,
             link_role=role,
             is_active=exc.status in ACTIVE_STATUSES,
+            resolution_code=exc.resolution_code if exc.status is ExceptionStatus.RESOLVED else None,
+            verified_at=exc.verified_at if exc.status is ExceptionStatus.RESOLVED else None,
         )
         for exc, role in rows
     ]

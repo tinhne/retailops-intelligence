@@ -1753,8 +1753,14 @@ export interface components {
             priority_band: components["schemas"]["PriorityBand"];
             /** Reference */
             reference: string;
+            /** @description RESOLVED only. With verified_at it decides how the resolution is shown. */
+            resolution_code: components["schemas"]["ResolutionCode"] | null;
             severity: components["schemas"]["Severity"];
             status: components["schemas"]["ExceptionStatus"];
+            /** Title */
+            title: string;
+            /** Verified At */
+            verified_at: string | null;
         };
         /** LoginRequest */
         LoginRequest: {
