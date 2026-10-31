@@ -1,0 +1,11 @@
+sku,name,category,status,unit_price,unit_cost,reorder_point,reorder_quantity,supplier_name,supplier_lead_time_days
+KHK-MUG-12OZ-SAGE,"Stoneware Mug 12 oz, Sage",Drinkware,ACTIVE,16.00,5.40,24,72,Harbor Ceramics Co.,21
+KHK-MUG-12OZ-CHAR,"Stoneware Mug 12 oz, Charcoal",Drinkware,ACTIVE,16.00,5.40,24,72,Harbor Ceramics Co.,21
+KHK-KNF-CHEF-8,"Chef's Knife 8 in, Carbon Steel",Cutlery,ACTIVE,89.00,34.50,6,18,Northfield Blades,35
+KHK-KNF-PAR-4,Paring Knife 4 in,Cutlery,ACTIVE,29.00,9.80,10,30,Northfield Blades,35
+KHK-PAN-CI-10,Cast Iron Skillet 10 in,Cookware,ACTIVE,42.00,15.75,8,24,Ridgeway Foundry,28
+KHK-PAN-SS-3QT,Stainless Saucepan 3 qt,Cookware,ACTIVE,64.00,23.10,5,15,Ridgeway Foundry,28
+KHK-BRD-MAPLE-L,"Maple Cutting Board, Large",Prep,ACTIVE,54.00,19.00,6,12,Greenbough Woodworks,14
+KHK-TWL-LIN-2PK,"Linen Tea Towels, 2-Pack",Textiles,ACTIVE,22.00,6.30,15,60,Loomhouse Textiles,30
+KHK-JAR-GLS-1L,Glass Storage Jar 1 L,Storage,ACTIVE,14.00,4.10,20,80,Clearline Glassworks,21
+KHK-KTL-ENM-2L,Enamel Tea Kettle 2 L,Cookware,DRAFT,58.00,21.40,0,,Ridgeway Foundry,28

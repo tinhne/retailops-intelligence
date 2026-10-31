@@ -1,0 +1,3 @@
+reference,sku,adjustment_type,quantity,occurred_at,expected_at,note
+CC-2026-10-20-MUG-SAGE,KHK-MUG-12OZ-SAGE,CYCLE_COUNT,48,2026-10-20T08:00:00-04:00,,"Monthly cycle count, aisle B"
+PO-7781-ETA,KHK-KNF-CHEF-8,INCOMING_EXPECTED,24,2026-10-22T10:00:00-04:00,2026-11-05T12:00:00-05:00,PO 7781 from Northfield Blades
