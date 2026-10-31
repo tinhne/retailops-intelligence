@@ -21,7 +21,7 @@ dependencies, data flows and owners. Details live in
 |---|---|---|---|---|---|
 | identity | `apps/api/app/domains/identity/` | `apps/web/features/auth/` (S-01), `features/session/`, `features/admin/` (planned) | `/auth/*`, `/roles`, `/stores/{id}`, `/stores/{id}/settings`, `/stores/{id}/members`. `/organizations/{id}/members` is not built yet | BE | API done · sign-in UI done |
 | catalog | `apps/api/app/domains/catalog/` | `apps/web/features/inventory/` (products) | `/stores/{id}/products`, `/stores/{id}/suppliers`, `/stores/{id}/categories` | BE | API done · UI planned |
-| orders | `apps/api/app/domains/orders/` | `apps/web/features/orders/` | `/stores/{id}/orders` | BE | API done · UI planned |
+| orders | `apps/api/app/domains/orders/` | `apps/web/features/orders/` | `/stores/{id}/orders` | BE | API done · list and detail UI done |
 | inventory | `apps/api/app/domains/inventory/` | `apps/web/features/inventory/` | `/stores/{id}/inventory/*` | BE | API done · UI planned |
 | imports | `apps/api/app/domains/imports/` | `apps/web/features/imports/` | `/stores/{id}/imports`, `/stores/{id}/imports/templates/{import_type}` | BE | API done · UI planned |
 | exceptions | `apps/api/app/domains/exceptions/` | `apps/web/features/exceptions/` | `/stores/{id}/exceptions`, `/stores/{id}/evaluations` | BE | API done · inbox and investigation UI done |
@@ -69,6 +69,7 @@ dependencies, data flows and owners. Details live in
 | `apps/web/lib/format/`, `lib/status-maps.ts`, `components/status/`, `components/data/`, `components/charts/` | Formatters, enum labels and tones, status pills, money and time atoms, KPI card, chart frame | T-061 | done |
 | `apps/web/components/data/data-table.tsx`, `list-controls.tsx` | Server-paginated table, filters, chips, search, pagination | T-062 | done |
 | `apps/web/features/exceptions/` | Inbox URL state, list, investigation sections, lifecycle actions and dialogs, timeline and notes | T-062 | done |
+| `apps/web/features/orders/` | Orders URL state with store-local date presets, list, detail (axes, lines, totals, linked exceptions, history) | T-063 | done |
 | `apps/web/tests/e2e/` | Playwright critical journey | T-081 | planned |
 | `docker-compose.yml`, `infra/docker/` | `db`, `api`, `worker`, `web` (only `db` and the API image exist) | T-090 | in progress |
 | `.github/workflows/ci.yml` | Lint, types, tests, builds, dependency audit (no contract diff check yet) | T-091 | done |

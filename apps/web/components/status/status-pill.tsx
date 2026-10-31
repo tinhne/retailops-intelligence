@@ -1,14 +1,23 @@
 import type { LucideIcon } from "lucide-react";
 
 import {
+  displayHealth,
+  displayHealthMeta,
   exceptionStatusMeta,
+  fulfillmentStatusMeta,
+  orderStatusMeta,
+  paymentStatusMeta,
   importStatusMeta,
   priorityBandLabels,
   resolvedMeta,
   severityMeta,
   toneClasses,
   type ExceptionStatus,
+  type FulfillmentStatus,
   type ImportStatus,
+  type OrderStatus,
+  type PaymentStatus,
+  type StockHealth,
   type PriorityBand,
   type ResolutionCode,
   type Severity,
@@ -92,6 +101,53 @@ export function PriorityIndicator({ band, score }: { band: PriorityBand; score: 
       <span aria-hidden className={cn("text-body-strong tabular-nums", barClasses[band].text)}>
         {band} · {score}
       </span>
+    </span>
+  );
+}
+
+export function OrderStatusPill({ status, size }: { status: OrderStatus; size?: "sm" | "md" }) {
+  const meta = orderStatusMeta[status];
+  return <StatusPill tone={meta.tone} label={meta.label} icon={meta.icon} size={size} srPrefix="Order status:" />;
+}
+
+const axisText: Record<Tone, string> = {
+  neutral: "text-tone-neutral-fg",
+  outline: "text-tone-outline-fg",
+  muted: "text-tone-muted-fg",
+  primary: "text-tone-primary-fg",
+  info: "text-tone-info-fg",
+  success: "text-tone-success-fg",
+  warning: "text-tone-warning-fg",
+  caution: "text-tone-caution-fg",
+  attention: "text-tone-attention-fg",
+  danger: "text-tone-danger-fg",
+  "danger-solid": "text-tone-danger-fg",
+};
+
+/** Payment or fulfillment status as icon plus coloured text, for table cells (C-14). */
+export function AxisText({ axis, value }: { axis: "payment"; value: PaymentStatus } | { axis: "fulfillment"; value: FulfillmentStatus }) {
+  const meta = axis === "payment" ? paymentStatusMeta[value as PaymentStatus] : fulfillmentStatusMeta[value as FulfillmentStatus];
+  const Icon = meta.icon;
+  return (
+    <span className={cn("inline-flex items-center gap-1 whitespace-nowrap", axisText[meta.tone])}>
+      <Icon aria-hidden className="size-3.5" />
+      <span className="sr-only">{axis === "payment" ? "Payment:" : "Fulfillment:"} </span>
+      {meta.label}
+    </span>
+  );
+}
+
+/** Stock health, with negative on-hand shown as a data issue whatever the health says (C-13). */
+export function HealthBadge({ health, onHand, size }: { health: StockHealth | null; onHand: number; size?: "sm" | "md" }) {
+  const value = displayHealth(health, onHand);
+  const meta = displayHealthMeta[value];
+  const title =
+    value === "DATA_ISSUE"
+      ? `On hand is negative (${onHand}). That is physically impossible, so stock health can't be computed until a cycle count corrects it (BR-402a).`
+      : meta.description;
+  return (
+    <span title={title}>
+      <StatusPill tone={meta.tone} label={meta.label} icon={meta.icon} size={size} srPrefix="Stock:" />
     </span>
   );
 }

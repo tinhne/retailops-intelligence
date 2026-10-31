@@ -85,7 +85,7 @@ export function ChartFrame({
           {children}
         </div>
       ) : (
-        <div className="max-h-80 overflow-auto rounded-md border">
+        <div className="relative max-h-80 overflow-auto rounded-md border">
           <table className="w-full text-sm">
             <caption className="sr-only">{title}</caption>
             <thead className="sticky top-0 bg-surface-subtle">

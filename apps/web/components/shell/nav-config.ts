@@ -46,7 +46,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Commerce",
     items: [
-      { label: "Orders", segment: "orders", icon: ShoppingCart, permission: ["orders.read"], ready: false },
+      { label: "Orders", segment: "orders", icon: ShoppingCart, permission: ["orders.read"], ready: true },
       { label: "Products", segment: "products", icon: Tag, permission: ["catalog.read"], ready: false },
       { label: "Inventory", segment: "inventory", icon: Boxes, permission: ["inventory.read"], ready: false },
       {

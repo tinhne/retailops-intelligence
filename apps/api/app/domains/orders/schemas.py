@@ -12,6 +12,7 @@ from app.domains.exceptions.models import (
     ExceptionType,
     LinkRole,
     PriorityBand,
+    ResolutionCode,
     Severity,
 )
 from app.domains.inventory.models import ReservationStatus
@@ -107,12 +108,17 @@ class OrderEventOut(BaseModel):
 class LinkedException(BaseModel):
     id: uuid.UUID
     reference: str
+    title: str
     exception_type: ExceptionType
     severity: Severity
     status: ExceptionStatus
     priority_band: PriorityBand
     link_role: LinkRole
     is_active: bool
+    resolution_code: ResolutionCode | None = Field(
+        description="RESOLVED only. With verified_at it decides how the resolution is shown."
+    )
+    verified_at: datetime | None
 
 
 class OrderDetail(BaseModel):

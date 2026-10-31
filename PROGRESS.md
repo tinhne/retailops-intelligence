@@ -179,3 +179,23 @@ add a correction entry instead.
 - **Tests:** web lint, typecheck and build green; vitest **120 passed**. Browser check against the seeded
   API: acknowledge, start, resolve (with validation), the Closed view, and reopen as a manager; the
   read-only demo viewer; 1440 and 375 px.
+
+## 2026-11-01 (UTC+7): Orchestrator: orders list and detail (T-063)
+
+- **API (1f7e1d5):** an order's linked exceptions carry `title`, `resolution_code` and `verified_at`, so
+  the order page names them and shows the RESOLVED forms honestly. Order detail test extended.
+- **Web, list (S-05):** read-only list with search (order number or customer reference), status
+  (grouped), payment, fulfillment, channel, placed presets in store-local days (Today, 7, 30, 60 days),
+  overdue-only toggle, sort, pagination, stacked rows below 768 px, and the success-toned empty
+  overdue result. URL state validated like the inbox.
+- **Web, detail (S-06):** status card with the cancelled-but-paid and refunded-without-return
+  callouts, key dates (ship-by source with the store SLA hours), line items with reservation and
+  stock health (negative on-hand shown as a data issue, BR-402a), totals with the BR-205 mismatch
+  rows, linked exceptions (active first, last 5 closed), status history with skipped statuses.
+- **Fix found in the browser:** at 375 px the page could scroll sideways. Screen-reader-only labels
+  inside table cells escaped their scroll container because it was not positioned, and the page grids
+  had no shrinkable column. Both fixed for every table and page grid.
+- **Spec synced:** S-05 search matches IA §8 and the API (customer references searchable in the Orders
+  list only). Orders and its links (Overview KPIs) are live in the nav.
+- **Deferred to T-067:** custom placed range, import file links in order history, Ask the copilot.
+- **Tests:** web lint, typecheck and build green; vitest **134 passed**.

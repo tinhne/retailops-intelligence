@@ -315,13 +315,19 @@ def test_order_detail_reconciles_total_per_br205_and_links_exceptions(
     assert exceptions[1] == {
         "id": str(overdue.id),
         "reference": overdue.reference,
+        "title": overdue.title,
         "exception_type": "ORDER_FULFILLMENT_OVERDUE",
         "severity": "CRITICAL",
         "status": "OPEN",
         "priority_band": "P1",
         "link_role": "PRIMARY",
         "is_active": True,
+        "resolution_code": None,
+        "verified_at": None,
     }
+    # A closed one says how it was resolved; a manual resolution is unverified until re-checked.
+    closed = exceptions[2]
+    assert (closed["resolution_code"], closed["verified_at"]) == ("DATA_CORRECTED", None)
 
 
 def test_order_detail_timeline_records_skipped_statuses_section_1_2(

@@ -131,7 +131,7 @@ export function ExceptionScreen() {
       {breadcrumb}
       <ExceptionHeader exception={exception} />
       <LifecycleBanner exception={exception} latestReopen={reopenEvents.data} />
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_var(--aside-w)]">
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_var(--aside-w)]">
         <div className="flex min-w-0 flex-col gap-6">
           <RecommendedAction exception={exception} />
           <PriorityBreakdown exception={exception} />

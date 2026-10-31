@@ -111,7 +111,7 @@ export function OverviewScreen() {
         <>
           <FreshnessStrip freshness={dashboard.data.data_freshness} />
           <KpiRow dashboard={dashboard.data} />
-          <div className="grid items-start gap-6 xl:grid-cols-3">
+          <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
             <div className="xl:col-span-2">
               <AttentionList dashboard={dashboard.data} />
             </div>
