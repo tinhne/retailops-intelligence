@@ -58,7 +58,7 @@ when severity changes, unless a user overrode it. A user with `exceptions.assign
 
 ## Configuration
 
-All weights, caps, and `exposure_cap` live in `store_settings.priority_weights`. They are validated
+Weights and caps live in `store_settings.priority_weights`; `exposure_cap` is its own `store_settings` column. They are validated
 (non-negative integers that sum to at most 100 at the maximum). When weights change, priorities are
 recalculated at the next evaluation, and the change is written to the audit log.
 

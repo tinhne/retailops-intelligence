@@ -113,7 +113,8 @@ then either fix the code or update the document with an ADR explaining the chang
 | `apps/web` | Frontend | read |
 | `apps/api/app/domains/ai`, `docs/ai` | AI engineer | read |
 | `infra`, `.github`, `docker-compose.yml`, `Makefile` | DevOps | read |
-| `PROJECT_STATE.md`, `HANDOFF.md`, `TASKS.md`, `DECISIONS.md` | Orchestrator | append to `PROGRESS.md` |
+| `PROJECT_STATE.md`, `HANDOFF.md`, `TASKS.md`, `DECISIONS.md`, `ARCHITECTURE_MAP.md` | Orchestrator (architect drafts) | append to `PROGRESS.md` |
+| `packages/contracts/src/schema.ts` | Generated, never hand-edited | regenerate with `pnpm contracts:generate` after changing an endpoint |
 
 Two agents never edit the same file at the same time. Shared contracts change first, in their own commit.
 
