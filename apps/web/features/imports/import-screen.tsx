@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronRight, CircleAlert, CircleCheck, CircleSlash, Info, TriangleAlert } from "lucide-react";
+import { ArrowLeftRight, Check, ChevronRight, CircleAlert, CircleCheck, CircleSlash, Info, RotateCcw, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -260,7 +260,8 @@ function EvaluationPanel({ record }: { record: ImportDetail }) {
     enabled: runId !== null,
     refetchInterval: (q) => (q.state.data?.status === "RUNNING" ? POLL_MS : false),
   });
-  const exceptionsHref = sectionHref(store.id, "exceptions", store.permissions, { view: "triage" });
+  // The exceptions this run detected, in the inbox (filter `evaluation_run_id`, S-03).
+  const exceptionsHref = runId ? sectionHref(store.id, "exceptions", store.permissions, { view: "active", evaluation_run_id: runId }) : undefined;
   const skipped = "Another analysis was running, so this import's analysis was skipped. The next scheduled run, within 15 minutes, will evaluate the new data.";
   const failed = "The import is complete, but its analysis failed. No exceptions were changed by it, and the next scheduled run will catch up.";
 
@@ -298,7 +299,7 @@ function EvaluationPanel({ record }: { record: ImportDetail }) {
         </p>
         {exceptionsHref && (run.data.counts.created ?? 0) > 0 ? (
           <Link href={exceptionsHref} className="text-sm text-link hover:underline">
-            View exceptions to triage
+            View new exceptions
           </Link>
         ) : null}
       </div>
@@ -357,6 +358,42 @@ function Details({ record }: { record: ImportDetail }) {
         </dd>
       </dl>
     </Section>
+  );
+}
+
+/**
+ * "Validate again" for a failed apply (S-13 §2): the stored file goes through validation against
+ * current data, and a VALIDATED result brings back the preview and apply steps.
+ */
+function ValidateAgain({ record }: { record: ImportDetail }) {
+  const store = useStore();
+  const queryClient = useQueryClient();
+  const gate = usePermission("imports.run");
+  const revalidate = useMutation({
+    mutationFn: () => importsApi.revalidate(store.id, record.id),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(importKeys.detail(store.id, record.id), updated);
+      void queryClient.invalidateQueries({ queryKey: importKeys.all(store.id) });
+      if (updated.status === "VALIDATED") toast.success("Validated again. Review the preview before applying.");
+    },
+    onError: (error) => {
+      // The bytes were purged meanwhile (expiry) or the status changed: show the current record.
+      if (isApiError(error) && error.status === 409) void queryClient.invalidateQueries({ queryKey: importKeys.detail(store.id, record.id) });
+    },
+  });
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <p className="text-sm">Validate the same file again against the current store data. Nothing changes until you apply.</p>
+      <ActionButton gate={gate} variant="secondary" size="sm" pending={revalidate.isPending} pendingLabel="Validating…" onClick={() => revalidate.mutate()}>
+        <RotateCcw aria-hidden />
+        Validate again
+      </ActionButton>
+      {revalidate.isError ? (
+        <p role="alert" className="text-sm">
+          {userMessage(revalidate.error)}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -420,8 +457,14 @@ function Outcome({ record }: { record: ImportDetail }) {
           <AlertDescription>
             <p>Apply failed and was rolled back. No data was changed.</p>
             {record.failure_reason ? <p className="text-sm">{record.failure_reason}</p> : null}
-            <p className="text-sm">Upload the file again to validate it from the start.</p>
-            {uploadAgain}
+            {record.can_revalidate ? (
+              <ValidateAgain record={record} />
+            ) : (
+              <>
+                <p className="text-sm">The file is no longer stored. Upload it again to validate it from the start.</p>
+                {uploadAgain}
+              </>
+            )}
           </AlertDescription>
         </Alert>
       );
@@ -527,6 +570,11 @@ export function ImportScreen() {
   const stepIndex = record.status === "APPLYING" || step === "apply" ? 2 : 1;
   const next = IMPORT_TYPE_INFO[record.import_type].next ?? record.import_type;
   const anotherHref = newImportHref(store, next);
+  // Adjustment rows become ledger entries that carry this import's id (S-10 Import filter).
+  const ledgerHref =
+    applied && record.import_type === "inventory_adjustments"
+      ? sectionHref(store.id, "inventory/movements", store.permissions, { import_id: record.id })
+      : undefined;
 
   return (
     <div className="flex flex-col gap-6">
@@ -614,6 +662,14 @@ export function ImportScreen() {
           )}
           {applied ? (
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              {ledgerHref ? (
+                <Button asChild variant="secondary">
+                  <Link href={ledgerHref}>
+                    <ArrowLeftRight aria-hidden />
+                    View ledger entries
+                  </Link>
+                </Button>
+              ) : null}
               <Button asChild variant="secondary">
                 <Link href={listHref}>Back to imports</Link>
               </Button>

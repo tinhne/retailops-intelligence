@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -7,10 +7,11 @@ import type { Permission } from "@/lib/api/auth";
 import { errorResponse, jsonResponse, routeFetch } from "@/test/fetch";
 import { importFixture, issueFixture } from "@/test/import-fixtures";
 import { renderInStore, testStore } from "@/test/render";
+import { mockXhr } from "@/test/xhr";
 
 import { expiredAutomatically, expiresIn, ImportScreen } from "./import-screen";
 import { ImportsScreen } from "./imports-screen";
-import { fileProblem, NewImportScreen } from "./new-import-screen";
+import { fileProblem, NewImportScreen, pendingText } from "./new-import-screen";
 
 const replace = vi.fn();
 let search = new URLSearchParams();
@@ -46,6 +47,16 @@ describe("ImportsScreen (S-11)", () => {
     expect(screen.getByRole("link", { name: "New import" })).toHaveAttribute("href", `${STORE}/imports/new`);
   });
 
+  it("filters by several statuses at once", async () => {
+    search = new URLSearchParams("status=FAILED&status=REJECTED");
+    const fetchMock = routeFetch({ "/imports": jsonResponse(page([])), "/members": jsonResponse(members) });
+    renderInStore(<ImportsScreen />, testStore({ permissions: MANAGER }));
+    expect(await screen.findByText("Status: Failed, Rejected")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Status, 2 selected" })).toBeInTheDocument();
+    expect(String(fetchMock.mock.calls[0][0])).toContain("status=FAILED&status=REJECTED");
+    expect(await screen.findByText("No imports match these filters")).toBeInTheDocument();
+  });
+
   it("keeps New import visible but disabled for the read-only demo", async () => {
     routeFetch({ "/imports": jsonResponse(page([])), "/members": jsonResponse(members) });
     renderInStore(<ImportsScreen />, testStore({ permissions: VIEWER, isDemo: true }));
@@ -64,9 +75,10 @@ describe("NewImportScreen (S-12 step 1)", () => {
     expect(screen.getByText("Choose a CSV file.")).toBeInTheDocument();
   });
 
-  it("uploads the file with its type and opens the preview", async () => {
+  it("uploads the file with its type, shows the progress, then opens the preview", async () => {
     search = new URLSearchParams("type=orders");
-    const fetchMock = routeFetch({ "/imports": jsonResponse(importFixture(), { status: 201 }) });
+    document.cookie = "ro_csrf=token-1; path=/";
+    const xhr = mockXhr();
     renderInStore(<NewImportScreen />, testStore({ permissions: MANAGER }));
     expect(screen.getByRole("radio", { name: "3. Orders" })).toBeChecked();
     expect(screen.getByText(/Products should be imported first/)).toBeInTheDocument();
@@ -76,10 +88,44 @@ describe("NewImportScreen (S-12 step 1)", () => {
     expect(screen.getByText("orders.csv")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Upload and validate" }));
 
-    await waitFor(() => expect(replace).toHaveBeenCalledWith(`${STORE}/imports/i1`));
-    const body = fetchMock.mock.calls[0][1]?.body as FormData;
+    const request = await waitFor(() => {
+      expect(xhr.requests).toHaveLength(1);
+      return xhr.requests[0];
+    });
+    expect(request.method).toBe("POST");
+    expect(request.url).toBe(`/api/v1/stores/f0da0f22-b9e0-4483-b144-e9f0f8703d13/imports`);
+    expect(request.headers["X-CSRF-Token"]).toBe("token-1");
+    const body = request.body as FormData;
     expect(body.get("import_type")).toBe("orders");
     expect((body.get("file") as File).name).toBe("orders.csv");
+
+    act(() => request.progress(42, 100));
+    expect(screen.getByRole("progressbar", { name: "Upload progress" })).toHaveAttribute("aria-valuenow", "42");
+    expect(screen.getByRole("button", { name: "Uploading 42%…" })).toHaveAttribute("aria-busy", "true");
+    act(() => request.finishUpload());
+    expect(screen.getByRole("progressbar", { name: "Validating the file" })).not.toHaveAttribute("aria-valuenow");
+    expect(screen.getByRole("button", { name: "Validating…" })).toBeInTheDocument();
+    act(() => request.respond(201, importFixture()));
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith(`${STORE}/imports/i1`));
+  });
+
+  it("keeps the file selected when the upload fails", async () => {
+    search = new URLSearchParams("type=orders");
+    const xhr = mockXhr();
+    renderInStore(<NewImportScreen />, testStore({ permissions: MANAGER }));
+    await userEvent.upload(screen.getByLabelText("File"), new File(["x"], "orders.csv", { type: "text/csv" }));
+    await userEvent.click(screen.getByRole("button", { name: "Upload and validate" }));
+    await waitFor(() => expect(xhr.requests).toHaveLength(1));
+    act(() => xhr.requests[0].failNetwork());
+    expect(await screen.findByText("Upload failed. Check your connection and try again.")).toBeInTheDocument();
+    expect(screen.getByText("orders.csv")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Upload and validate" }));
+    await waitFor(() => expect(xhr.requests).toHaveLength(2));
+    act(() => xhr.requests[1].respond(403, { error: { code: "PERMISSION_DENIED", message: "You need the Run imports permission.", details: [], request_id: "r-1" } }));
+    expect(await screen.findByText("You need the Run imports permission.")).toBeInTheDocument();
+    expect(pendingText({ phase: "uploading", fraction: null })).toBe("Uploading…");
   });
 
   it("rejects other file types and files over 5 MB", () => {
@@ -208,6 +254,71 @@ describe("ImportScreen (S-12 steps 2–4, S-13)", () => {
     expect(await screen.findByText(/Missing required columns: placed_at, total/)).toBeInTheDocument();
     expect(screen.getByText(/Start from the downloadable template/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Upload a corrected file" })).toHaveAttribute("href", `${STORE}/imports/new?type=orders`);
+  });
+
+  it("searches issues by row number", async () => {
+    const fetchMock = routes();
+    renderInStore(<ImportScreen />, testStore({ permissions: MANAGER }));
+    expect(await screen.findByText("Not an ISO-8601 timestamp.")).toBeInTheDocument();
+    await userEvent.type(screen.getByRole("textbox", { name: "Row number" }), "4a1");
+    expect(screen.getByRole("textbox", { name: "Row number" })).toHaveValue("41");
+    await waitFor(() => {
+      const urls = fetchMock.mock.calls.map(([url]) => String(url)).filter((url) => url.includes("/issues"));
+      expect(urls.at(-1)).toContain("row_number=41");
+    });
+  });
+
+  it("links an applied import's analysis to the exceptions it detected", async () => {
+    routes(
+      importFixture({
+        status: "COMPLETED",
+        import_type: "inventory_adjustments",
+        applied_at: "2026-10-31T12:05:00Z",
+        evaluation_run_id: "run-7",
+        summary: { ...importFixture().summary, rows_with_errors: 0, applied: { mode: "STRICT", creates: 30, updates: 80, unchanged: 6, skipped: 0 } },
+      }),
+      { "/evaluations/run-7": jsonResponse({ id: "run-7", status: "SUCCEEDED", counts: { created: 3, refreshed: 6, resolved: 1, reopened: 0 } }) },
+    );
+    renderInStore(<ImportScreen />, testStore({ permissions: MANAGER }));
+    expect(await screen.findByText(/3 new exceptions · 6 refreshed/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "View new exceptions" })).toHaveAttribute(
+      "href",
+      `${STORE}/exceptions?view=active&evaluation_run_id=run-7`,
+    );
+    expect(screen.getByRole("link", { name: "View ledger entries" })).toHaveAttribute("href", `${STORE}/inventory/movements?import_id=i1`);
+  });
+
+  it("validates a failed import again from its stored file", async () => {
+    const success = vi.spyOn(toast, "success");
+    let current = importFixture({ status: "FAILED", mode: "STRICT", failure_reason: "IMPORT_DATA_CHANGED: The data changed.", can_revalidate: true });
+    const fetchMock = routes(importFixture(), {
+      "/imports/i1": () => jsonResponse(current),
+      "/imports/i1/revalidate": () => {
+        current = importFixture();
+        return jsonResponse(current);
+      },
+    });
+    renderInStore(<ImportScreen />, testStore({ permissions: MANAGER }));
+    expect(await screen.findByText("IMPORT_DATA_CHANGED: The data changed.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Validate again" }));
+    await waitFor(() => expect(success).toHaveBeenCalledWith("Validated again. Review the preview before applying."));
+    expect(await screen.findByRole("button", { name: /Continue to apply/ })).toBeInTheDocument();
+    const call = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/revalidate"));
+    expect(call?.[1]?.method).toBe("POST");
+  });
+
+  it("asks for a new upload once a failed import's file is gone", async () => {
+    routes(importFixture({ status: "FAILED", mode: "STRICT", failure_reason: "IMPORT_APPLY_FAILED: No data was changed.", can_revalidate: false }));
+    renderInStore(<ImportScreen />, testStore({ permissions: MANAGER }));
+    expect(await screen.findByText(/The file is no longer stored/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Validate again" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Upload a corrected file" })).toBeInTheDocument();
+  });
+
+  it("keeps Validate again visible but disabled without imports.run", async () => {
+    routes(importFixture({ status: "FAILED", can_revalidate: true }));
+    renderInStore(<ImportScreen />, testStore({ permissions: VIEWER }));
+    expect(await screen.findByRole("button", { name: "Validate again" })).toHaveAttribute("aria-disabled", "true");
   });
 
   it("tells an expired preview from a manual discard", () => {

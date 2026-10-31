@@ -5,7 +5,7 @@ import { FileUp, SearchX } from "lucide-react";
 import Link from "next/link";
 
 import { DataTable, type Column } from "@/components/data/data-table";
-import { FilterChips, Pagination, SelectField, type Chip } from "@/components/data/list-controls";
+import { FilterChips, MultiSelectFilter, Pagination, SelectField, type Chip } from "@/components/data/list-controls";
 import { NoValue } from "@/components/data/values";
 import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/states/empty-state";
@@ -32,7 +32,7 @@ const STATUSES: ImportStatus[] = ["VALIDATED", "REJECTED", "COMPLETED", "COMPLET
 export const importsList = defineListParams(
   {
     import_type: { kind: "one", values: IMPORT_TYPES_IN_ORDER },
-    status: { kind: "one", values: STATUSES },
+    status: { kind: "many", values: STATUSES },
   },
   { sorts: ["-created_at"], defaultSort: "-created_at", pageSizes: [25, 50, 100], defaultPageSize: 25 },
 );
@@ -54,7 +54,7 @@ export function ImportsScreen() {
 
   const query = {
     import_type: params.import_type ?? undefined,
-    status: params.status ?? undefined,
+    status: params.status,
     sort: params.sort,
     page: params.page,
     page_size: params.page_size,
@@ -82,7 +82,15 @@ export function ImportsScreen() {
     ...(params.import_type
       ? [{ key: "type", label: `Type: ${importTypeLabels[params.import_type as ImportType]}`, onRemove: () => update({ import_type: null }) }]
       : []),
-    ...(params.status ? [{ key: "status", label: `Status: ${importStatusMeta[params.status as ImportStatus].label}`, onRemove: () => update({ status: null }) }] : []),
+    ...(params.status.length
+      ? [
+          {
+            key: "status",
+            label: `Status: ${params.status.map((status) => importStatusMeta[status as ImportStatus].label).join(", ")}`,
+            onRemove: () => update({ status: [] }),
+          },
+        ]
+      : []),
   ];
 
   const fileLink = (item: ImportItem) => (
@@ -146,11 +154,11 @@ export function ImportsScreen() {
               options={[{ value: "", label: "Any" }, ...IMPORT_TYPES_IN_ORDER.map((type) => ({ value: type, label: importTypeLabels[type] }))]}
               onChange={(value) => update({ import_type: value || null })}
             />
-            <SelectField
+            <MultiSelectFilter
               label="Status"
-              value={params.status ?? ""}
-              options={[{ value: "", label: "Any" }, ...STATUSES.slice(0, 7).map((status) => ({ value: status, label: importStatusMeta[status].label }))]}
-              onChange={(value) => update({ status: value || null })}
+              options={STATUSES.slice(0, 7).map((status) => ({ value: status, label: importStatusMeta[status].label }))}
+              selected={params.status}
+              onChange={(status) => update({ status })}
             />
             <p className="ml-auto text-sm text-muted-foreground" aria-live="polite">
               {list.data ? formatCount(total, "import") : null}
