@@ -148,6 +148,11 @@ class ImportApi:
             f"{self.base}/{import_id}/discard", headers={"X-CSRF-Token": self.csrf}
         )
 
+    def revalidate(self, import_id: str) -> Response:
+        return self.client.post(
+            f"{self.base}/{import_id}/revalidate", headers={"X-CSRF-Token": self.csrf}
+        )
+
     def run(self, import_type: str, content: bytes) -> dict[str, Any]:
         """Upload and apply in strict mode; the file must be valid."""
         body = self.validated(import_type, content)
