@@ -590,6 +590,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stores/{store_id}/imports/{import_id}/revalidate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revalidate Import
+         * @description FAILED -> VALIDATING -> VALIDATED | REJECTED, using the bytes a failed apply keeps.
+         */
+        post: operations["revalidate_import_api_v1_stores__store_id__imports__import_id__revalidate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/stores/{store_id}/inventory/movements": {
         parameters: {
             query?: never;
@@ -1485,6 +1505,11 @@ export interface components {
             /** Applied By */
             applied_by: string | null;
             /**
+             * Can Revalidate
+             * @description FAILED with the file bytes still stored (until the preview's expiry), so POST …/revalidate can validate it again. Otherwise the file must be uploaded again.
+             */
+            can_revalidate: boolean;
+            /**
              * Created At
              * Format: date-time
              */
@@ -1566,6 +1591,11 @@ export interface components {
             applied_at: string | null;
             /** Applied By */
             applied_by: string | null;
+            /**
+             * Can Revalidate
+             * @description FAILED with the file bytes still stored (until the preview's expiry), so POST …/revalidate can validate it again. Otherwise the file must be uploaded again.
+             */
+            can_revalidate: boolean;
             /**
              * Created At
              * Format: date-time
@@ -1830,6 +1860,11 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Import Filename
+             * @description original_filename of the import, if any.
+             */
+            import_filename: string | null;
             /** Import Id */
             import_id: string | null;
             /** Incoming After */
@@ -1848,6 +1883,11 @@ export interface components {
             on_hand_after: number;
             /** On Hand Delta */
             on_hand_delta: number;
+            /**
+             * Order Id
+             * @description The order a SHIPMENT belongs to, from its order_item:{id} reference (BR-131).
+             */
+            order_id: string | null;
             /**
              * Product Id
              * Format: uuid
@@ -2035,6 +2075,11 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Import Filename
+             * @description original_filename of the import that made the change, if any.
+             */
+            import_filename: string | null;
             /** Import Id */
             import_id: string | null;
             /**
@@ -3351,6 +3396,8 @@ export interface operations {
                 assignee?: string | null;
                 product_id?: string | null;
                 order_id?: string | null;
+                /** @description Only exceptions this evaluation run detected (created) */
+                evaluation_run_id?: string | null;
                 /** @description Reference or title contains */
                 q?: string | null;
                 /** @description Only exceptions due at or before this instant (with a time zone) */
@@ -3782,7 +3829,8 @@ export interface operations {
         parameters: {
             query?: {
                 import_type?: components["schemas"]["ImportType"] | null;
-                status?: components["schemas"]["ImportStatus"] | null;
+                /** @description Repeatable. */
+                status?: components["schemas"]["ImportStatus"][] | null;
                 sort?: "created_at" | "-created_at" | "applied_at" | "-applied_at" | "status" | "-status" | "import_type" | "-import_type";
                 page?: number;
                 page_size?: number;
@@ -3989,6 +4037,8 @@ export interface operations {
             query?: {
                 severity?: components["schemas"]["IssueSeverity"] | null;
                 code?: string | null;
+                /** @description Issues of this CSV row only. */
+                row_number?: number | null;
                 sort?: "row_number" | "-row_number" | "code" | "-code" | "severity" | "-severity";
                 page?: number;
                 page_size?: number;
@@ -4054,6 +4104,38 @@ export interface operations {
             };
         };
     };
+    revalidate_import_api_v1_stores__store_id__imports__import_id__revalidate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                import_id: string;
+                store_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_movements_api_v1_stores__store_id__inventory_movements_get: {
         parameters: {
             query?: {
@@ -4061,6 +4143,8 @@ export interface operations {
                 /** @description Repeatable. */
                 movement_type?: components["schemas"]["MovementType"][] | null;
                 source?: components["schemas"]["MovementSource"] | null;
+                /** @description Rows written by this import. */
+                import_id?: string | null;
                 /** @description Inclusive. */
                 from?: string | null;
                 /** @description Exclusive. */
