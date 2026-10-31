@@ -103,8 +103,8 @@
   overdue filter, search, cancelled-but-paid and total-mismatch orders, 375 px with no sideways scroll.
   Products and inventory: product list, the data-issue product KHK-BW-003, positions (health toggles,
   include inactive), the ledger filtered from a product; 1440 and 375 px with no sideways page scroll.
-- GitHub Actions run 41233590288 (orders, T-063): success. API, web, dependency audit and Docker image
-  jobs all passed. It ran on 6d534b2, which is c5b7e57 after the history rewrite (same code).
+- GitHub Actions run 41240705536 (products and inventory, T-064, on 54bcb6c): success. API, web,
+  dependency audit and Docker image jobs all passed.
 
 ## Owner decisions log
 
