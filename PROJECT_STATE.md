@@ -6,10 +6,10 @@
 |---|---|
 | Project | RetailOps Intelligence: E-commerce Operations & Decision Intelligence Platform |
 | Owner | Lê Văn Trung Tính (GitHub `tinhne`) |
-| Current milestone | **M6 frontend: foundation, Overview, exceptions and orders done (T-060..T-063).** Next: T-064, T-065, then M7 AI |
-| Current phase | Backend core complete. Web sign-in, shell, Overview, exceptions and orders built and verified. Products, inventory and imports screens not built |
-| Overall completion | M0–M3 documented and tagged. Backend M4–M5 implemented and tested. Web shell, sign-in, Overview, the full exception workflow and orders done. Products, inventory and imports screens, copilot and deployment not done |
-| Last verified commit | `main` after merging `feat/orders-ui`: backend `make check` green (629 tests), web lint, typecheck, 134 tests and build green |
+| Current milestone | **M6 frontend: foundation, Overview, exceptions, orders, products and inventory done (T-060..T-064).** Next: T-065, then M7 AI |
+| Current phase | Backend core complete. Web sign-in, shell, Overview, exceptions, orders, products, inventory positions and the ledger built and verified. Imports and admin screens not built |
+| Overall completion | M0–M3 documented and tagged. Backend M4–M5 implemented and tested. Web shell, sign-in, Overview, the full exception workflow, orders, products and inventory done. Imports and admin screens, copilot and deployment not done |
+| Last verified commit | `main` after merging `feat/inventory-ui`: web lint, typecheck, 151 tests and build green; backend unchanged since `make check` (629 tests) |
 | Remote | https://github.com/tinhne/retailops-intelligence (public). The first CI run passed |
 | Architecture version | v1 (modular monolith; `docs/domain/*`, ADR-0001..0013) |
 | Last update | 2026-11-01 (UTC+7) |
@@ -49,14 +49,17 @@
 - **Orders (T-063):** S-05 list (filters incl. store-local placed presets and overdue) and S-06 detail
   (three status axes with callouts, dates, lines with reservation and stock health, totals with the
   BR-205 mismatch, linked exceptions, history). Read-only, as orders change through imports.
+- **Products and inventory (T-064):** S-07 products, S-08 product detail (stock arithmetic, data-issue
+  callout, exceptions, recent ledger), S-09 positions with the health summary bar, S-10 movements
+  ledger. List URL state now comes from declarative field specs (`lib/list-params.ts`).
 - **Delivery:** API Dockerfile (non-root, builds), CI workflow (passed on GitHub), OpenAPI → TS contracts.
 
 ## In progress / next
 
 | Task | Notes |
 |---|---|
-| T-064, T-065 Frontend screens | READY. Next up: products and inventory (T-064). Flip `ready: true` in `components/shell/nav-config.ts` as each page lands |
-| T-067 List and detail UI follow-ups | BACKLOG (P1): exceptions mobile action bar and filter sheet, queue Previous/Next, jump menu, density, VIEWER explainer, evidence links; orders custom date range, import file links, Ask the copilot |
+| T-065 Imports screens | READY. Next up. Flip `ready: true` for Imports in `components/shell/nav-config.ts`, then add the import actions to the empty states of S-02, S-05, S-07, S-09 and S-10 |
+| T-067 List and detail UI follow-ups | BACKLOG (P1): exceptions mobile action bar and filter sheet, queue Previous/Next, jump menu, density, VIEWER explainer, evidence links; orders custom date range, import file links, Ask the copilot; ledger product combobox, custom range, Import column and filter, exact order-line links |
 | T-058 Stock health data issue | READY (P1, backend). Negative on-hand products count as Oversold today (BR-402a) |
 | T-071..T-073 AI copilot | T-071 READY. Needs migration 0003 (session-scoped demo conversations, tool-call result refs, cache key) |
 | T-056 Demo seed history | Add exception history (assigned, in progress, resolved and verified, reopened, dismissed) via the lifecycle service |
@@ -80,6 +83,8 @@
   cannot send without a CORS preflight. Decide in the security review: implement it or amend the ADR.
 - Products with `on_hand < 0` are classified by `available` and count as Oversold in stock health
   (dashboard, positions, product filters). BR-402a calls for a separate "Data issue" state (T-058).
+  The UI already shows such rows as "Data issue", but the Oversold count and filter still include
+  them (the demo shows "Oversold 3" with one data-issue row).
 - The demo store has no CSV imports (the seed writes rows directly), so the Overview says "No CSV
   imports yet" and the recent imports list is empty for the demo.
 - The demo banner and `/demo` page omit the spec's "periodically reset" wording until the reset job exists (T-094).
@@ -89,13 +94,15 @@
 ## Latest test results
 
 - `make check` (2026-11-01, after the exceptions API changes): ruff OK, ruff format OK, mypy --strict OK, pytest **629 passed**.
-- Web (2026-11-01, after T-063): `pnpm --filter @retailops/web lint`, `typecheck`, `build` green; vitest **134 passed**.
+- Web (2026-11-01, after T-064): `pnpm --filter @retailops/web lint`, `typecheck`, `build` green; vitest **151 passed**.
   `pnpm audit --prod --audit-level high`: no known vulnerabilities.
 - Browser check against the seeded local API: password and demo sign-in, `next` redirect, invalid
   credentials, session expiry, sign-out, unknown store, and the 375, 768 and 1280 px layouts.
   Overview as demo viewer and as manager (Run analysis), at 1440 and 375 px. Exceptions: acknowledge,
   start, resolve, Closed view and reopen as manager; read-only demo viewer; 1440 and 375 px. Orders:
   overdue filter, search, cancelled-but-paid and total-mismatch orders, 375 px with no sideways scroll.
+  Products and inventory: product list, the data-issue product KHK-BW-003, positions (health toggles,
+  include inactive), the ledger filtered from a product; 1440 and 375 px with no sideways page scroll.
 - GitHub Actions run 41233590288 (orders, T-063): success. API, web, dependency audit and Docker image
   jobs all passed. It ran on 6d534b2, which is c5b7e57 after the history rewrite (same code).
 
@@ -110,8 +117,8 @@
 
 ## Next three highest-priority actions
 
-1. Products, inventory positions and movements (T-064), then imports (T-065), built from
-   `docs/design/*` against `packages/contracts`; flip each nav `ready` flag as pages land.
-2. Exceptions UI follow-ups (T-067) and the stock-health data-issue fix (T-058).
+1. Imports (T-065): upload, preview, issues, apply with consent, history, templates; then wire the
+   import actions into the empty states.
+2. The stock-health data-issue fix (T-058) and the list and detail follow-ups (T-067).
 3. Compose stack with the web image (T-090) and demo exception history (T-056), then the AI copilot
    (T-071..T-073).
