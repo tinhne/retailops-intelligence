@@ -12,6 +12,7 @@ from app.domains.catalog.models import Product
 from app.domains.exceptions import service
 from app.domains.exceptions.engine import VERIFICATION_GRACE_HOURS
 from app.domains.exceptions.models import (
+    ACTIVE_STATUSES,
     ActorType,
     DismissalReason,
     EntityType,
@@ -643,6 +644,43 @@ def test_br402a_negative_on_hand_supersedes_the_active_inventory_exception(
     assert old.resolution_code is ResolutionCode.SUPERSEDED  # not CONDITION_CLEARED
     assert old.superseded_by_id == data_issue.id
     assert data_issue.assignee_id == staff.id
+
+
+def test_br402a_negative_on_hand_supersedes_oversold_until_a_count_corrects_it(
+    db: Session, tenant: Tenant
+) -> None:
+    """BR-402a: once on_hand < 0, INVENTORY_OVERSOLD no longer fires. The active one is SUPERSEDED
+    by DATA_NEGATIVE_ON_HAND (not CONDITION_CLEARED). A cycle count clears the data issue and the
+    inventory rules apply again."""
+    pan = make_product(db, tenant, "KH-PAN-30", reorder_point=4)
+    set_stock(db, tenant, pan, 2, T0 - 2 * H)
+    make_order(
+        db, tenant, OrderSpec("KHK-5001", OrderStatus.PAID, [LineSpec(pan, 3)], paid_at=T0 - H)
+    )
+    evaluate(db, tenant, T0)
+    oversold = one_exception(db, tenant, ExceptionType.INVENTORY_OVERSOLD, pan.id)
+    assert oversold.status in ACTIVE_STATUSES
+    adjust_stock(db, tenant, pan, MovementType.DAMAGE, 3, T0 + H)  # on_hand 2 -> -1, reserved 3
+
+    run = evaluate(db, tenant, T0 + 2 * H)
+
+    assert run.counts["superseded"] == 1
+    oversold = one_exception(db, tenant, ExceptionType.INVENTORY_OVERSOLD, pan.id)
+    data_issue = one_exception(db, tenant, ExceptionType.DATA_NEGATIVE_ON_HAND, pan.id)
+    assert oversold.resolution_code is ResolutionCode.SUPERSEDED
+    assert oversold.superseded_by_id == data_issue.id
+    rows = exceptions_for(db, tenant, entity_id=pan.id)
+    assert [e.exception_type for e in rows if e.status in ACTIVE_STATUSES] == [
+        ExceptionType.DATA_NEGATIVE_ON_HAND
+    ]
+
+    set_stock(db, tenant, pan, 6, T0 + 3 * H)  # counted 6: available 3, below reorder point 4
+    evaluate(db, tenant, T0 + 4 * H)
+
+    data_issue = one_exception(db, tenant, ExceptionType.DATA_NEGATIVE_ON_HAND, pan.id)
+    assert data_issue.resolution_code is ResolutionCode.CONDITION_CLEARED
+    below = one_exception(db, tenant, ExceptionType.INVENTORY_BELOW_REORDER_POINT, pan.id)
+    assert below.status is ExceptionStatus.OPEN
 
 
 def test_overdue_supersedes_stalled_for_the_same_order(

@@ -97,14 +97,23 @@ class OrderHealthSummary(BaseModel):
 
 
 class InventoryHealthSummary(BaseModel):
-    """ACTIVE products by health from current balances (§2.5), not from exceptions."""
+    """ACTIVE products by health from current balances (§2.5), not from exceptions.
+
+    The six counts are disjoint and add up to ``active_products``.
+    """
 
     active_products: int
-    oversold: int
+    oversold: int = Field(description="available < 0 with on_hand ≥ 0.")
     out_of_stock: int
     below_reorder_point: int
     approaching_reorder_point: int
     healthy: int
+    data_issue: int = Field(
+        description=(
+            "ACTIVE products with on_hand < 0 (BR-402a). The stock figure is invalid, so they are "
+            "in none of the availability classes above until a cycle count corrects them."
+        )
+    )
 
 
 class SalesSummary(BaseModel):

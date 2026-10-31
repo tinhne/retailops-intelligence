@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from app.domains.catalog.models import ProductStatus
 from app.domains.inventory.calculations import StockHealth
-from app.domains.inventory.schemas import StockSnapshot
+from app.domains.inventory.schemas import HEALTH_DESCRIPTION, StockSnapshot
 
 ProductSort = Literal[
     "sku", "-sku", "name", "-name", "updated_at", "-updated_at", "available", "-available"
@@ -36,7 +36,7 @@ class ProductListItem(BaseModel):
     on_hand: int
     reserved: int
     available: int = Field(description="BR-101: on_hand − reserved.")
-    health: StockHealth | None = Field(description="§2.5; null for products that are not ACTIVE.")
+    health: StockHealth | None = Field(description=HEALTH_DESCRIPTION)
     updated_at: datetime
 
 
@@ -70,7 +70,7 @@ class ProductDetail(BaseModel):
     updated_at: datetime
     supplier: SupplierDetail | None
     stock: StockSnapshot
-    health: StockHealth | None = Field(description="§2.5; null for products that are not ACTIVE.")
+    health: StockHealth | None = Field(description=HEALTH_DESCRIPTION)
     approaching_threshold: int | None = Field(
         description="ceil(reorder_point × approaching_reorder_factor); null if reorder_point is 0."
     )

@@ -239,6 +239,7 @@ def test_snapshot_excludes_orders_refunded_before_shipping_from_velocity(
 def test_negative_on_hand_end_to_end_suppresses_inventory_rules(
     db: Session, tenant: Tenant
 ) -> None:
+    """BR-402a: on hand 1 − 3 damaged = −2. Only DATA_NEGATIVE_ON_HAND is raised, no oversold."""
     item = make_product(db, tenant, "A-1", reorder_point=5, status=ProductStatus.ACTIVE)
     set_stock(db, tenant, item, 1, T0 - 5 * H)
     adjust_stock(db, tenant, item, MovementType.DAMAGE, 3, T0 - 4 * H)
