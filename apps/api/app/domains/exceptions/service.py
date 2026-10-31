@@ -106,6 +106,7 @@ class ExceptionFilters:
     product_id: uuid.UUID | None = None
     order_id: uuid.UUID | None = None
     q: str | None = None
+    due_to: datetime | None = None  # due_at <= due_to (overdue or due soon)
 
 
 def _order_by(sort: str, fields: dict[str, Any]) -> tuple[str, Any]:
@@ -163,6 +164,14 @@ def _filter_conditions(
         conditions.append(_linked(EntityType.PRODUCT, filters.product_id, store_id))
     if filters.order_id:
         conditions.append(_linked(EntityType.ORDER, filters.order_id, store_id))
+    if filters.due_to is not None:
+        if filters.due_to.tzinfo is None:
+            raise BusinessRuleViolationError(
+                "due_to must include a time zone offset.",
+                code="VALIDATION_FAILED",
+                details=[{"loc": ["query", "due_to"], "message": "naive datetime"}],
+            )
+        conditions.append(E.due_at <= filters.due_to)
     if filters.q and filters.q.strip():
         term = filters.q.strip()
         conditions.append(

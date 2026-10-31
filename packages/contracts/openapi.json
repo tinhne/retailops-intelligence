@@ -6445,6 +6445,25 @@
             }
           },
           {
+            "description": "Only exceptions due at or before this instant (with a time zone)",
+            "in": "query",
+            "name": "due_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only exceptions due at or before this instant (with a time zone)",
+              "title": "Due To"
+            }
+          },
+          {
             "description": "priority_score, due_at, first_detected_at, last_detected_at; '-' = desc",
             "in": "query",
             "name": "sort",

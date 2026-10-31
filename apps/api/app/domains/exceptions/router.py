@@ -6,6 +6,7 @@ Store-scoped: every route takes ``store_id`` and resolves the caller's role thro
 
 import re
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Header, Query, Response, status
 from sqlalchemy.orm import Session
@@ -76,6 +77,9 @@ def list_exceptions(
     product_id: uuid.UUID | None = None,
     order_id: uuid.UUID | None = None,
     q: str | None = Query(None, max_length=100, description="Reference or title contains"),
+    due_to: datetime | None = Query(
+        None, description="Only exceptions due at or before this instant (with a time zone)"
+    ),
     sort: str = Query(
         service.DEFAULT_SORT,
         description="priority_score, due_at, first_detected_at, last_detected_at; '-' = desc",
@@ -98,6 +102,7 @@ def list_exceptions(
             product_id=product_id,
             order_id=order_id,
             q=q,
+            due_to=due_to,
         ),
         sort=sort,
         offset=paging.offset,

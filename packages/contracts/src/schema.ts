@@ -3321,6 +3321,8 @@ export interface operations {
                 order_id?: string | null;
                 /** @description Reference or title contains */
                 q?: string | null;
+                /** @description Only exceptions due at or before this instant (with a time zone) */
+                due_to?: string | null;
                 /** @description priority_score, due_at, first_detected_at, last_detected_at; '-' = desc */
                 sort?: string;
                 page?: number;

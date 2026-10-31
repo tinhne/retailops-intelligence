@@ -234,6 +234,21 @@ def test_list_filters(world: World, db: Session) -> None:
     assert multi.json()["total"] == 3
 
 
+def test_list_due_to_filter(world: World) -> None:
+    client, _ = world.client(world.manager)
+    url = f"{world.base()}/exceptions"
+    items = client.get(url).json()["items"]
+    dues = sorted(item["due_at"] for item in items)
+    cutoff = dues[0]  # inclusive: the earliest due exception matches, later ones do not
+    filtered = client.get(url, params={"due_to": cutoff}).json()["items"]
+    assert [item["due_at"] for item in filtered] == [d for d in dues if d <= cutoff]
+    assert len(filtered) < len(items)
+
+    naive = client.get(url, params={"due_to": "2026-11-01T12:00:00"})
+    assert naive.status_code == 422
+    assert naive.json()["error"]["code"] == "VALIDATION_FAILED"
+
+
 def test_list_sorting_and_validation(world: World) -> None:
     client, _ = world.client(world.manager)
     url = f"{world.base()}/exceptions"
