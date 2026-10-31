@@ -76,9 +76,7 @@ def upgrade() -> None:
         "ai_message",
         sa.Column("kind", sa.String(length=32), server_default="CHAT", nullable=False),
     )
-    op.create_check_constraint(
-        op.f("ck_ai_message_messagekind"), "ai_message", _in("kind", _KINDS)
-    )
+    op.create_check_constraint(op.f("ck_ai_message_messagekind"), "ai_message", _in("kind", _KINDS))
     op.add_column("ai_message", sa.Column("as_of", sa.DateTime(timezone=True), nullable=True))
     op.add_column("ai_message", sa.Column("fallback_reason", sa.String(length=32), nullable=True))
     op.create_check_constraint(

@@ -606,8 +606,13 @@ def exception_answer(r: RoutedIntent, res: Results, info: TemplateInfo) -> dict[
     history = first(res, "history")
     position = first(res, "position")
     pos_facts, pos_metrics, estimates = _position_parts(position)
-    facts = _evidence_facts(rec, info) + pos_facts + _history_facts(history, rec, info)
-    facts += _order_facts(records(res, "orders"), info)
+    status_fact = fact(
+        f"{rec['reference']} is {rec['status']} and {owner}; first detected "
+        f"{when(rec.get('first_detected_at'), info)}, detected {rec.get('detection_count')} times.",
+        key(rec),
+    )
+    facts = [status_fact, *_evidence_facts(rec, info), *pos_facts]
+    facts += _history_facts(history, rec, info) + _order_facts(records(res, "orders"), info)
     for move in (first(res, "movements") or {}).get("movements", [])[:2]:
         facts.append(
             fact(
@@ -1070,8 +1075,30 @@ TEMPLATES: dict[Intent, Callable[[RoutedIntent, Results, TemplateInfo], dict[str
 }
 
 
+_ANSWERED = ("SUCCESS", "NOT_FOUND")  # a lookup that finds nothing still answers the question
+
+
 def render(r: RoutedIntent, res: Results, info: TemplateInfo) -> dict[str, Any]:
-    return TEMPLATES[r.intent](r, res, info)
+    """Render the intent's template. A tool failure never reads as "nothing found": when every
+    call failed the answer says the data could not be read, and partial failures are listed in
+    the limitations."""
+    failed = sorted(
+        {
+            f"{envelope.get('tool')} ({envelope.get('status')})"
+            for envelope in res.values()
+            if envelope.get("status") not in _ANSWERED
+        }
+    )
+    if failed and not any(e.get("status") in _ANSWERED for e in res.values()):
+        return answer(
+            "I could not read the data this question needs, so I cannot answer it.",
+            limitations=["Data that could not be read: " + ", ".join(failed) + "."],
+        )
+    rendered = TEMPLATES[r.intent](r, res, info)
+    if failed:
+        note = "Data that could not be read: " + ", ".join(failed) + "."
+        rendered["limitations"] = [note, *rendered["limitations"]][:8]
+    return rendered
 
 
 def render_note(
