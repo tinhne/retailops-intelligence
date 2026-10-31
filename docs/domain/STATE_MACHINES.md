@@ -144,13 +144,13 @@ A reservation holds stock for one order line. There is one reservation per `orde
 stateDiagram-v2
     [*] --> ACTIVE: order enters committed demand
     ACTIVE --> CONSUMED: order shipped
-    ACTIVE --> RELEASED: order cancelled / payment failed / refunded before shipping
+    ACTIVE --> RELEASED: order cancelled or refunded before shipping
     ACTIVE --> ACTIVE: quantity re-synced from order line
     CONSUMED --> [*]
-    RELEASED --> ACTIVE: order re-enters committed demand (e.g. payment retried and paid)
+    RELEASED --> ACTIVE: idempotent re-sync (unreachable in the v1 order graph)
 ```
 
-Invariant (checked by the reconciliation job and by tests):
+Invariant (checked by the on-demand reconciliation check, BR-104, and by tests):
 `inventory_balance.reserved = Σ quantity of ACTIVE reservations for that product`.
 
 ---

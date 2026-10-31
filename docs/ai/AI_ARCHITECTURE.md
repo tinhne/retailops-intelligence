@@ -555,7 +555,7 @@ entry. A link from the note to the drafting `ai_message` (**proposed**: `excepti
 would make the provenance queryable.
 
 **Retention.** v1 has no automatic purge, because ADR-0009 allows no background jobs beyond
-scheduled evaluation. The demo reset job deletes demo conversations along with the demo dataset.
+scheduled evaluation. The demo reset command deletes demo conversations along with the demo dataset.
 Users can delete their own conversations (hard delete of the conversation, its messages, and its
 tool-call rows). A retention policy for non-demo stores is a documented limitation.
 

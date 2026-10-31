@@ -144,7 +144,7 @@ is not designed around visitors' operational goals.
 | **Entry** | "Explore the demo" on the sign-in page. It signs the visitor in as a read-only `VIEWER` of the fictional organization "Kestrel Commerce" (store "Kestrel Home & Kitchen"). No registration needed (F-013) |
 | **Can do** | Everything an Analyst can do: read the dashboard, inbox, investigation views, orders, inventory, imports, analytics, settings, and audit log, and use the copilot |
 | **Cannot do** | Any mutation of shared data. Every write endpoint returns 403 for `VIEWER`, and the UI hides or disables actions with the reason "Read-only demo" |
-| **Constraints** | All seeded data is labelled as demo data. The dataset is regenerated relative to the current time and reset by a demo reset job. Copilot requests are rate-limited (20 per minute per user) |
+| **Constraints** | All seeded data is labelled as demo data. The dataset is regenerated relative to the current time and reset by a demo reset command. Copilot requests are rate-limited (20 per minute per user) |
 | **Future** | A per-visitor sandbox where visitors can run the full workflow without affecting others is a P2 roadmap item (F-022, T-095) |
 
 Open questions about the shared viewer account (conversation privacy, shared rate limits, audit

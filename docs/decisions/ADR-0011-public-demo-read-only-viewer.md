@@ -48,7 +48,7 @@ next. The copilot runs on free-tier providers only (ADR-0010).
   shared data.
 - The UI labels seeded data as demo data at all times and shows lifecycle actions as disabled with a
   reason.
-- `python -m app.demo.reset` regenerates the dataset relative to the current time. It is the only code
+- `python -m app.demo` regenerates the dataset relative to the current time. It is the only code
   path allowed to delete rows from append-only tables, and only for demo organizations. It runs on
   demand or from the host's scheduler, not from the worker.
 - Seeded fictional staff accounts (example.com-style addresses) get random, unpublished passwords on

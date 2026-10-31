@@ -307,7 +307,7 @@ aggregation logic into unrelated modules. Constraints:
 | Fulfillment performance (on-time shipment rate against `ship_by`, paid-to-shipped hours) | sales_order |
 | Import quality (rows applied, error and warning counts per import), if exposed | data_import, import_row_issue |
 
-**10.2 Demo reset.** `python -m app.demo.reset` deletes and regenerates data for organizations with
+**10.2 Demo reset.** `python -m app.demo` deletes and regenerates data for organizations with
 `is_demo = true`. It is the only code path allowed to delete rows from append-only tables, it refuses
 to run against a non-demo organization, and it regenerates data through the same service functions
 the import pipeline uses, so seeded data satisfies every invariant (ADR-0011).
@@ -334,7 +334,7 @@ Housekeeping without extra jobs (the brief allows no other background jobs):
 | Expire previews after 24 h (`VALIDATED → DISCARDED`) and purge file bytes | Lazy: on read or apply of the import, and for the store's expired previews whenever a new import is created |
 | Recover imports stuck in `APPLYING` | Lazy, on read (§9) |
 | Expired `user_session` rows | Harmless (lookups check expiry); removal is an open question |
-| Demo dataset freshness | `python -m app.demo.reset`, run on demand or by the host's scheduler, not by the worker |
+| Demo dataset freshness | `python -m app.demo`, run on demand or by the host's scheduler, not by the worker |
 
 ## 12. Observability
 
@@ -423,7 +423,7 @@ apps/api/
 │   │   └── scheduler.py           # python -m app.workers.scheduler
 │   └── demo/
 │       ├── generator.py           # dataset relative to now, fixed seed
-│       └── reset.py               # python -m app.demo.reset
+│       └── reset.py               # python -m app.demo
 ├── migrations/                    # Alembic env.py and versions/
 ├── tests/
 │   ├── unit/                      # pure functions: rules, transitions, priority, calculations
