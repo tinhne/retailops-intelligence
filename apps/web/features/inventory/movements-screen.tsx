@@ -4,7 +4,9 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ArrowLeftRight, SearchX } from "lucide-react";
 import Link from "next/link";
 
+import { ComboboxFilter } from "@/components/data/combobox-filter";
 import { DataTable, type Column } from "@/components/data/data-table";
+import { DateRangeFilter } from "@/components/data/date-range-filter";
 import { FilterChips, MultiSelectFilter, Pagination, SelectField, type Chip, type Option } from "@/components/data/list-controls";
 import { NoValue } from "@/components/data/values";
 import { sectionHref } from "@/components/shell/nav-config";
@@ -14,7 +16,9 @@ import { PermissionDenied } from "@/components/states/permission-denied";
 import { Button } from "@/components/ui/button";
 import { ImportLink } from "@/features/imports/import-actions";
 import { exceptionKeys, exceptionsApi } from "@/lib/api/exceptions-api";
+import { importKeys, importsApi } from "@/lib/api/imports-api";
 import { inventoryApi, inventoryKeys, type Movement } from "@/lib/api/inventory-api";
+import { formatRange, rangeError, rangeToApi } from "@/lib/date-range";
 import { formatDateTimeShort, storeMidnight, zoneGenericName } from "@/lib/format/datetime";
 import { formatCount, formatDelta, formatQuantity } from "@/lib/format/number";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
@@ -27,21 +31,55 @@ import { cn } from "@/lib/utils";
 
 const TYPES = Object.keys(movementTypeLabels) as MovementType[];
 const SOURCES = Object.keys(movementSourceLabels) as MovementSource[];
-const OCCURRED = ["today", "7d", "30d", "90d"] as const;
+const OCCURRED = ["today", "7d", "30d", "90d", "custom"] as const;
 type Occurred = (typeof OCCURRED)[number];
-const OCCURRED_LABELS: Record<Occurred, string> = { today: "Today", "7d": "Last 7 days", "30d": "Last 30 days", "90d": "Last 90 days" };
-const OCCURRED_DAYS: Record<Occurred, number> = { today: 0, "7d": 6, "30d": 29, "90d": 89 };
+const OCCURRED_LABELS: Record<Occurred, string> = {
+  today: "Today",
+  "7d": "Last 7 days",
+  "30d": "Last 30 days",
+  "90d": "Last 90 days",
+  custom: "Custom range",
+};
+const OCCURRED_DAYS: Record<Exclude<Occurred, "custom">, number> = { today: 0, "7d": 6, "30d": 29, "90d": 89 };
 const SHIPMENT_REFERENCE = "order_item:";
 
 export const movementsList = defineListParams(
   {
     product_id: { kind: "id" },
+    import_id: { kind: "id" },
     movement_type: { kind: "many", values: TYPES },
     source: { kind: "one", values: SOURCES },
     occurred: { kind: "one", values: OCCURRED },
+    occurred_from: { kind: "date" },
+    occurred_to: { kind: "date" },
   },
-  { sorts: ["-occurred_at", "occurred_at", "-recorded_at"], defaultSort: "-occurred_at", pageSizes: [50, 100], defaultPageSize: 50 },
+  {
+    sorts: ["-occurred_at", "occurred_at", "-recorded_at"],
+    defaultSort: "-occurred_at",
+    pageSizes: [50, 100],
+    defaultPageSize: 50,
+    // Range days belong to "Custom range" only, and a reversed range is dropped (S-05 validation).
+    refine: (params) => {
+      const from = params.occurred_from as string | null;
+      const to = params.occurred_to as string | null;
+      if (params.occurred !== "custom") return [...(from ? ["occurred_from"] : []), ...(to ? ["occurred_to"] : [])];
+      return rangeError(from, to) ? ["occurred_to"] : [];
+    },
+  },
 );
+
+/** The API window of the Occurred filter: presets count back store days, a custom range is inclusive. */
+export function occurredWindow(
+  occurred: Occurred | null,
+  from: string | null,
+  to: string | null,
+  now: Date,
+  timeZone: string,
+): { from?: string; to?: string } {
+  if (!occurred) return {};
+  if (occurred === "custom") return rangeToApi(from, to, timeZone);
+  return { from: storeMidnight(now, timeZone, OCCURRED_DAYS[occurred]).toISOString() };
+}
 
 const SORT_OPTIONS: Option[] = [
   { value: "-occurred_at", label: "Occurred, newest" },
@@ -63,15 +101,23 @@ export function MovementsScreen() {
   useDocumentTitle("Movements");
   const canRead = store.permissions.has("inventory.read");
   const canSeeProducts = store.permissions.has("catalog.read");
-  const { params, update, clearAll, isFiltered } = useListState(movementsList);
+  const importsHref = sectionHref(store.id, "imports", store.permissions);
+  const ordersHref = sectionHref(store.id, "orders", store.permissions);
+  const { params, update, clearAll } = useListState(movementsList);
   const zone = zoneGenericName(store.timezone);
 
   const occurred = params.occurred as Occurred | null;
+  // "Custom range" without days does not narrow anything yet.
+  const customEmpty = occurred === "custom" && !params.occurred_from && !params.occurred_to;
+  const isFiltered = movementsList.isFiltered({ ...params, occurred: customEmpty ? null : params.occurred });
+  const range = occurredWindow(occurred, params.occurred_from, params.occurred_to, now, store.timezone);
   const query = {
     product_id: params.product_id ?? undefined,
+    import_id: params.import_id ?? undefined,
     movement_type: params.movement_type,
     source: params.source ?? undefined,
-    from: occurred ? storeMidnight(now, store.timezone, OCCURRED_DAYS[occurred]).toISOString() : undefined,
+    from: range.from,
+    to: range.to,
     sort: params.sort,
     page: params.page,
     page_size: params.page_size,
@@ -82,7 +128,6 @@ export function MovementsScreen() {
     placeholderData: keepPreviousData,
     enabled: canRead,
   });
-  // The chip names the product; the ledger rows carry the SKU too, for people without catalog access.
   // Names for "Recorded by". The member list is readable with exceptions.read.
   const members = useQuery({
     queryKey: exceptionKeys.members(store.id),
@@ -90,30 +135,51 @@ export function MovementsScreen() {
     enabled: canRead && store.permissions.has("exceptions.read"),
     staleTime: 5 * 60_000,
   });
+  // The chips name the product and the import; the ledger rows carry the SKU and file name too,
+  // for people without catalog or imports access.
   const product = useQuery({
     queryKey: inventoryKeys.product(store.id, params.product_id ?? ""),
     queryFn: ({ signal }) => inventoryApi.product(store.id, params.product_id ?? "", signal),
     enabled: canRead && canSeeProducts && params.product_id !== null,
     staleTime: 5 * 60_000,
   });
+  const sourceImport = useQuery({
+    queryKey: importKeys.detail(store.id, params.import_id ?? ""),
+    queryFn: ({ signal }) => importsApi.get(store.id, params.import_id ?? "", signal),
+    enabled: canRead && importsHref !== undefined && params.import_id !== null,
+    staleTime: 5 * 60_000,
+  });
 
   if (!canRead) return <PermissionDenied pageName="movements" permission="inventory.read" />;
 
-  const productLabel = product.data?.sku ?? list.data?.items[0]?.sku ?? "Selected product";
+  const productLabel = product.data?.sku ?? (params.product_id ? list.data?.items[0]?.sku : undefined);
+  const importLabel = sourceImport.data?.original_filename ?? list.data?.items[0]?.import_filename ?? "Selected import";
   const chips: Chip[] = [
-    ...(params.product_id ? [{ key: "product", label: `Product: ${productLabel}`, onRemove: () => update({ product_id: null }) }] : []),
+    ...(params.product_id ? [{ key: "product", label: `Product: ${productLabel ?? "Selected product"}`, onRemove: () => update({ product_id: null }) }] : []),
+    ...(params.import_id ? [{ key: "import", label: `Import: ${importLabel}`, onRemove: () => update({ import_id: null }) }] : []),
     ...(params.movement_type.length
       ? [{ key: "type", label: `Type: ${params.movement_type.map((t) => movementTypeLabels[t as MovementType]).join(", ")}`, onRemove: () => update({ movement_type: [] }) }]
       : []),
     ...(params.source ? [{ key: "source", label: `Source: ${movementSourceLabels[params.source as MovementSource]}`, onRemove: () => update({ source: null }) }] : []),
-    ...(occurred ? [{ key: "occurred", label: `Occurred: ${OCCURRED_LABELS[occurred]}`, onRemove: () => update({ occurred: null }) }] : []),
+    ...(occurred && !customEmpty
+      ? [
+          {
+            key: "occurred",
+            label: `Occurred: ${occurred === "custom" ? formatRange(params.occurred_from, params.occurred_to) : OCCURRED_LABELS[occurred]}`,
+            onRemove: () => update({ occurred: null, occurred_from: null, occurred_to: null }),
+          },
+        ]
+      : []),
   ];
 
   const reference = (movement: Movement) => {
     if (!movement.reference) return <NoValue />;
     if (isShipmentNote(movement) && movement.note) {
       const orderNumber = movement.note.slice("Order ".length);
-      const href = sectionHref(store.id, "orders", store.permissions, { q: orderNumber });
+      // The exact order when the API resolved the line; otherwise the order list searched by number.
+      const href = movement.order_id
+        ? ordersHref && `${ordersHref}/${movement.order_id}`
+        : sectionHref(store.id, "orders", store.permissions, { q: orderNumber });
       return href ? (
         <Link href={href} className="whitespace-nowrap hover:underline">
           {movement.note}
@@ -168,6 +234,23 @@ export function MovementsScreen() {
         ),
     },
     {
+      id: "import",
+      header: "Import",
+      hideBelow: "xl",
+      cell: (m) =>
+        m.import_id && m.import_filename ? (
+          importsHref ? (
+            <Link href={`${importsHref}/${m.import_id}`} className="inline-block max-w-56 font-mono text-xs break-all hover:underline">
+              {m.import_filename}
+            </Link>
+          ) : (
+            <span className="inline-block max-w-56 font-mono text-xs break-all">{m.import_filename}</span>
+          )
+        ) : (
+          <NoValue />
+        ),
+    },
+    {
       id: "recorded_by",
       header: "Recorded by",
       hideBelow: "xl",
@@ -199,6 +282,23 @@ export function MovementsScreen() {
       <section aria-label="Movement ledger" className="rounded-lg border bg-card">
         <div className="flex flex-col gap-3 border-b p-4">
           <div className="flex flex-wrap items-center gap-3">
+            <ComboboxFilter
+              label="Product"
+              value={params.product_id}
+              valueLabel={productLabel}
+              placeholder="Search SKU or name"
+              noMatches="No products match."
+              queryKey={(term) => [...inventoryKeys.positions(store.id, { q: term }), "picker"]}
+              loadOptions={async (term, signal) => {
+                const page = await inventoryApi.positions(
+                  store.id,
+                  { q: term || undefined, include_inactive: true, sort: "sku", page_size: 20 },
+                  signal,
+                );
+                return page.items.map((item) => ({ value: item.product_id, label: item.sku, detail: item.name }));
+              }}
+              onChange={(product_id) => update({ product_id })}
+            />
             <MultiSelectFilter
               label="Type"
               options={TYPES.map((type) => ({ value: type, label: movementTypeLabels[type] }))}
@@ -215,13 +315,22 @@ export function MovementsScreen() {
               label="Occurred"
               value={occurred ?? ""}
               options={[{ value: "", label: "Any time" }, ...OCCURRED.map((value) => ({ value, label: OCCURRED_LABELS[value] }))]}
-              onChange={(value) => update({ occurred: value || null })}
+              onChange={(value) => update({ occurred: value || null, occurred_from: null, occurred_to: null })}
             />
             <SelectField label="Sort" value={params.sort} options={SORT_OPTIONS} onChange={(sort) => update({ sort })} />
             <p className="ml-auto text-sm text-muted-foreground" aria-live="polite">
               {list.data ? formatCount(total, "movement") : null}
             </p>
           </div>
+          {occurred === "custom" ? (
+            <DateRangeFilter
+              label="Occurred"
+              zone={zone}
+              from={params.occurred_from}
+              to={params.occurred_to}
+              onChange={(occurred_from, occurred_to) => update({ occurred_from, occurred_to })}
+            />
+          ) : null}
           <FilterChips chips={chips} onClearAll={clearAll} />
         </div>
         <DataTable
