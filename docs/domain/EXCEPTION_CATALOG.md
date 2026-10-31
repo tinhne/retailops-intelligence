@@ -29,7 +29,7 @@ Every rule emits structured findings, never just log lines:
 ## Precedence
 
 `DATA_NEGATIVE_ON_HAND` comes first. A product with `on_hand < 0` gets only that exception, and
-its inventory rules are suppressed (BR-402a). Inventory rules are mutually exclusive per product (BR-401). The evaluator computes the inventory
+its inventory rules are suppressed (BR-402a). An active inventory exception for that product is superseded by it. Inventory rules are mutually exclusive per product (BR-401). The evaluator computes the inventory
 conditions in this order and emits only the first that matches:
 `INVENTORY_OVERSOLD` → `INVENTORY_OVERSELL_RISK` → `INVENTORY_OUT_OF_STOCK` → `INVENTORY_BELOW_REORDER_POINT`.
 
