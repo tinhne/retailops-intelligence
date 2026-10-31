@@ -1171,14 +1171,16 @@ Applying runs in one transaction. If anything fails, nothing changes.
 - Apply runs inside the request. The pending state shows "Applying 1,226 rows… This runs in one
   transaction. If anything fails, no data changes." with the `motion-essential` spinner.
 
-**Apply errors** (409/422 from `POST /apply`; the import stays `VALIDATED` unless noted):
+**Apply errors** (409/422 from `POST /apply`; the import stays `VALIDATED` unless noted). After
+any 409 or 422 the page refetches the import and renders what the server now holds. Where the API
+sends a different code than this table's name, both are handled (API code in brackets):
 
 | Code | UI |
 |---|---|
 | `IMPORT_HAS_ERRORS` | Inline: "Strict mode can't apply a file with row errors. Choose Valid rows only, or fix the file." |
-| `IMPORT_SKIPPED_ROWS_NOT_CONFIRMED` | Inline: "The number of rows to skip changed. Review the issues and confirm again." The checkbox is cleared. |
-| `IMPORT_PREVIEW_EXPIRED` | The page refetches (status `DISCARDED`) and shows the expired state. |
-| `IMPORT_PREVIEW_STALE` | Danger: "Store data changed since the preview, so a different set of rows would be skipped. Nothing was applied." **Validate again** (when available) or **Upload again**. |
+| `IMPORT_SKIPPED_ROWS_NOT_CONFIRMED` (`SKIPPED_ROWS_NOT_CONFIRMED`, 422) | Inline: "The number of rows to skip changed. Review the issues and confirm again." The checkbox is cleared. |
+| `IMPORT_PREVIEW_EXPIRED` (`IMPORT_EXPIRED`) | The page refetches (status `DISCARDED`) and shows the expired state. |
+| `IMPORT_PREVIEW_STALE` (`IMPORT_DATA_CHANGED`) | The apply is recorded as `FAILED` (nothing applied), so the refetch shows the S-13 `FAILED` callout with `failure_reason` and **Validate again**, which re-checks the stored file against current data and restarts at the preview. |
 | `IDEMPOTENT_REQUEST_IN_PROGRESS` | Info: "This apply is already running." The page polls the import. |
 | `IMPORT_NOT_APPLICABLE` | The page refetches and renders the current status. |
 
