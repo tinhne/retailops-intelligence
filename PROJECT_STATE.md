@@ -47,7 +47,6 @@
 
 | Task | Blocker | Needed from owner |
 |---|---|---|
-| T-092 GitHub remote | The repo `tinhne/retailops-intelligence` does not exist and `gh` is not installed | Create the empty repo on GitHub, or run `gh auth login` |
 | T-093 Deployment | No hosting provider or credentials | Choose a provider (free tier acceptable) |
 
 ## Known bugs

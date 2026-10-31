@@ -94,7 +94,7 @@ Agent roles: **ORCH** orchestrator · **PM** product/BA · **ARCH** architect ·
 |---|---|---|---|---|---|---|---|---|
 | T-090 | P0 | Multi-stage Dockerfiles (api, web), compose (db, api, worker, web), health checks, non-root users, migrations on start | T-041, T-060 | OPS | BACKLOG | `docker compose up --build` gives a working app with seeded demo data | `infra/docker/*`, `docker-compose.yml` | Manual plus CI docker build |
 | T-091 | P0 | GitHub Actions CI: lint, types, tests (with a Postgres service), builds, docker build, dependency audit | T-090 | OPS | BACKLOG | Green on main | `.github/workflows/ci.yml` | GitHub run |
-| T-092 | P0 | Create the GitHub repository `tinhne/retailops-intelligence` and push | none | OPS | BLOCKED | Remote exists and main is pushed | none | `git ls-remote` | 
+| T-092 | P0 | Create the GitHub repository `tinhne/retailops-intelligence` and push | none | OPS | DONE | Remote exists and main is pushed | none | `git ls-remote origin` shows main at 4f38073 plus 3 tags (2026-11-01) |
 | T-093 | P1 | Hosting evaluation plus deploy pipeline (CD after CI) | T-091 | OPS | BACKLOG | Provider chosen with documented trade-offs. Deploy verified | `docs/operations/DEPLOYMENT.md` | Health check of the live URL |
 | T-094 | P1 | Public read-only demo, demo reset job | T-056, T-093 | OPS/BE | BACKLOG | Anonymous visitors cannot mutate shared data | none | E2E against the deployment |
 | T-095 | P2 | Per-visitor demo sandbox (an ephemeral org cloned from the seed, rate-limited, auto-expiring) | T-094 | BE | BACKLOG | Visitors can run the full workflow without affecting others | none | E2E |
@@ -109,6 +109,5 @@ Agent roles: **ORCH** orchestrator · **PM** product/BA · **ARCH** architect ·
 
 | ID | Needed from owner | Why |
 |---|---|---|
-| T-092 | Create the empty GitHub repo `tinhne/retailops-intelligence` **or** install and authenticate the `gh` CLI (`gh auth login`) | Repo creation needs an API token. SSH push access already works |
 | T-093 | Choose a hosting provider and supply credentials or a token (no paid resources without approval) | Deployment |
 | T-072 | (Optional) A free Gemini API key from Google AI Studio | The live LLM provider (free tier). The deterministic fallback works without it |

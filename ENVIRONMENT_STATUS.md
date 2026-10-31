@@ -37,15 +37,14 @@
 
 | Service | Status | Notes |
 |---|---|---|
-| GitHub repository `tinhne/retailops-intelligence` | **Not created** | SSH push access as `tinhne` verified. The `gh` CLI is not installed, so the repo can't be created from this machine without a token (T-092) |
+| GitHub repository `tinhne/retailops-intelligence` | **Created (public), `main` pushed 2026-11-01** | Remote `origin` = `git@github.com:tinhne/retailops-intelligence.git` (SSH). `gh` is installed but not signed in, so CI status is read through the public API |
 | Hosting provider | **Not chosen** | Evaluation pending (T-093). No paid resources without approval |
 | Managed PostgreSQL | **Not provisioned** | Local Docker Postgres only |
 | LLM provider | **No key configured** | Free-tier only (owner decision, 2026-10-31): Google Gemini (AI Studio key) by default, any OpenAI-compatible free tier as an alternative. The product runs on the deterministic provider until a key is added |
 
 ## Missing credentials / manual setup steps
 
-1. Create an empty public repository `tinhne/retailops-intelligence` on GitHub (no README or license,
-   to avoid a history conflict), or install `gh` and run `gh auth login`.
+1. ~~Create the GitHub repository~~ Done by the owner on 2026-11-01.
 2. (Later) Choose a hosting provider and add deployment secrets to GitHub Actions.
 3. (Optional) Create a free Gemini API key in Google AI Studio and set `LLM_PROVIDER=gemini` and
    `GEMINI_API_KEY` in `.env` (local) or in the host's secret store (deployment).
