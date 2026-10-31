@@ -1,5 +1,7 @@
 "use client";
 
+import { Fragment } from "react";
+
 import { ErrorState } from "@/components/states/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -32,6 +34,11 @@ type DataTableProps<T> = {
   noResults: React.ReactNode;
   /** Stacked rendering for screens below 768 px (DESIGN_SYSTEM §11.5). */
   renderStackedRow?: (row: T) => React.ReactNode;
+  /**
+   * Inline expansion (S-15): content for a full-width row below the row, or `null` while the
+   * row is collapsed. The disclosure button lives in one of the row's cells.
+   */
+  renderExpanded?: (row: T) => React.ReactNode;
   density?: "comfortable" | "compact";
 };
 
@@ -61,6 +68,7 @@ export function DataTable<T>({
   empty,
   noResults,
   renderStackedRow,
+  renderExpanded,
   density = "comfortable",
 }: DataTableProps<T>) {
   if (status === "error") return <ErrorState title={errorTitle} error={error} onRetry={onRetry} />;
@@ -121,25 +129,43 @@ export function DataTable<T>({
                     ))}
                   </tr>
                 ))
-              : rows?.map((row) => (
-                  <tr key={getRowId(row)} className={cn("group/row relative border-b last:border-b-0 hover:bg-surface-hover", rowHeight)}>
-                    {columns.map((column) => (
-                      <td
-                        key={column.id}
+              : rows?.map((row) => {
+                  const expanded = renderExpanded?.(row) ?? null;
+                  return (
+                    <Fragment key={getRowId(row)}>
+                      <tr
                         className={cn(
-                          cellX,
-                          "py-2 align-middle first:pl-4 last:pr-4",
-                          column.align === "right" ? "text-right tabular-nums" : "text-left",
-                          column.hideBelow && hide[column.hideBelow],
-                          column.pinned && "sticky left-0 z-[1] bg-card group-hover/row:bg-surface-hover",
-                          column.className,
+                          "group/row relative hover:bg-surface-hover",
+                          expanded === null && "border-b last:border-b-0",
+                          rowHeight,
                         )}
                       >
-                        {column.cell(row)}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
+                        {columns.map((column) => (
+                          <td
+                            key={column.id}
+                            className={cn(
+                              cellX,
+                              "py-2 align-middle first:pl-4 last:pr-4",
+                              column.align === "right" ? "text-right tabular-nums" : "text-left",
+                              column.hideBelow && hide[column.hideBelow],
+                              column.pinned && "sticky left-0 z-[1] bg-card group-hover/row:bg-surface-hover",
+                              column.className,
+                            )}
+                          >
+                            {column.cell(row)}
+                          </td>
+                        ))}
+                      </tr>
+                      {expanded !== null ? (
+                        <tr className="border-b last:border-b-0">
+                          <td colSpan={columns.length} className="px-4 pt-1 pb-3">
+                            {expanded}
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
+                  );
+                })}
           </tbody>
         </table>
       </div>
