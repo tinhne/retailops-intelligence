@@ -30,3 +30,23 @@ export function mockFetch(...responses: Array<Response | Error>) {
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
 }
+
+type Route = Response | (() => Response) | Error;
+
+/**
+ * Answers `fetch` by URL path, for screens that fire several requests in parallel. The first
+ * route whose key is contained in the request path wins. Unmatched requests fail the test.
+ */
+export function routeFetch(routes: Record<string, Route>) {
+  const fetchMock = vi.fn<typeof fetch>(async (input) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    const path = url.split("?")[0];
+    const match = Object.keys(routes).find((key) => path.endsWith(key));
+    if (!match) throw new Error(`Unexpected request in test: ${url}`);
+    const route = routes[match];
+    if (route instanceof Error) throw route;
+    return typeof route === "function" ? route() : route.clone();
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}

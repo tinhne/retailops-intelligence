@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Permission } from "@/lib/api/auth";
 
-import { activeNavItem, NAV_GROUPS, visibleNav, type NavGroup } from "./nav-config";
+import { activeNavItem, NAV_GROUPS, sectionHref, visibleNav, type NavGroup } from "./nav-config";
 
 const groups: NavGroup[] = [
   { items: [{ label: "Overview", segment: "overview", icon: LayoutDashboard, permission: ["dashboard.read"], ready: true }] },
@@ -43,6 +43,18 @@ describe("visibleNav (IA §4.3)", () => {
     expect(segments).toEqual(
       NAV_GROUPS.flatMap((group) => group.items.filter((item) => item.ready).map((item) => item.segment)),
     );
+  });
+});
+
+describe("sectionHref (S-02 links)", () => {
+  it("links to built pages the person may open, with repeated query values", () => {
+    expect(sectionHref("s1", "overview", perms("dashboard.read"), { tab: ["a", "b"] })).toBe("/s/s1/overview?tab=a&tab=b");
+  });
+
+  it("returns nothing for pages that are not built or not permitted", () => {
+    expect(sectionHref("s1", "exceptions", perms("exceptions.read"))).toBeUndefined();
+    expect(sectionHref("s1", "overview", perms())).toBeUndefined();
+    expect(sectionHref("s1", "unknown", perms("dashboard.read"))).toBeUndefined();
   });
 });
 

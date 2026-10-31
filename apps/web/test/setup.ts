@@ -1,6 +1,26 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
-import { afterEach } from "vitest";
+import { afterEach, vi } from "vitest";
+
+// jsdom has no layout engine; charts and Radix measure elements through these.
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+vi.stubGlobal("ResizeObserver", ResizeObserverStub);
+
+// Desktop-width media queries by default.
+vi.stubGlobal("matchMedia", (query: string) => ({
+  matches: /min-width/.test(query),
+  media: query,
+  onchange: null,
+  addEventListener: () => {},
+  removeEventListener: () => {},
+  addListener: () => {},
+  removeListener: () => {},
+  dispatchEvent: () => false,
+}));
 
 afterEach(() => {
   cleanup();
