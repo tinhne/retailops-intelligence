@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from app.db.base import Base
 from app.demo.build import build_demo
 from app.domains.exceptions.models import ACTIVE_STATUSES, OperationalException
+from app.domains.identity.models import Membership
 from app.domains.imports.models import DataImport
 from tests.factories import pre_session_csrf
 
@@ -94,10 +95,22 @@ def demo(db: Session) -> dict[str, uuid.UUID]:
         )
     ).first()
     import_id = db.scalars(select(DataImport.id).where(DataImport.store_id == store_id)).first()
+    organization_id = build.summary.organization_id
+    membership_id = db.scalars(
+        select(Membership.id).where(Membership.organization_id == organization_id)
+    ).first()
     assert active is not None
     assert closed is not None
     assert import_id is not None
-    return {"store_id": store_id, "active": active, "closed": closed, "import_id": import_id}
+    assert membership_id is not None
+    return {
+        "store_id": store_id,
+        "active": active,
+        "closed": closed,
+        "import_id": import_id,
+        "organization_id": organization_id,
+        "membership_id": membership_id,
+    }
 
 
 def test_demo_visitors_cannot_change_shared_data_through_any_route(

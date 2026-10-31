@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from app.domains.audit.models import AuditLog
 from app.domains.identity.models import Membership, User, UserSession
 from app.domains.identity.permissions import Role
-from tests.factories import Tenant, create_tenant, create_user, login
+from tests.factories import Tenant, create_tenant, create_user, login, pre_session_csrf
 
 pytestmark = pytest.mark.integration
 
@@ -216,7 +216,9 @@ def test_owner_adds_member_with_one_time_temporary_password(
     # The new member can sign in with the temporary password.
     with TestClient(app) as other:
         signed_in = other.post(
-            "/api/v1/auth/login", json={"email": "sam.ortiz@acme.example", "password": password}
+            "/api/v1/auth/login",
+            json={"email": "sam.ortiz@acme.example", "password": password},
+            headers=pre_session_csrf(other),
         )
         assert signed_in.status_code == 200
         assert signed_in.json()["memberships"][0]["role"] == "STAFF"
@@ -450,6 +452,7 @@ def test_deactivation_revokes_sessions_and_reactivation_restores_sign_in(
         refused = staff_client.post(
             "/api/v1/auth/login",
             json={"email": "staff@acme.example", "password": "correct-horse-battery-staple"},
+            headers=pre_session_csrf(staff_client),
         )
         assert refused.status_code == 401
 
