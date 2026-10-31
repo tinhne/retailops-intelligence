@@ -107,6 +107,7 @@ class ExceptionFilters:
     order_id: uuid.UUID | None = None
     q: str | None = None
     due_to: datetime | None = None  # due_at <= due_to (overdue or due soon)
+    evaluation_run_id: uuid.UUID | None = None  # detected (created) by this evaluation run
 
 
 def _order_by(sort: str, fields: dict[str, Any]) -> tuple[str, Any]:
@@ -164,6 +165,16 @@ def _filter_conditions(
         conditions.append(_linked(EntityType.PRODUCT, filters.product_id, store_id))
     if filters.order_id:
         conditions.append(_linked(EntityType.ORDER, filters.order_id, store_id))
+    if filters.evaluation_run_id:
+        # New in this run: the run wrote the DETECTED event (S-13 "View new exceptions").
+        conditions.append(
+            exists().where(
+                ExceptionEvent.exception_id == E.id,
+                ExceptionEvent.store_id == store_id,
+                ExceptionEvent.event_type == ExceptionEventType.DETECTED,
+                ExceptionEvent.evaluation_run_id == filters.evaluation_run_id,
+            )
+        )
     if filters.due_to is not None:
         if filters.due_to.tzinfo is None:
             raise BusinessRuleViolationError(

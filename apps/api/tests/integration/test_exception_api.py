@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.clock import utcnow
 from app.domains.audit.models import AuditLog
 from app.domains.exceptions.models import (
+    EvaluationRun,
     ExceptionAssignment,
     ExceptionEvent,
     ExceptionEventType,
@@ -232,6 +233,31 @@ def test_list_filters(world: World, db: Session) -> None:
     assert refs(q="_") == set()
     multi = client.get(url, params=[("status", "OPEN"), ("status", "RESOLVED")])
     assert multi.json()["total"] == 3
+
+
+def test_list_filters_by_the_detecting_evaluation_run(world: World, db: Session) -> None:
+    client, _ = world.client(world.manager)
+    url = f"{world.base()}/exceptions"
+    first_run = db.scalars(
+        select(EvaluationRun.id).where(EvaluationRun.store_id == world.tenant.store.id)
+    ).one()
+    make_product(db, world.tenant, "KH-LID-01", reorder_point=0)  # new: out of stock
+    second_run = evaluate(db, world.tenant, T0 + H).id
+
+    def labels(run_id: uuid.UUID, **params: object) -> list[str]:
+        response = client.get(url, params={"evaluation_run_id": str(run_id), **params})
+        assert response.status_code == 200, response.text
+        return sorted(item["primary_entity"]["label"] for item in response.json()["items"])
+
+    # The second run refreshed the first run's exceptions but detected only the new one.
+    assert labels(first_run) == ["KH-JUG-01", "KH-MUG-01", "KHK-0999"]
+    assert labels(second_run) == ["KH-LID-01"]
+    assert labels(second_run, severity="CRITICAL") == []
+    other_run = db.scalars(
+        select(EvaluationRun.id).where(EvaluationRun.store_id == world.other.store.id)
+    ).one()
+    assert labels(other_run) == []  # another store's run never matches
+    assert client.get(url, params={"evaluation_run_id": "not-a-uuid"}).status_code == 422
 
 
 def test_list_due_to_filter(world: World) -> None:
