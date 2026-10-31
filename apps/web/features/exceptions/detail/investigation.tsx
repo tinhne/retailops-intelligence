@@ -1,9 +1,12 @@
 "use client";
 
 import { Info, ListChecks } from "lucide-react";
+import Link from "next/link";
 
 import { DateTime, Money, NoValue } from "@/components/data/values";
+import { sectionHref } from "@/components/shell/nav-config";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import type { Permission } from "@/lib/api/auth";
 import type { ExceptionDetail } from "@/lib/api/exceptions-api";
 import { formatQuantity } from "@/lib/format/number";
 import { useStore } from "@/lib/store/store-context";
@@ -194,10 +197,26 @@ function KeyValues({ title, values }: { title: string; values: Record<string, Js
 
 /** A generic table for rule-specific rows: the columns are the row keys (C-51, C-53). */
 export function RecordTable({ caption, rows, limit = 50 }: { caption: string; rows: Array<Record<string, Json>>; limit?: number }) {
+  const store = useStore();
+  const ordersHref = sectionHref(store.id, "orders", store.permissions);
   const columns = [...new Set(rows.flatMap((row) => Object.keys(row)))].filter(
     (key) => !key.endsWith("_id") && key !== "source",
   );
+  // Order numbers link to their order; other rows get a Source column when they carry one.
+  const linksOrders = columns.includes("order_number");
+  const showSource = !linksOrders && rows.some((row) => isSource(row.source));
   const shown = rows.slice(0, limit);
+  const cell = (row: Record<string, Json>, column: string) => {
+    const orderId = row.order_id;
+    if (column === "order_number" && ordersHref && typeof orderId === "string" && typeof row.order_number === "string") {
+      return (
+        <Link href={`/s/${store.id}/orders/${orderId}`} className="text-link hover:underline">
+          {row.order_number}
+        </Link>
+      );
+    }
+    return <AutoValue value={row[column]} keyName={column} />;
+  };
   return (
     <div className="flex flex-col gap-2">
       <div className="relative overflow-x-auto rounded-md border">
@@ -217,6 +236,11 @@ export function RecordTable({ caption, rows, limit = 50 }: { caption: string; ro
                   {humanizeKey(column)}
                 </th>
               ))}
+              {showSource ? (
+                <th scope="col" className="h-8 border-b px-3 text-left text-xs font-medium whitespace-nowrap text-muted-foreground">
+                  Source
+                </th>
+              ) : null}
             </tr>
           </thead>
           <tbody>
@@ -224,9 +248,12 @@ export function RecordTable({ caption, rows, limit = 50 }: { caption: string; ro
               <tr key={rowIndex} className="border-b last:border-b-0">
                 {columns.map((column, index) => (
                   <td key={column} className={cn("h-8 px-3 whitespace-nowrap", index === 0 && "sticky left-0 bg-card font-medium")}>
-                    <AutoValue value={row[column]} keyName={column} />
+                    {cell(row, column)}
                   </td>
                 ))}
+                {showSource ? (
+                  <td className="h-8 px-3 whitespace-nowrap">{isSource(row.source) ? <SourceLink source={row.source} /> : <NoValue />}</td>
+                ) : null}
               </tr>
             ))}
           </tbody>
@@ -264,7 +291,42 @@ export function CalculationBlock({ exception }: { exception: ExceptionDetail }) 
   );
 }
 
-type Fact = { key: string; label: string; value: Json; unit: string | null; estimate: boolean; volatile: boolean; source: { type: string; label: string } | null };
+type Source = { type: string; id: string; label: string };
+type Fact = { key: string; label: string; value: Json; unit: string | null; estimate: boolean; volatile: boolean; source: Source | null };
+
+const isSource = (value: unknown): value is Source =>
+  typeof value === "object" &&
+  value !== null &&
+  typeof (value as Source).type === "string" &&
+  typeof (value as Source).id === "string" &&
+  typeof (value as Source).label === "string";
+
+/** The page a fact's source lives on, when it exists and the person may open it (S-04 "Evidence"). */
+export function sourceHref(storeId: string, permissions: ReadonlySet<Permission>, source: Source): string | undefined {
+  switch (source.type) {
+    case "product":
+    case "inventory_balance": // a product's balance is shown on the product page (S-08)
+      return sectionHref(storeId, "products", permissions) && `/s/${storeId}/products/${source.id}`;
+    case "order":
+      return sectionHref(storeId, "orders", permissions) && `/s/${storeId}/orders/${source.id}`;
+    case "data_import":
+      return sectionHref(storeId, "imports", permissions) && `/s/${storeId}/imports/${source.id}`;
+    default:
+      return undefined; // suppliers and single ledger rows have no page of their own
+  }
+}
+
+function SourceLink({ source }: { source: Source }) {
+  const store = useStore();
+  const href = sourceHref(store.id, store.permissions, source);
+  return href ? (
+    <Link href={href} className="text-link hover:underline">
+      {source.label}
+    </Link>
+  ) : (
+    <span>{source.label}</span>
+  );
+}
 type Evidence = { facts?: Fact[]; records?: Record<string, Array<Record<string, Json>>>; notes?: string[] };
 
 export function EvidenceTable({ exception }: { exception: ExceptionDetail }) {
@@ -297,7 +359,9 @@ export function EvidenceTable({ exception }: { exception: ExceptionDetail }) {
                     {fact.estimate ? <span className="ml-1 text-xs text-muted-foreground">est.</span> : null}
                     {fact.volatile ? <span className="ml-1 text-xs text-muted-foreground" title="Changes over time">(changes over time)</span> : null}
                   </td>
-                  <td className="py-2 align-top text-sm text-muted-foreground">{fact.source ? fact.source.label : "Calculated"}</td>
+                  <td className="py-2 align-top text-sm text-muted-foreground">
+                    {isSource(fact.source) ? <SourceLink source={fact.source} /> : "Calculated"}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -323,14 +387,19 @@ export function EvidenceTable({ exception }: { exception: ExceptionDetail }) {
 
 const AFFECTED_COLUMNS = ["order_number", "paid_at", "ship_by", "quantity", "covered_quantity", "uncovered_quantity", "value_at_risk"];
 
+const affectedRows = (exception: ExceptionDetail) => (exception.evidence as Evidence).records?.affected_orders ?? [];
+
+/** Whether the page shows "Affected orders" (inventory exceptions always, others when listed). */
+export const hasAffectedSection = (exception: ExceptionDetail) => exception.category === "INVENTORY" || affectedRows(exception).length > 0;
+
 /** Orders the condition puts at risk (C-53), from the evidence records. */
 export function AffectedOrders({ exception }: { exception: ExceptionDetail }) {
-  const rows = ((exception.evidence as Evidence).records?.affected_orders ?? []).map((row) =>
+  const rows = affectedRows(exception).map((row) =>
     Object.fromEntries(
       [...AFFECTED_COLUMNS.filter((key) => key in row), ...Object.keys(row).filter((key) => !AFFECTED_COLUMNS.includes(key))].map((key) => [key, row[key]]),
     ),
   );
-  if (exception.category !== "INVENTORY" && rows.length === 0) return null;
+  if (!hasAffectedSection(exception)) return null;
   return (
     <SectionCard id="affected" title={`Affected orders (${rows.length})`}>
       {rows.length === 0 ? (
