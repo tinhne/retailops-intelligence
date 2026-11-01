@@ -12,7 +12,7 @@ extrapolated, or written by hand.
 
 | Provider | Report | Result |
 |---|---|---|
-| `deterministic` | [`2026-11-01_deterministic_a6dcc31`](../../apps/api/evals/reports/2026-11-01_deterministic_a6dcc31.md) (dataset `copilot_v1`, 65 cases, seed 20261031) | 65 of 65 cases passed; all gates passed. Intent accuracy 62/62, factual assertions 70/70, permission and tenancy 7/7, injection 6/6, `no_mutation` 10/10, `canary_absent` 6/6, determinism re-run 65/65. The 3 fallbacks are the fault-injection cases. On the synthetic demo data only (§7) |
+| `deterministic` | [`2026-11-01_deterministic_aaaf988`](../../apps/api/evals/reports/2026-11-01_deterministic_aaaf988.md) (dataset `copilot_v1`, 65 cases, seed 20261031; A1 built by `build_demo`) | 65 of 65 cases passed; all gates passed. Intent accuracy 62/62, factual assertions 70/70, permission and tenancy 7/7, injection 6/6, `no_mutation` 10/10, `canary_absent` 6/6, determinism re-run 65/65. The 3 fallbacks are the fault-injection cases. On the synthetic demo data only (§7). Earlier run: [`2026-11-01_deterministic_a6dcc31`](../../apps/api/evals/reports/2026-11-01_deterministic_a6dcc31.md), same outcome before the merge of `main` |
 | `gemini`, `openai_compatible` | none | Not run: no key is configured. LLM quality thresholds stay unset until a first committed baseline (§6) |
 
 ## 1. What the evaluation answers
