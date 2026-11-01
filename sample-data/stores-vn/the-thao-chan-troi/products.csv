@@ -1,0 +1,15 @@
+sku,name,category,status,unit_price,unit_cost,reorder_point,reorder_quantity,supplier_name,supplier_lead_time_days
+TTC-THAM-01,Thảm yoga TPE 6mm,Thảm tập,ACTIVE,396000.00,230000.00,5,15,Thể thao Đại Dương,12
+TTC-THAM-02,Thảm yoga TPE 8mm,Thảm tập,ACTIVE,356000.00,155000.00,10,30,Thể thao Đại Dương,12
+TTC-THAM-03,Thảm tập gym 6mm,Thảm tập,ACTIVE,229000.00,122000.00,15,45,Thể thao Đại Dương,12
+TTC-THAM-04,Thảm tập gym 8mm,Thảm tập,ACTIVE,221000.00,117000.00,12,36,Thể thao Đại Dương,12
+TTC-TA2-01,Tạ tay bọc cao su 2kg,Tạ và dây kháng lực,ACTIVE,252000.00,144000.00,10,30,Thể thao Đại Dương,12
+TTC-TA2-02,Tạ tay bọc cao su 5kg,Tạ và dây kháng lực,ACTIVE,582000.00,298000.00,5,15,Thể thao Đại Dương,12
+TTC-TA2-03,Tạ tay bọc cao su Bộ 5 dây,Tạ và dây kháng lực,ACTIVE,581000.00,334000.00,8,24,Thể thao Đại Dương,12
+TTC-TA2-04,Dây kháng lực 2kg,Tạ và dây kháng lực,ACTIVE,535000.00,234000.00,5,15,Thể thao Đại Dương,12
+TTC-TA2-05,Dây kháng lực 5kg,Tạ và dây kháng lực,ACTIVE,289000.00,167000.00,5,15,Thể thao Đại Dương,12
+TTC-TA2-06,Dây kháng lực Bộ 5 dây,Tạ và dây kháng lực,ACTIVE,590000.00,278000.00,8,24,Thể thao Đại Dương,12
+TTC-GIAY-01,Giày chạy bộ nhẹ Size 40,Giày chạy bộ,ACTIVE,598000.00,361000.00,15,45,Xưởng giày Sông Hồng,20
+TTC-GIAY-02,Giày chạy bộ nhẹ Size 42,Giày chạy bộ,ACTIVE,1134000.00,613000.00,5,15,Xưởng giày Sông Hồng,20
+TTC-GIAY-03,Giày tập gym Size 40,Giày chạy bộ,ACTIVE,871000.00,482000.00,5,15,Xưởng giày Sông Hồng,20
+TTC-GIAY-04,Giày tập gym Size 42,Giày chạy bộ,DRAFT,811000.00,469000.00,12,36,Xưởng giày Sông Hồng,20

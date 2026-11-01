@@ -1,0 +1,17 @@
+sku,name,category,status,unit_price,unit_cost,reorder_point,reorder_quantity,supplier_name,supplier_lead_time_days
+BYM-TA-01,Tã quần Size M,Tã bỉm,ACTIVE,384000.00,183000.00,10,30,Phân phối Hạnh Phúc Kids,6
+BYM-TA-02,Tã quần Size L,Tã bỉm,ACTIVE,260000.00,137000.00,8,24,Phân phối Hạnh Phúc Kids,6
+BYM-TA-03,Tã quần Size XL,Tã bỉm,ACTIVE,222000.00,133000.00,15,45,Phân phối Hạnh Phúc Kids,6
+BYM-TA-04,Tã dán Size M,Tã bỉm,ACTIVE,268000.00,128000.00,8,24,Phân phối Hạnh Phúc Kids,6
+BYM-TA-05,Tã dán Size L,Tã bỉm,ACTIVE,277000.00,161000.00,8,24,Phân phối Hạnh Phúc Kids,6
+BYM-TA-06,Tã dán Size XL,Tã bỉm,ACTIVE,399000.00,209000.00,12,36,Phân phối Hạnh Phúc Kids,6
+BYM-BB-01,Bình sữa cổ rộng 150ml,Bình sữa,ACTIVE,344000.00,208000.00,8,24,Phân phối Hạnh Phúc Kids,6
+BYM-BB-02,Bình sữa cổ rộng 260ml,Bình sữa,ACTIVE,188000.00,99000.00,15,45,Phân phối Hạnh Phúc Kids,6
+BYM-BB-03,Bình tập uống 150ml,Bình sữa,ACTIVE,364000.00,168000.00,15,45,Phân phối Hạnh Phúc Kids,6
+BYM-BB-04,Bình tập uống 260ml,Bình sữa,ACTIVE,222000.00,133000.00,15,45,Phân phối Hạnh Phúc Kids,6
+BYM-QA-01,Bộ body cotton 0-3 tháng,Quần áo sơ sinh,ACTIVE,213000.00,94000.00,12,36,Dệt may Bình An,10
+BYM-QA-02,Bộ body cotton 3-6 tháng,Quần áo sơ sinh,ACTIVE,128000.00,72000.00,15,45,Dệt may Bình An,10
+BYM-QA-03,Khăn sữa 0-3 tháng,Quần áo sơ sinh,ACTIVE,152000.00,67000.00,12,36,Dệt may Bình An,10
+BYM-QA-04,Khăn sữa 3-6 tháng,Quần áo sơ sinh,ACTIVE,245000.00,106000.00,12,36,Dệt may Bình An,10
+BYM-QA-05,Mũ sơ sinh 0-3 tháng,Quần áo sơ sinh,ACTIVE,170000.00,93000.00,5,15,Dệt may Bình An,10
+BYM-QA-06,Mũ sơ sinh 3-6 tháng,Quần áo sơ sinh,DRAFT,174000.00,99000.00,12,36,Dệt may Bình An,10

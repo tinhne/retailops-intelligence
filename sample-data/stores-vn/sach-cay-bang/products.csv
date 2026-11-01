@@ -1,0 +1,20 @@
+sku,name,category,status,unit_price,unit_cost,reorder_point,reorder_quantity,supplier_name,supplier_lead_time_days
+SCB-SACH-01,Tiểu thuyết bìa mềm Tập 1,Sách,ACTIVE,170000.00,101000.00,8,24,Phát hành sách Trường Xuân,7
+SCB-SACH-02,Tiểu thuyết bìa mềm Tập 2,Sách,ACTIVE,195000.00,103000.00,12,36,Phát hành sách Trường Xuân,7
+SCB-SACH-03,Tiểu thuyết bìa mềm Tập 3,Sách,ACTIVE,80000.00,49000.00,5,15,Phát hành sách Trường Xuân,7
+SCB-SACH-04,Sách kỹ năng Tập 1,Sách,ACTIVE,213000.00,113000.00,5,15,Phát hành sách Trường Xuân,7
+SCB-SACH-05,Sách kỹ năng Tập 2,Sách,ACTIVE,143000.00,76000.00,12,36,Phát hành sách Trường Xuân,7
+SCB-SACH-06,Sách kỹ năng Tập 3,Sách,ACTIVE,120000.00,58000.00,15,45,Phát hành sách Trường Xuân,7
+SCB-SACH-07,Truyện thiếu nhi Tập 1,Sách,ACTIVE,170000.00,75000.00,10,30,Phát hành sách Trường Xuân,7
+SCB-SACH-08,Truyện thiếu nhi Tập 2,Sách,ACTIVE,169000.00,92000.00,5,15,Phát hành sách Trường Xuân,7
+SCB-SACH-09,Truyện thiếu nhi Tập 3,Sách,ACTIVE,234000.00,108000.00,8,24,Phát hành sách Trường Xuân,7
+SCB-VO-01,Vở kẻ ngang A5,Vở và sổ,ACTIVE,73000.00,32000.00,12,36,Văn phòng phẩm Bút Xanh,5
+SCB-VO-02,Vở kẻ ngang B5,Vở và sổ,ACTIVE,62000.00,38000.00,5,15,Văn phòng phẩm Bút Xanh,5
+SCB-VO-03,Sổ tay bìa da A5,Vở và sổ,ACTIVE,109000.00,47000.00,5,15,Văn phòng phẩm Bút Xanh,5
+SCB-VO-04,Sổ tay bìa da B5,Vở và sổ,ACTIVE,114000.00,55000.00,15,45,Văn phòng phẩm Bút Xanh,5
+SCB-BUT-01,Bút gel Đen,Bút,ACTIVE,47000.00,28000.00,10,30,Văn phòng phẩm Bút Xanh,5
+SCB-BUT-02,Bút gel Xanh,Bút,ACTIVE,57000.00,30000.00,5,15,Văn phòng phẩm Bút Xanh,5
+SCB-BUT-03,Bút gel Bộ 5 màu,Bút,ACTIVE,65000.00,37000.00,10,30,Văn phòng phẩm Bút Xanh,5
+SCB-BUT-04,Bút highlight Đen,Bút,ACTIVE,55000.00,24000.00,10,30,Văn phòng phẩm Bút Xanh,5
+SCB-BUT-05,Bút highlight Xanh,Bút,ACTIVE,66000.00,38000.00,15,45,Văn phòng phẩm Bút Xanh,5
+SCB-BUT-06,Bút highlight Bộ 5 màu,Bút,DRAFT,88000.00,44000.00,10,30,Văn phòng phẩm Bút Xanh,5

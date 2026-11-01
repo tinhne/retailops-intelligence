@@ -1,0 +1,17 @@
+sku,name,category,status,unit_price,unit_cost,reorder_point,reorder_quantity,supplier_name,supplier_lead_time_days
+LXH-LEN-01,Len cotton milk Kem,Cuộn len,ACTIVE,123000.00,62000.00,10,30,Sợi len Đà Lạt Mây,15
+LXH-LEN-02,Len cotton milk Xanh rêu,Cuộn len,ACTIVE,54000.00,29000.00,12,36,Sợi len Đà Lạt Mây,15
+LXH-LEN-03,Len cotton milk Hồng phấn,Cuộn len,ACTIVE,117000.00,60000.00,8,24,Sợi len Đà Lạt Mây,15
+LXH-LEN-04,Len lông cừu Kem,Cuộn len,ACTIVE,74000.00,34000.00,15,45,Sợi len Đà Lạt Mây,15
+LXH-LEN-05,Len lông cừu Xanh rêu,Cuộn len,ACTIVE,120000.00,54000.00,15,45,Sợi len Đà Lạt Mây,15
+LXH-LEN-06,Len lông cừu Hồng phấn,Cuộn len,ACTIVE,88000.00,47000.00,8,24,Sợi len Đà Lạt Mây,15
+LXH-KIM-01,Bộ kim móc Bộ nhỏ,Dụng cụ đan móc,ACTIVE,104000.00,45000.00,8,24,Phụ liệu Chợ Lớn,7
+LXH-KIM-02,Bộ kim móc Bộ đầy đủ,Dụng cụ đan móc,ACTIVE,154000.00,70000.00,5,15,Phụ liệu Chợ Lớn,7
+LXH-KIM-03,Kim đan tre Bộ nhỏ,Dụng cụ đan móc,ACTIVE,158000.00,88000.00,5,15,Phụ liệu Chợ Lớn,7
+LXH-KIM-04,Kim đan tre Bộ đầy đủ,Dụng cụ đan móc,ACTIVE,122000.00,53000.00,10,30,Phụ liệu Chợ Lớn,7
+LXH-THANH-01,Khăn len Nhỏ,Thành phẩm,ACTIVE,357000.00,179000.00,10,30,Sợi len Đà Lạt Mây,15
+LXH-THANH-02,Khăn len Vừa,Thành phẩm,ACTIVE,201000.00,96000.00,12,36,Sợi len Đà Lạt Mây,15
+LXH-THANH-03,Túi len handmade Nhỏ,Thành phẩm,ACTIVE,218000.00,134000.00,8,24,Sợi len Đà Lạt Mây,15
+LXH-THANH-04,Túi len handmade Vừa,Thành phẩm,ACTIVE,364000.00,178000.00,5,15,Sợi len Đà Lạt Mây,15
+LXH-THANH-05,Thú bông móc Nhỏ,Thành phẩm,ACTIVE,251000.00,140000.00,12,36,Sợi len Đà Lạt Mây,15
+LXH-THANH-06,Thú bông móc Vừa,Thành phẩm,DRAFT,303000.00,175000.00,10,30,Sợi len Đà Lạt Mây,15

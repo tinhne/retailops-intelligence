@@ -1,0 +1,15 @@
+sku,name,category,status,unit_price,unit_cost,reorder_point,reorder_quantity,supplier_name,supplier_lead_time_days
+PTV-HAT2-01,Hạt cho mèo 1kg,Thức ăn hạt,ACTIVE,649000.00,276000.00,8,24,Thức ăn thú cưng Miền Đông,6
+PTV-HAT2-02,Hạt cho mèo 3kg,Thức ăn hạt,ACTIVE,333000.00,181000.00,8,24,Thức ăn thú cưng Miền Đông,6
+PTV-HAT2-03,Hạt cho chó 1kg,Thức ăn hạt,ACTIVE,301000.00,148000.00,8,24,Thức ăn thú cưng Miền Đông,6
+PTV-HAT2-04,Hạt cho chó 3kg,Thức ăn hạt,ACTIVE,233000.00,124000.00,12,36,Thức ăn thú cưng Miền Đông,6
+PTV-PATE-01,Pate cá ngừ Lon 85g,Pate,ACTIVE,87000.00,37000.00,5,15,Thức ăn thú cưng Miền Đông,6
+PTV-PATE-02,Pate cá ngừ Hộp 400g,Pate,ACTIVE,117000.00,57000.00,8,24,Thức ăn thú cưng Miền Đông,6
+PTV-PATE-03,Pate gà Lon 85g,Pate,ACTIVE,173000.00,106000.00,15,45,Thức ăn thú cưng Miền Đông,6
+PTV-PATE-04,Pate gà Hộp 400g,Pate,ACTIVE,117000.00,72000.00,5,15,Thức ăn thú cưng Miền Đông,6
+PTV-PK-01,Vòng cổ Nhỏ,Phụ kiện,ACTIVE,302000.00,143000.00,12,36,Phụ kiện thú cưng Kim Long,11
+PTV-PK-02,Vòng cổ Lớn,Phụ kiện,ACTIVE,333000.00,180000.00,5,15,Phụ kiện thú cưng Kim Long,11
+PTV-PK-03,Đệm ngủ Nhỏ,Phụ kiện,ACTIVE,286000.00,121000.00,8,24,Phụ kiện thú cưng Kim Long,11
+PTV-PK-04,Đệm ngủ Lớn,Phụ kiện,ACTIVE,163000.00,91000.00,15,45,Phụ kiện thú cưng Kim Long,11
+PTV-PK-05,Cát vệ sinh Nhỏ,Phụ kiện,ACTIVE,364000.00,176000.00,12,36,Phụ kiện thú cưng Kim Long,11
+PTV-PK-06,Cát vệ sinh Lớn,Phụ kiện,DRAFT,113000.00,51000.00,5,15,Phụ kiện thú cưng Kim Long,11
