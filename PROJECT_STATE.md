@@ -6,10 +6,10 @@
 |---|---|
 | Project | RetailOps Intelligence: E-commerce Operations & Decision Intelligence Platform |
 | Owner | Lê Văn Trung Tính (GitHub `tinhne`) |
-| Current milestone | **M6 frontend P0 screens done (T-060..T-065).** Next: M7 AI copilot (T-071..T-073), with T-058 and T-067 alongside |
-| Current phase | Backend core complete. Every P0 web screen built and verified: sign-in, Overview, exceptions, orders, products, inventory, movements and imports. Admin screens (T-066, P1) and the copilot not built |
-| Overall completion | M0–M3 documented and tagged. Backend M4–M5 implemented and tested. Web shell, sign-in, Overview, the full exception workflow, orders, products, inventory and imports done. Admin screens, copilot and deployment not done |
-| Last verified commit | `main` after merging `feat/imports-ui`: web lint, typecheck, 165 tests and build green; backend unchanged since `make check` (629 tests) |
+| Current milestone | **M6 frontend and M7 AI copilot done (T-060..T-074); ops, security and demo history done (T-056, T-082, T-090).** Next: E2E (T-081), accessibility (T-083), README and release (T-100); deployment waits on the owner (T-093) |
+| Current phase | Feature-complete locally: every screen, the copilot (deterministic provider, free-tier LLM optional), admin, compose stack. Final QA, docs and deployment remain |
+| Overall completion | All P0/P1 product tasks are implemented and tested except T-081 (Playwright journey), T-083 (accessibility review), T-100 (README, screenshots, release notes) and T-093/T-094 deployment (blocked on hosting choice). T-095 (P2) not started |
+| Last verified commit | `main` at 3c5bf45 (local; ahead of `origin/main` and not pushed): web lint, typecheck, 265 tests and build green on this tree; backend `make check` 865 passed on the merged tree before the web-only copilot commits |
 | Remote | https://github.com/tinhne/retailops-intelligence (public). The first CI run passed |
 | Architecture version | v1 (modular monolith; `docs/domain/*`, ADR-0001..0013) |
 | Last update | 2026-11-01 (UTC+7) |
@@ -55,17 +55,35 @@
 - **Imports (T-065):** S-11 history, S-12 upload, preview and apply (strict or valid-rows-only with
   consent, Idempotency-Key), S-13 record views for every terminal status, template and issues CSV
   downloads, and import actions in the other screens' empty states.
+- **Stock health data issue (T-058):** `DATA_ISSUE` health class for `on_hand < 0` (any status) and a
+  dashboard `data_issue` count; Oversold no longer includes them (BR-402a).
+- **Admin (T-066):** organization member API (list, add with a one-time temporary password, role
+  change, deactivate/reactivate with last-owner and cross-organization guards), users and roles,
+  store settings with validation, filterable audit log with actor names.
+- **UI follow-ups (T-067):** exceptions mobile action bar, filter sheet, queue Previous/Next, jump
+  menu, density, viewer lifecycle explainer, evidence links; orders custom range and import links;
+  ledger product search, custom range, import column, exact order links; imports upload progress,
+  multi-status filter, issue row search, Validate again (`POST …/revalidate`), new-exceptions link.
+- **AI copilot (T-071..T-074):** migration `0003_ai_copilot`; 11 read-only tools; providers
+  `gemini`, `openai_compatible`, `deterministic` with automatic fallback, budgets and a summary
+  cache; copilot API (conversations, questions, exception summaries, note drafts); web S-14 page,
+  AI investigation panel and "Draft with copilot" (saved only by a person, as `AI_DRAFT_ACCEPTED`);
+  `make ai-eval` (deterministic run 65/65).
+- **Ops, demo and security (T-056, T-082, T-090, T-094 part):** compose `db`, `api` (migrations on
+  start), `worker` (heartbeat), `web` (standalone), `demo-seed`; demo history and imports in the
+  seed; `make stack-demo-reset`; pre-session CSRF on sign-in, body and CSV limits, security
+  headers; `SECURITY.md`.
 - **Delivery:** API Dockerfile (non-root, builds), CI workflow (passed on GitHub), OpenAPI → TS contracts.
 
 ## In progress / next
 
 | Task | Notes |
 |---|---|
-| T-067 List and detail UI follow-ups | BACKLOG (P1): exceptions mobile action bar and filter sheet, queue Previous/Next, jump menu, density, VIEWER explainer, evidence links; orders custom date range, import file links, Ask the copilot; ledger product combobox, custom range, Import column and filter, exact order-line links; imports upload percentage, issue row search, multi-status filter, new-exceptions link, Validate again |
-| T-058 Stock health data issue | READY (P1, backend). Negative on-hand products count as Oversold today (BR-402a) |
-| T-071..T-073 AI copilot | T-071 READY. Needs migration 0003 (session-scoped demo conversations, tool-call result refs, cache key) |
-| T-056 Demo seed history | Add exception history (assigned, in progress, resolved and verified, reopened, dismissed) via the lifecycle service |
-| T-090 Compose stack | Add `api`, `worker`, `web` services and the web Dockerfile. The web image needs `API_INTERNAL_URL` at build time |
+| Manual test pass | In progress when the session ended: demo viewer pass done (Overview, exception + AI panel, Copilot, Inventory, Movements, Orders, Imports, Settings, Audit log); owner pass started (Users & roles checked). Manager pass (lifecycle actions, note draft save, import upload/apply) not yet repeated after the merges |
+| T-081 Playwright E2E | BACKLOG (P0). 12-step journey; run against the compose stack in CI |
+| T-083 Accessibility review | BACKLOG (P1). keyboard, contrast, 375 px across all screens |
+| T-100 README and release | BACKLOG (P0). README, real screenshots, demo guide, release notes |
+| Push | `main` is ahead of `origin/main` (check `git log origin/main..main`); the owner approves each push |
 
 ## Blocked
 
@@ -79,27 +97,27 @@
   SYSTEM_ARCHITECTURE §8–9 describes REPEATABLE READ plus retry (documented deviation, acceptable at MVP scale).
 - Evaluation and import idempotency keys are stored in audit details or import summary JSON (no dedicated column yet).
 - Import validation and apply run row by row. A 20,000-row performance check has not been run.
-- **Doc/code gap (for T-082):** ADR-0004 describes `GET /auth/csrf` issuing a pre-login CSRF token for
-  the sign-in form. That endpoint does not exist and `POST /auth/login` is not CSRF-checked. Login CSRF
-  is currently mitigated only because the endpoint accepts JSON bodies alone, which a cross-site form
-  cannot send without a CORS preflight. Decide in the security review: implement it or amend the ADR.
-- Products with `on_hand < 0` are classified by `available` and count as Oversold in stock health
-  (dashboard, positions, product filters). BR-402a calls for a separate "Data issue" state (T-058).
-  The UI already shows such rows as "Data issue", but the Oversold count and filter still include
-  them (the demo shows "Oversold 3" with one data-issue row).
-- The demo store has no CSV imports (the seed writes rows directly), so the Overview says "No CSV
-  imports yet" and the recent imports list is empty for the demo.
 - The demo banner and `/demo` page omit the spec's "periodically reset" wording until the reset job exists (T-094).
 - Locally, the seeded staff accounts (`make seed` with `DEMO_STAFF_PASSWORD`) belong to the demo
   organization, so the banner says "read-only" even for the manager, who can run imports. Deployed,
   only the demo viewer can sign in there.
-- Behind the Next.js proxy, the API sees the proxy's IP unless `TRUST_PROXY_HEADERS=true`, so the demo
-  sign-in limiter would be shared by all visitors. Set it in the deployed configuration (T-090, T-093).
+- Behind the Next.js proxy the API sees the proxy's IP. `TRUST_PROXY_HEADERS=true` is safe only behind
+  an edge proxy that appends the client address (the Next.js rewrite forwards the browser's header
+  unchanged), so the demo sign-in limiter is shared by all visitors until then (SECURITY.md §5, F5, F9).
+- Seeded audit entries carry the seed's run time, while exception events and imports are backdated
+  over the scripted five hours, so the audit log and the exception timeline disagree on times.
+- Copilot exception references use the label "EXC-1042 · title"; the UI shortens chips to the code.
+- Open security items (SECURITY.md §6): nonce-based script CSP, `statement_timeout`, per-IP sign-in
+  budget across emails, image digests, compose smoke test in CI.
+- Admin: no forced password change after a temporary password, no password reset; settings have
+  no version (last write wins inside a short window).
+- Locally, port 3000 may be taken by another project; the preview then runs the web app on 3001.
 
 ## Latest test results
 
-- `make check` (2026-11-01, after the exceptions API changes): ruff OK, ruff format OK, mypy --strict OK, pytest **629 passed**.
-- Web (2026-11-01, after T-065): `pnpm --filter @retailops/web lint`, `typecheck`, `build` green; vitest **165 passed**.
+- `make check` (2026-11-01, merged tree of all five branches): ruff OK, ruff format OK, mypy --strict OK, pytest **865 passed**.
+- Web (2026-11-01, at 3c5bf45): `pnpm --filter @retailops/web lint`, `typecheck`, `build` green; vitest **265 passed**.
+- `make ai-eval` deterministic (run by the AI branch against its own database): 65/65 cases, gates PASS. No live-LLM run (no key).
   `pnpm audit --prod --audit-level high`: no known vulnerabilities.
 - Browser check against the seeded local API: password and demo sign-in, `next` redirect, invalid
   credentials, session expiry, sign-out, unknown store, and the 375, 768 and 1280 px layouts.
@@ -124,8 +142,7 @@
 
 ## Next three highest-priority actions
 
-1. AI copilot (T-071..T-073): migration 0003, free-tier provider adapter with the deterministic
-   fallback, then the copilot UI (S-14).
-2. The stock-health data-issue fix (T-058) and the list and detail follow-ups (T-067).
-3. Compose stack with the web image (T-090) and demo exception history (T-056), then the AI copilot
-   (T-071..T-073).
+1. Finish the manual test pass as manager (lifecycle actions, note draft save, import upload and
+   apply, Validate again) on the seeded data, then ask the owner to push `main`.
+2. T-081 Playwright journey and T-083 accessibility review.
+3. T-100 README with real screenshots and release notes; T-093 once the owner picks a host.

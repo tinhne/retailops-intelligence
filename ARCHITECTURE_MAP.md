@@ -19,14 +19,14 @@ dependencies, data flows and owners. Details live in
 
 | Module | Backend path | Frontend feature | API prefix (under `/api/v1`) | Owner | Status |
 |---|---|---|---|---|---|
-| identity | `apps/api/app/domains/identity/` | `apps/web/features/auth/` (S-01), `features/session/`, `features/admin/` (planned) | `/auth/*`, `/roles`, `/stores/{id}`, `/stores/{id}/settings`, `/stores/{id}/members`. `/organizations/{id}/members` is not built yet | BE | API done · sign-in UI done |
+| identity | `apps/api/app/domains/identity/` | `apps/web/features/auth/` (S-01), `features/session/`, `features/admin/` | `/auth/*` (incl. `/auth/csrf`), `/roles`, `/stores/{id}`, `/stores/{id}/settings`, `/stores/{id}/members`, `/organizations/{id}/members` | BE | API done · sign-in and admin UI done |
 | catalog | `apps/api/app/domains/catalog/` | `apps/web/features/inventory/` (products) | `/stores/{id}/products`, `/stores/{id}/suppliers`, `/stores/{id}/categories` | BE | API done · products list and detail UI done |
 | orders | `apps/api/app/domains/orders/` | `apps/web/features/orders/` | `/stores/{id}/orders` | BE | API done · list and detail UI done |
 | inventory | `apps/api/app/domains/inventory/` | `apps/web/features/inventory/` | `/stores/{id}/inventory/*` | BE | API done · positions and ledger UI done |
 | imports | `apps/api/app/domains/imports/` | `apps/web/features/imports/` | `/stores/{id}/imports`, `/stores/{id}/imports/templates/{import_type}` | BE | API done · list, wizard and detail UI done |
 | exceptions | `apps/api/app/domains/exceptions/` | `apps/web/features/exceptions/` | `/stores/{id}/exceptions`, `/stores/{id}/evaluations` | BE | API done · inbox and investigation UI done |
-| audit | `apps/api/app/domains/audit/` | `apps/web/features/admin/` (audit viewer) | `/stores/{id}/audit-logs` | BE | API done · UI planned |
-| ai | `apps/api/app/domains/ai/` | `apps/web/features/copilot/` | `/stores/{id}/copilot/*` | AI (backend), FE (UI) | planned (models only) |
+| audit | `apps/api/app/domains/audit/` | `apps/web/features/admin/` (audit viewer) | `/stores/{id}/audit-logs` | BE | API done · UI done |
+| ai | `apps/api/app/domains/ai/` (tools, providers, copilot), `apps/api/evals/` | `apps/web/features/copilot/` | `/stores/{id}/copilot/*` | AI (backend), FE (UI) | API, eval runner and UI done |
 | analytics | `apps/api/app/domains/analytics/` | `apps/web/features/overview/` | `/stores/{id}/analytics/*` (dashboard, trends, exceptions-breakdown) | BE | API done · Overview UI done |
 | worker | `apps/api/app/workers/scheduler.py` | none | none | BE | done (not yet in compose) |
 | demo | `apps/api/app/demo/` | `components/shell/demo-banner.tsx`, `/demo` entry | `/auth/demo` (via identity) | BE | seed and banner done · reset job planned |

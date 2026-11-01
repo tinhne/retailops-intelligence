@@ -284,3 +284,30 @@ add a correction entry instead.
   indeterminate upload progress, single code filter, "View exceptions to triage"; S-13 discard copy
   without a name. Deferred items are in T-067.
 - **Tests:** web lint, typecheck and build green; vitest **165 passed**. Backend unchanged.
+
+## 2026-11-01 (UTC+7): Orchestrator: parallel completion of the remaining product work
+
+- **How:** five isolated branches built in parallel, each with its own test database
+  (`retailops_test_{ai,stock,admin,ui,ops}`), then merged into `main` one by one:
+  `fix/stock-health-data-issue` (T-058), `feat/admin-ui` (T-066), `feat/ops-security` (T-056, T-082,
+  T-090, T-094 reset job), `feat/ui-followups` (T-067), `feat/ai-copilot` (T-071..T-074). The
+  copilot web UI (T-073) was built on `main` after the AI merge.
+- **Merge fixes:** an import conflict in `test_demo_seed.py`; a doc conflict in
+  SECURITY_ARCHITECTURE (column cap plus failed-apply byte retention); member tests and the demo
+  read-only walk updated for sign-in CSRF and the organization routes; stale docs naming
+  `FORWARDED_ALLOW_IPS` / `SECRET_KEY` aligned; `TOO_MANY_COLUMNS` added to the import catalogue.
+- **Copilot UI:** S-14 page (conversations, suggested questions, prefill via `?q=` and exception
+  context, pending, error, rate limit), `CopilotAnswer` with reference chips, formulas,
+  limitations and tool disclosure; AI investigation panel on S-04; "Draft with copilot" saving as
+  `AI_DRAFT_ACCEPTED` only on Save note; "Ask the copilot" on order detail.
+- **Found in the browser:** copilot reference chips used full exception titles and widened the
+  exception page to 1,917 px at 1440; chips now show the code, truncate, and carry the full label as
+  a title (3c5bf45).
+- **Manual pass (local, seeded data):** demo sign-in via pre-session CSRF; Overview with the
+  data-issue row and seeded imports; exception page with AI investigation; copilot questions
+  (general and exception context); Inventory data-issue filter; Movements import column and order
+  links; Orders and "Ask the copilot"; Imports; Settings read-only; Audit log; owner Users & roles
+  with self-action guards. Not yet repeated after the merges: manager lifecycle actions, note
+  draft save, import upload and apply.
+- **Tests:** backend `make check` 865 passed on the merged tree; web lint, typecheck, build green,
+  vitest 265 passed (3c5bf45).

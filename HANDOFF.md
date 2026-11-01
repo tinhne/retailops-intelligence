@@ -9,55 +9,46 @@ CSV data. A free-tier LLM copilot explains the evidence and suggests next steps.
 deterministic, and AI is advisory only.
 
 ## 2. Completed
-Docs M0–M3 (tagged). Backend: auth, sessions, CSRF, permissions, tenancy, audit; schema
-(migrations 0001–0002); order FSM; inventory ledger and reservations; CSV import pipeline; exception
-engine and lifecycle API; read APIs and analytics; demo dataset generator; scheduled evaluation
-worker (T-055). `make check` gives 627 tests green. The GitHub repo exists and its first CI run passed.
-**Web foundation (T-060, 2026-11-01):** tokens and theme, restyled shadcn/ui primitives, API
-client (CSRF header, `ApiError`), QueryClient policy (retries, 401 → sign-in), `/api` rewrite,
-`proxy.ts` sign-in redirect, S-01 sign-in and `/demo`, session gate, store resolution and the app
-shell. **Overview (T-061):** the S-02 dashboard with formatters, status maps and atoms, KPI cards,
-chart frame and Run analysis; the dashboard API gained `exposure_by_category`. **Exceptions (T-062):**
-inbox and investigation with every lifecycle action; the list API gained `due_to` and closing fields.
-**Orders (T-063):** read-only list and detail. **Products and inventory (T-064):** products list
-and detail, inventory positions, movements ledger. **Imports (T-065):** history, upload, preview,
-apply with consent, record views. 165 vitest tests. See `PROJECT_STATE.md`.
+Docs M0–M3 (tagged). Backend: auth, sessions, CSRF (including pre-session `GET /auth/csrf`),
+permissions, tenancy, audit; schema (migrations 0001–0003); order FSM; inventory ledger and
+reservations; CSV import pipeline (with revalidate); exception engine and lifecycle API; read APIs
+and analytics; organization member admin; AI copilot (tools, free-tier providers with the
+deterministic fallback, conversations, summaries, note drafts, `make ai-eval`); scheduled worker;
+demo seed with exception history and imports, demo reset job; compose stack (db, api, worker, web,
+demo-seed); `SECURITY.md`. Web: every screen in `docs/design/SCREEN_SPECIFICATIONS.md` S-01..S-17
+except the P1 analytics screen, including Copilot (S-14) and admin. `make check` 865 passed;
+vitest 265 passed. See `PROJECT_STATE.md` and `PROGRESS.md` (latest entry) for detail.
 
 ## 3. Currently being implemented
-Nothing is in flight. The working tree is clean. (An earlier handoff described uncommitted
-frontend and AI work; it was not in the tree on 2026-11-01, so T-071..T-074 start from scratch.)
-Every P0 screen is built. Next up: the AI copilot (T-071, READY). T-058 is also READY; T-067 holds
-the deferred list and detail UI details; T-066 (admin, P1) is in the backlog.
+**Where work stopped (2026-11-01):** a manual test pass on the seeded local data. Done: the demo
+viewer pass and the owner's Users & roles screen. Not yet repeated after the merges: the manager
+pass (acknowledge/start/resolve on an exception, "Draft with copilot" then Save note, import
+upload with progress, apply, discard, Validate again on a FAILED import). The working tree is
+clean; `main` is ahead of `origin/main` and not pushed (the owner approves pushes).
 
-**Notes for the next frontend task:**
-- The sidebar lists only built pages, and `sectionHref` returns a link only for built pages the role
-  may open. Flip `ready: true` in `apps/web/components/shell/nav-config.ts` when a page lands; the
-  Overview's KPI cards, category rows and health rows then become links automatically.
-- Reuse what T-061 added: `lib/format/*`, `lib/status-maps.ts`, `components/status/status-pill.tsx`,
-  `components/data/values.tsx` (Money, DateTime, DueLabel), `components/actions/action-button.tsx`,
-  `components/states/empty-state.tsx`, and `test/fetch.ts` `routeFetch` plus `test/render.tsx`
-  `renderInStore` for screen tests.
-- Every page component calls `useStore()` and renders `PermissionDenied` when its route
-  permission is missing (see `features/overview/overview-screen.tsx`). Query keys start with
-  `["store", storeId, …]` (IA §7).
-- List screens: reuse `components/data/data-table.tsx` (compact density, `pinned` first column,
-  `hideBelow` up to `2xl`) and `list-controls.tsx`. For URL state, declare the fields with
-  `defineListParams` (`lib/list-params.ts`) and bind them with `useListState`, as the three
-  `features/inventory/*-screen.tsx` lists do; store-local date presets use `storeMidnight`. The older
-  exceptions and orders param modules work the same way by hand. `HealthBadge` already applies the
-  BR-402a data-issue rule.
-- Import entry points: `newImportHref(store, type)` and `ImportLink` in
-  `features/imports/import-actions.tsx` return nothing for roles without `imports.run`, so empty
-  states can offer an import safely. File downloads go through `lib/api/download.ts` (fetch, then a
-  toast on failure) rather than plain links.
-- `Pagination` takes the list's `pageSizes`; pass `definition.options.pageSizes` when a list accepts
-  sizes other than 25/50/100.
-- Any horizontal scroll container must be `relative`, and page grids need `grid-cols-1` as a base, or
-  phones get sideways page scroll (fixed in T-063).
-- Mutations on exceptions go through `features/exceptions/detail/use-exception-command.ts`; follow the
-  same shape (expected version, cache update, conflict toasts) for any other versioned resource.
-- Local launch: `make api-dev` and `pnpm web:dev` (http://localhost:3000). `make seed` with
-  `DEMO_STAFF_PASSWORD` set makes the seeded staff accounts usable for sign-in.
+**Exact next step:** sign in locally as `manager@kestrel.example` (password: the
+`DEMO_STAFF_PASSWORD` used for `make seed`) and finish the manager pass above, fixing anything found.
+Then T-081 (Playwright journey), T-083 (accessibility), T-100 (README, screenshots, release notes).
+
+**Notes for the next task:**
+- Local stack: `make seed` (with `DEMO_STAFF_PASSWORD`), `make api-dev`, `pnpm web:dev`; or the
+  compose stack (`make stack-up`, `make stack-demo-reset`). The seed changes the store id, so open
+  the app from `/login`.
+- Sign-in needs the pre-session CSRF token (`GET /auth/csrf`); backend tests use
+  `tests.factories.login()` or `pre_session_csrf(client)`. A new mutating route a demo viewer may
+  call must be listed in `VISITOR_PRIVATE` in `tests/integration/test_demo_read_only.py`.
+- Security headers include `X-Frame-Options: DENY`, so pages cannot be framed (also not in tests).
+- The sidebar lists only built pages; every v1 nav item is now `ready`. `sectionHref` still hides
+  links the role may not open.
+- Reuse: `lib/list-params.ts` + `useListState` for list URL state, `components/data/*`
+  (`DataTable` with `pinned`, `hideBelow` to `2xl`, `renderExpanded`), `components/data/section.tsx`,
+  `features/imports/import-actions.tsx` (`newImportHref`, `ImportLink`), `lib/api/download.ts`,
+  `features/copilot/copilot-answer.tsx` (`CopilotAnswer`, `ReferenceChip`).
+- Any horizontal scroll container must be `relative`, page grids need `grid-cols-1`, and long
+  inline labels need truncation, or pages scroll sideways.
+- Mutations on exceptions go through `features/exceptions/detail/use-exception-command.ts`.
+- Backend tests in parallel need separate databases (`TEST_DATABASE_URL`); the suite drops and
+  recreates the schema.
 
 ## 4. Broken or blocked
 Nothing known broken. Hosting is not chosen (T-093). Open documentation gaps are listed under
