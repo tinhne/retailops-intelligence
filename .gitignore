@@ -37,3 +37,6 @@ test-results/
 /tmp/
 *.log
 apps/api/var/
+
+# Playwright saved sessions
+apps/web/tests/e2e/.auth/

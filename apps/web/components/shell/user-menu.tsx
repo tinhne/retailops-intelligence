@@ -32,8 +32,11 @@ export function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button type="button" variant="ghost" size="icon" aria-label={`Account menu for ${user.fullName}`}>
-          <Avatar className="size-7">
+        <Button type="button" variant="ghost" size="icon">
+          {/* The name comes from text content, not aria-label, so the visible initials never have
+              to appear in it (WCAG 2.5.3 label in name). The initials are decorative. */}
+          <span className="sr-only">Account menu for {user.fullName}</span>
+          <Avatar className="size-7" aria-hidden="true">
             <AvatarFallback className="font-semibold">{initials(user.fullName)}</AvatarFallback>
           </Avatar>
         </Button>

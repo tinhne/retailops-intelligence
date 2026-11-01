@@ -119,11 +119,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Sheet>
             <span className="truncate text-body-strong md:hidden">{store.name}</span>
             {active ? (
-              <nav aria-label="Breadcrumb" className="hidden text-sm md:block">
-                <span aria-current="page" className="text-foreground">
-                  {active.label}
-                </span>
-              </nav>
+              // The current section's name, not a trail: pages with a trail render their own
+              // "Breadcrumb" navigation, and two landmarks must not share a name.
+              <p className="hidden text-sm text-foreground md:block">{active.label}</p>
             ) : null}
             <div className="ml-auto flex items-center gap-1">
               <UserMenu />

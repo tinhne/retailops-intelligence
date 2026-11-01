@@ -10,7 +10,7 @@ export function AuthLayout({ children, showForm = true }: { children?: React.Rea
         {showForm ? children : null}
         <footer className="text-center text-xs font-normal text-muted-foreground">
           An independent portfolio project by Lê Văn Trung Tính ·{" "}
-          <a href="https://trungtinh.site" className="text-link hover:underline">
+          <a href="https://trungtinh.site" className="text-link underline underline-offset-2">
             trungtinh.site
           </a>
         </footer>
