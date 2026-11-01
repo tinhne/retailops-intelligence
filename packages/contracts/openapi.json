@@ -84,6 +84,103 @@
         "title": "ActorType",
         "type": "string"
       },
+      "AnswerMeta": {
+        "properties": {
+          "as_of": {
+            "description": "The instant every number in the answer describes.",
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "cache": {
+            "$ref": "#/components/schemas/CacheOut"
+          },
+          "fallback": {
+            "$ref": "#/components/schemas/FallbackOut"
+          },
+          "input_tokens": {
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "intent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Deterministic intent the question was routed to.",
+            "title": "Intent"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "output_tokens": {
+            "title": "Output Tokens",
+            "type": "integer"
+          },
+          "prompt_version": {
+            "title": "Prompt Version",
+            "type": "string"
+          },
+          "provider": {
+            "enum": [
+              "gemini",
+              "openai_compatible",
+              "deterministic"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "tool_calls": {
+            "items": {
+              "$ref": "#/components/schemas/ToolCallOut"
+            },
+            "title": "Tool Calls",
+            "type": "array"
+          },
+          "validation": {
+            "$ref": "#/components/schemas/ValidationOut"
+          }
+        },
+        "required": [
+          "provider",
+          "model",
+          "fallback",
+          "cache",
+          "prompt_version",
+          "intent",
+          "tool_calls",
+          "validation",
+          "as_of",
+          "latency_ms",
+          "input_tokens",
+          "output_tokens"
+        ],
+        "title": "AnswerMeta",
+        "type": "object"
+      },
       "AppliedCounts": {
         "properties": {
           "creates": {
@@ -392,6 +489,33 @@
         "title": "Body_create_import_api_v1_stores__store_id__imports_post",
         "type": "object"
       },
+      "CacheOut": {
+        "properties": {
+          "generated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When a reused summary was generated.",
+            "title": "Generated At"
+          },
+          "hit": {
+            "title": "Hit",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "hit",
+          "generated_at"
+        ],
+        "title": "CacheOut",
+        "type": "object"
+      },
       "CategoryList": {
         "properties": {
           "items": {
@@ -416,6 +540,193 @@
         ],
         "title": "ChangeSource",
         "type": "string"
+      },
+      "ConversationContext": {
+        "enum": [
+          "GENERAL",
+          "EXCEPTION"
+        ],
+        "title": "ConversationContext",
+        "type": "string"
+      },
+      "ConversationCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "context_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Required for EXCEPTION: the exception the conversation is about.",
+            "title": "Context Id"
+          },
+          "context_type": {
+            "$ref": "#/components/schemas/ConversationContext",
+            "default": "GENERAL"
+          }
+        },
+        "title": "ConversationCreate",
+        "type": "object"
+      },
+      "ConversationDetail": {
+        "properties": {
+          "context_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Id"
+          },
+          "context_type": {
+            "$ref": "#/components/schemas/ConversationContext"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "max_messages": {
+            "description": "The UI asks for a new conversation at this length.",
+            "title": "Max Messages",
+            "type": "integer"
+          },
+          "message_count": {
+            "title": "Message Count",
+            "type": "integer"
+          },
+          "messages": {
+            "description": "Oldest first.",
+            "items": {
+              "$ref": "#/components/schemas/MessageOut"
+            },
+            "title": "Messages",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "context_type",
+          "context_id",
+          "message_count",
+          "created_at",
+          "updated_at",
+          "messages",
+          "max_messages"
+        ],
+        "title": "ConversationDetail",
+        "type": "object"
+      },
+      "ConversationOut": {
+        "properties": {
+          "context_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Id"
+          },
+          "context_type": {
+            "$ref": "#/components/schemas/ConversationContext"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "message_count": {
+            "title": "Message Count",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "context_type",
+          "context_id",
+          "message_count",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ConversationOut",
+        "type": "object"
+      },
+      "CopilotTurnOut": {
+        "properties": {
+          "answer": {
+            "$ref": "#/components/schemas/StructuredAnswer"
+          },
+          "conversation_id": {
+            "format": "uuid",
+            "title": "Conversation Id",
+            "type": "string"
+          },
+          "message_id": {
+            "format": "uuid",
+            "title": "Message Id",
+            "type": "string"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/AnswerMeta"
+          },
+          "user_message_id": {
+            "format": "uuid",
+            "title": "User Message Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "conversation_id",
+          "user_message_id",
+          "message_id",
+          "answer",
+          "meta"
+        ],
+        "title": "CopilotTurnOut",
+        "type": "object"
       },
       "DashboardOut": {
         "properties": {
@@ -505,6 +816,35 @@
           "last_evaluation_run"
         ],
         "title": "DataFreshness",
+        "type": "object"
+      },
+      "DataWindow": {
+        "properties": {
+          "from": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Earliest lower bound of a time-bounded query in the turn; null when only current-state snapshots were used.",
+            "title": "From"
+          },
+          "to": {
+            "description": "The turn's as_of.",
+            "format": "date-time",
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to"
+        ],
+        "title": "DataWindow",
         "type": "object"
       },
       "DeadlineWeights": {
@@ -852,6 +1192,29 @@
           "window_days"
         ],
         "title": "Estimate",
+        "type": "object"
+      },
+      "EstimateItem": {
+        "additionalProperties": false,
+        "properties": {
+          "basis": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Basis",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "basis"
+        ],
+        "title": "EstimateItem",
         "type": "object"
       },
       "EvaluationCreate": {
@@ -1781,6 +2144,61 @@
         "title": "ExceptionStatus",
         "type": "string"
       },
+      "ExceptionSummaryOut": {
+        "properties": {
+          "answer": {
+            "$ref": "#/components/schemas/StructuredAnswer"
+          },
+          "conversation_id": {
+            "format": "uuid",
+            "title": "Conversation Id",
+            "type": "string"
+          },
+          "exception_id": {
+            "format": "uuid",
+            "title": "Exception Id",
+            "type": "string"
+          },
+          "message_id": {
+            "format": "uuid",
+            "title": "Message Id",
+            "type": "string"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/AnswerMeta"
+          }
+        },
+        "required": [
+          "conversation_id",
+          "message_id",
+          "exception_id",
+          "answer",
+          "meta"
+        ],
+        "title": "ExceptionSummaryOut",
+        "type": "object"
+      },
+      "ExceptionSummaryRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "exception_id": {
+            "format": "uuid",
+            "title": "Exception Id",
+            "type": "string"
+          },
+          "refresh": {
+            "default": false,
+            "description": "Bypass a cached summary (counts against rate limit and budget).",
+            "title": "Refresh",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "exception_id"
+        ],
+        "title": "ExceptionSummaryRequest",
+        "type": "object"
+      },
       "ExceptionType": {
         "enum": [
           "INVENTORY_OVERSOLD",
@@ -1875,6 +2293,83 @@
         ],
         "title": "ExceptionTypeBreakdown",
         "type": "object"
+      },
+      "Fact": {
+        "additionalProperties": false,
+        "properties": {
+          "refs": {
+            "description": "Reference keys type:id; at least one.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Refs",
+            "type": "array"
+          },
+          "text": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "refs"
+        ],
+        "title": "Fact",
+        "type": "object"
+      },
+      "FallbackOut": {
+        "properties": {
+          "notice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Shown above the answer when the live AI fell back.",
+            "title": "Notice"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FallbackReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "used": {
+            "title": "Used",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "used",
+          "reason",
+          "notice"
+        ],
+        "title": "FallbackOut",
+        "type": "object"
+      },
+      "FallbackReason": {
+        "description": "Why a turn was answered by the deterministic provider instead of the live one (\u00a78.2).",
+        "enum": [
+          "PROVIDER_RATE_LIMITED",
+          "PROVIDER_TIMEOUT",
+          "PROVIDER_ERROR",
+          "BUDGET_EXCEEDED",
+          "CIRCUIT_OPEN",
+          "PROVIDER_NOT_CONFIGURED",
+          "INVALID_OUTPUT"
+        ],
+        "title": "FallbackReason",
+        "type": "string"
       },
       "FulfillmentStatus": {
         "enum": [
@@ -2869,6 +3364,152 @@
         "title": "MembershipOut",
         "type": "object"
       },
+      "MessageKind": {
+        "enum": [
+          "CHAT",
+          "INVESTIGATION_SUMMARY",
+          "NOTE_DRAFT"
+        ],
+        "title": "MessageKind",
+        "type": "string"
+      },
+      "MessageOut": {
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StructuredAnswer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Assistant CHAT and summary messages."
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NoteDraft"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Assistant NOTE_DRAFT messages."
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/MessageKind"
+          },
+          "meta": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnswerMeta"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Assistant messages only."
+          },
+          "role": {
+            "$ref": "#/components/schemas/MessageRole"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "User messages: the question or action requested.",
+            "title": "Text"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "kind",
+          "created_at",
+          "text",
+          "answer",
+          "draft",
+          "meta"
+        ],
+        "title": "MessageOut",
+        "type": "object"
+      },
+      "MessageRole": {
+        "enum": [
+          "user",
+          "assistant"
+        ],
+        "title": "MessageRole",
+        "type": "string"
+      },
+      "Metric": {
+        "additionalProperties": false,
+        "properties": {
+          "formula": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Formula"
+          },
+          "label": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "refs": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Refs",
+            "type": "array"
+          },
+          "unit": {
+            "description": "Store currency, orders, units, hours, ...",
+            "maxLength": 24,
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "description": "The number exactly as a tool returned it.",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "value",
+          "unit",
+          "refs"
+        ],
+        "title": "Metric",
+        "type": "object"
+      },
       "MovementOut": {
         "properties": {
           "created_by": {
@@ -3032,12 +3673,127 @@
             ],
             "description": "Optimistic concurrency: 409 STALE_VERSION on mismatch",
             "title": "Expected Version"
+          },
+          "source": {
+            "$ref": "#/components/schemas/NoteSource",
+            "default": "USER",
+            "description": "AI_DRAFT_ACCEPTED when the person accepts (and may have edited) a copilot note draft; the author is still the person."
           }
         },
         "required": [
           "body"
         ],
         "title": "NoteCreate",
+        "type": "object"
+      },
+      "NoteDraft": {
+        "description": "A validated note draft. Nothing is saved: a person edits it and saves it through the\nexception notes endpoint with ``source = AI_DRAFT_ACCEPTED``.",
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "data_window": {
+            "$ref": "#/components/schemas/DataWindow"
+          },
+          "generated_by": {
+            "title": "Generated By",
+            "type": "string"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "references": {
+            "items": {
+              "$ref": "#/components/schemas/Reference"
+            },
+            "title": "References",
+            "type": "array"
+          },
+          "refs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Refs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "body",
+          "refs",
+          "limitations",
+          "references",
+          "data_window",
+          "generated_by"
+        ],
+        "title": "NoteDraft",
+        "type": "object"
+      },
+      "NoteDraftOut": {
+        "description": "A draft only. Nothing was saved: to keep it, a person with ``exceptions.work`` posts the\n(edited) body to ``POST \u2026/exceptions/{exception_id}/notes`` with\n``source = AI_DRAFT_ACCEPTED``.",
+        "properties": {
+          "conversation_id": {
+            "format": "uuid",
+            "title": "Conversation Id",
+            "type": "string"
+          },
+          "draft": {
+            "$ref": "#/components/schemas/NoteDraft"
+          },
+          "exception_id": {
+            "format": "uuid",
+            "title": "Exception Id",
+            "type": "string"
+          },
+          "message_id": {
+            "format": "uuid",
+            "title": "Message Id",
+            "type": "string"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/AnswerMeta"
+          }
+        },
+        "required": [
+          "conversation_id",
+          "message_id",
+          "exception_id",
+          "draft",
+          "meta"
+        ],
+        "title": "NoteDraftOut",
+        "type": "object"
+      },
+      "NoteDraftRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "exception_id": {
+            "format": "uuid",
+            "title": "Exception Id",
+            "type": "string"
+          },
+          "user_hint": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The user's own account of what they did; quoted in the draft as 'Reported:'.",
+            "title": "User Hint"
+          }
+        },
+        "required": [
+          "exception_id"
+        ],
+        "title": "NoteDraftRequest",
         "type": "object"
       },
       "NoteSource": {
@@ -3776,6 +4532,37 @@
         "title": "Page[AuditLogOut]",
         "type": "object"
       },
+      "Page_ConversationOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ConversationOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "total"
+        ],
+        "title": "Page[ConversationOut]",
+        "type": "object"
+      },
       "Page_EvaluationRunOut_": {
         "properties": {
           "items": {
@@ -4512,6 +5299,45 @@
         "title": "ProductStatus",
         "type": "string"
       },
+      "QuestionCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "question": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "title": "QuestionCreate",
+        "type": "object"
+      },
+      "Recommendation": {
+        "additionalProperties": false,
+        "properties": {
+          "rationale": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Rationale",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "rationale"
+        ],
+        "title": "Recommendation",
+        "type": "object"
+      },
       "ReconciliationOut": {
         "description": "BR-104: cached balances compared with the ledger and reservations. Drift is a defect.",
         "properties": {
@@ -4543,6 +5369,41 @@
           "items"
         ],
         "title": "ReconciliationOut",
+        "type": "object"
+      },
+      "Reference": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 300,
+            "title": "Label",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "exception",
+              "order",
+              "product",
+              "import",
+              "evaluation_run",
+              "aggregate"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "label"
+        ],
+        "title": "Reference",
         "type": "object"
       },
       "ReopenRequest": {
@@ -5217,6 +6078,79 @@
         "title": "StoreSummary",
         "type": "object"
       },
+      "StructuredAnswer": {
+        "description": "A validated answer as stored and returned. Rendered by the UI as labelled sections.",
+        "properties": {
+          "data_window": {
+            "$ref": "#/components/schemas/DataWindow"
+          },
+          "estimates": {
+            "items": {
+              "$ref": "#/components/schemas/EstimateItem"
+            },
+            "title": "Estimates",
+            "type": "array"
+          },
+          "facts": {
+            "items": {
+              "$ref": "#/components/schemas/Fact"
+            },
+            "title": "Facts",
+            "type": "array"
+          },
+          "generated_by": {
+            "description": "'llm:<model id>' or 'deterministic'; set by the server.",
+            "title": "Generated By",
+            "type": "string"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/Metric"
+            },
+            "title": "Metrics",
+            "type": "array"
+          },
+          "recommendations": {
+            "items": {
+              "$ref": "#/components/schemas/Recommendation"
+            },
+            "title": "Recommendations",
+            "type": "array"
+          },
+          "references": {
+            "description": "Every record the answer cites; labels are set by the server, not the model.",
+            "items": {
+              "$ref": "#/components/schemas/Reference"
+            },
+            "title": "References",
+            "type": "array"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "summary",
+          "facts",
+          "metrics",
+          "estimates",
+          "recommendations",
+          "limitations",
+          "references",
+          "data_window",
+          "generated_by"
+        ],
+        "title": "StructuredAnswer",
+        "type": "object"
+      },
       "SupplierDetail": {
         "properties": {
           "id": {
@@ -5346,6 +6280,76 @@
         ],
         "title": "TimeWindow",
         "type": "object"
+      },
+      "ToolCallOrigin": {
+        "description": "Who asked for the call: the live model, the deterministic router plan, or the\ninvestigation ContextBuilder (AI_ARCHITECTURE.md \u00a74.3).",
+        "enum": [
+          "MODEL",
+          "ROUTER",
+          "CONTEXT_BUILDER"
+        ],
+        "title": "ToolCallOrigin",
+        "type": "string"
+      },
+      "ToolCallOut": {
+        "properties": {
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/ToolCallOrigin"
+          },
+          "row_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row Count"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ToolCallStatus"
+          },
+          "tool_name": {
+            "title": "Tool Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool_name",
+          "status",
+          "origin",
+          "row_count",
+          "duration_ms"
+        ],
+        "title": "ToolCallOut",
+        "type": "object"
+      },
+      "ToolCallStatus": {
+        "description": "Outcome of one tool call (TOOL_CATALOG.md \u00a71.2).",
+        "enum": [
+          "SUCCESS",
+          "INVALID_ARGUMENTS",
+          "PERMISSION_DENIED",
+          "NOT_FOUND",
+          "TIMEOUT",
+          "REJECTED_LIMIT",
+          "UNKNOWN_TOOL",
+          "ERROR"
+        ],
+        "title": "ToolCallStatus",
+        "type": "string"
       },
       "TrendDay": {
         "properties": {
@@ -5566,6 +6570,32 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "ValidationOut": {
+        "properties": {
+          "dropped_items": {
+            "title": "Dropped Items",
+            "type": "integer"
+          },
+          "dropped_refs": {
+            "title": "Dropped Refs",
+            "type": "integer"
+          },
+          "flags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Flags",
+            "type": "array"
+          }
+        },
+        "required": [
+          "dropped_refs",
+          "dropped_items",
+          "flags"
+        ],
+        "title": "ValidationOut",
         "type": "object"
       },
       "VersionedRequest": {
@@ -6142,6 +7172,352 @@
         "summary": "List Categories",
         "tags": [
           "catalog"
+        ]
+      }
+    },
+    "/api/v1/stores/{store_id}/copilot/conversations": {
+      "get": {
+        "description": "The caller's own conversations in this store, most recently active first.",
+        "operationId": "list_conversations_api_v1_stores__store_id__copilot_conversations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "store_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Store Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 10000,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_ConversationOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Conversations",
+        "tags": [
+          "copilot"
+        ]
+      },
+      "post": {
+        "description": "Start a conversation. ``EXCEPTION`` conversations (``context_id`` = exception id) also need\n``exceptions.read``; questions that name no other record bind to that exception.",
+        "operationId": "start_conversation_api_v1_stores__store_id__copilot_conversations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "store_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Store Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Conversation",
+        "tags": [
+          "copilot"
+        ]
+      }
+    },
+    "/api/v1/stores/{store_id}/copilot/conversations/{conversation_id}": {
+      "get": {
+        "description": "One of the caller's conversations with its messages (404 for anyone else's).",
+        "operationId": "get_conversation_api_v1_stores__store_id__copilot_conversations__conversation_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "store_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Store Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Conversation",
+        "tags": [
+          "copilot"
+        ]
+      }
+    },
+    "/api/v1/stores/{store_id}/copilot/conversations/{conversation_id}/messages": {
+      "post": {
+        "description": "Ask a question (one turn). Returns the structured answer and its provenance. When the live\nprovider is unavailable the rule-based assistant answers and ``meta.fallback`` says why.\n409 ``CONVERSATION_FULL`` after ``max_messages``; 429 when the copilot rate limit is hit.",
+        "operationId": "ask_api_v1_stores__store_id__copilot_conversations__conversation_id__messages_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "store_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Store Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuestionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CopilotTurnOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ask",
+        "tags": [
+          "copilot"
+        ]
+      }
+    },
+    "/api/v1/stores/{store_id}/copilot/exception-summaries": {
+      "post": {
+        "description": "Investigation summary of one exception. A validated live-model summary is reused while the\nexception's evidence and history are unchanged (``meta.cache``); ``refresh`` bypasses it.",
+        "operationId": "exception_summary_api_v1_stores__store_id__copilot_exception_summaries_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "store_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Store Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExceptionSummaryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionSummaryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Exception Summary",
+        "tags": [
+          "copilot"
+        ]
+      }
+    },
+    "/api/v1/stores/{store_id}/copilot/note-drafts": {
+      "post": {
+        "description": "Draft a work note for an exception. Nothing is saved: to keep it, the person posts the\n(edited) body to ``POST /stores/{store_id}/exceptions/{exception_id}/notes`` with\n``source = AI_DRAFT_ACCEPTED``.",
+        "operationId": "note_draft_api_v1_stores__store_id__copilot_note_drafts_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "store_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Store Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteDraftRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteDraftOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Note Draft",
+        "tags": [
+          "copilot"
         ]
       }
     },

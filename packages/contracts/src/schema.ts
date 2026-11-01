@@ -233,6 +233,116 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stores/{store_id}/copilot/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Conversations
+         * @description The caller's own conversations in this store, most recently active first.
+         */
+        get: operations["list_conversations_api_v1_stores__store_id__copilot_conversations_get"];
+        put?: never;
+        /**
+         * Start Conversation
+         * @description Start a conversation. ``EXCEPTION`` conversations (``context_id`` = exception id) also need
+         *     ``exceptions.read``; questions that name no other record bind to that exception.
+         */
+        post: operations["start_conversation_api_v1_stores__store_id__copilot_conversations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stores/{store_id}/copilot/conversations/{conversation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Conversation
+         * @description One of the caller's conversations with its messages (404 for anyone else's).
+         */
+        get: operations["get_conversation_api_v1_stores__store_id__copilot_conversations__conversation_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stores/{store_id}/copilot/conversations/{conversation_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask
+         * @description Ask a question (one turn). Returns the structured answer and its provenance. When the live
+         *     provider is unavailable the rule-based assistant answers and ``meta.fallback`` says why.
+         *     409 ``CONVERSATION_FULL`` after ``max_messages``; 429 when the copilot rate limit is hit.
+         */
+        post: operations["ask_api_v1_stores__store_id__copilot_conversations__conversation_id__messages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stores/{store_id}/copilot/exception-summaries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Exception Summary
+         * @description Investigation summary of one exception. A validated live-model summary is reused while the
+         *     exception's evidence and history are unchanged (``meta.cache``); ``refresh`` bypasses it.
+         */
+        post: operations["exception_summary_api_v1_stores__store_id__copilot_exception_summaries_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stores/{store_id}/copilot/note-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Note Draft
+         * @description Draft a work note for an exception. Nothing is saved: to keep it, the person posts the
+         *     (edited) body to ``POST /stores/{store_id}/exceptions/{exception_id}/notes`` with
+         *     ``source = AI_DRAFT_ACCEPTED``.
+         */
+        post: operations["note_draft_api_v1_stores__store_id__copilot_note_drafts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/stores/{store_id}/evaluations": {
         parameters: {
             query?: never;
@@ -813,6 +923,40 @@ export interface components {
          * @enum {string}
          */
         ActorType: "USER" | "SYSTEM";
+        /** AnswerMeta */
+        AnswerMeta: {
+            /**
+             * As Of
+             * Format: date-time
+             * @description The instant every number in the answer describes.
+             */
+            as_of: string;
+            cache: components["schemas"]["CacheOut"];
+            fallback: components["schemas"]["FallbackOut"];
+            /** Input Tokens */
+            input_tokens: number;
+            /**
+             * Intent
+             * @description Deterministic intent the question was routed to.
+             */
+            intent: string | null;
+            /** Latency Ms */
+            latency_ms: number | null;
+            /** Model */
+            model: string | null;
+            /** Output Tokens */
+            output_tokens: number;
+            /** Prompt Version */
+            prompt_version: string;
+            /**
+             * Provider
+             * @enum {string}
+             */
+            provider: "gemini" | "openai_compatible" | "deterministic";
+            /** Tool Calls */
+            tool_calls: components["schemas"]["ToolCallOut"][];
+            validation: components["schemas"]["ValidationOut"];
+        };
         /** AppliedCounts */
         AppliedCounts: {
             /** Creates */
@@ -918,6 +1062,16 @@ export interface components {
             file: string;
             import_type: components["schemas"]["ImportType"];
         };
+        /** CacheOut */
+        CacheOut: {
+            /**
+             * Generated At
+             * @description When a reused summary was generated.
+             */
+            generated_at: string | null;
+            /** Hit */
+            hit: boolean;
+        };
         /** CategoryList */
         CategoryList: {
             /** Items */
@@ -928,6 +1082,101 @@ export interface components {
          * @enum {string}
          */
         ChangeSource: "IMPORT" | "USER" | "SYSTEM";
+        /**
+         * ConversationContext
+         * @enum {string}
+         */
+        ConversationContext: "GENERAL" | "EXCEPTION";
+        /** ConversationCreate */
+        ConversationCreate: {
+            /**
+             * Context Id
+             * @description Required for EXCEPTION: the exception the conversation is about.
+             */
+            context_id?: string | null;
+            /** @default GENERAL */
+            context_type: components["schemas"]["ConversationContext"];
+        };
+        /** ConversationDetail */
+        ConversationDetail: {
+            /** Context Id */
+            context_id: string | null;
+            context_type: components["schemas"]["ConversationContext"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Max Messages
+             * @description The UI asks for a new conversation at this length.
+             */
+            max_messages: number;
+            /** Message Count */
+            message_count: number;
+            /**
+             * Messages
+             * @description Oldest first.
+             */
+            messages: components["schemas"]["MessageOut"][];
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** ConversationOut */
+        ConversationOut: {
+            /** Context Id */
+            context_id: string | null;
+            context_type: components["schemas"]["ConversationContext"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Message Count */
+            message_count: number;
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** CopilotTurnOut */
+        CopilotTurnOut: {
+            answer: components["schemas"]["StructuredAnswer"];
+            /**
+             * Conversation Id
+             * Format: uuid
+             */
+            conversation_id: string;
+            /**
+             * Message Id
+             * Format: uuid
+             */
+            message_id: string;
+            meta: components["schemas"]["AnswerMeta"];
+            /**
+             * User Message Id
+             * Format: uuid
+             */
+            user_message_id: string;
+        };
         /** DashboardOut */
         DashboardOut: {
             active_exceptions: components["schemas"]["ActiveExceptionSummary"];
@@ -961,6 +1210,20 @@ export interface components {
             imports: components["schemas"]["ImportFreshness"][];
             /** @description The most recently started evaluation run, whatever its status. */
             last_evaluation_run: components["schemas"]["EvaluationRunFreshness"] | null;
+        };
+        /** DataWindow */
+        DataWindow: {
+            /**
+             * From
+             * @description Earliest lower bound of a time-bounded query in the turn; null when only current-state snapshots were used.
+             */
+            from: string | null;
+            /**
+             * To
+             * Format: date-time
+             * @description The turn's as_of.
+             */
+            to: string;
         };
         /** DeadlineWeights */
         DeadlineWeights: {
@@ -1080,6 +1343,13 @@ export interface components {
             value: string | null;
             /** Window Days */
             window_days: number;
+        };
+        /** EstimateItem */
+        EstimateItem: {
+            /** Basis */
+            basis: string;
+            /** Text */
+            text: string;
         };
         /** EvaluationCreate */
         EvaluationCreate: {
@@ -1422,6 +1692,40 @@ export interface components {
          * @enum {string}
          */
         ExceptionStatus: "OPEN" | "ACKNOWLEDGED" | "IN_PROGRESS" | "REOPENED" | "RESOLVED" | "DISMISSED";
+        /** ExceptionSummaryOut */
+        ExceptionSummaryOut: {
+            answer: components["schemas"]["StructuredAnswer"];
+            /**
+             * Conversation Id
+             * Format: uuid
+             */
+            conversation_id: string;
+            /**
+             * Exception Id
+             * Format: uuid
+             */
+            exception_id: string;
+            /**
+             * Message Id
+             * Format: uuid
+             */
+            message_id: string;
+            meta: components["schemas"]["AnswerMeta"];
+        };
+        /** ExceptionSummaryRequest */
+        ExceptionSummaryRequest: {
+            /**
+             * Exception Id
+             * Format: uuid
+             */
+            exception_id: string;
+            /**
+             * Refresh
+             * @description Bypass a cached summary (counts against rate limit and budget).
+             * @default false
+             */
+            refresh: boolean;
+        };
         /**
          * ExceptionType
          * @enum {string}
@@ -1465,6 +1769,33 @@ export interface components {
             /** Superseded In Window */
             superseded_in_window: number;
         };
+        /** Fact */
+        Fact: {
+            /**
+             * Refs
+             * @description Reference keys type:id; at least one.
+             */
+            refs: string[];
+            /** Text */
+            text: string;
+        };
+        /** FallbackOut */
+        FallbackOut: {
+            /**
+             * Notice
+             * @description Shown above the answer when the live AI fell back.
+             */
+            notice: string | null;
+            reason: components["schemas"]["FallbackReason"] | null;
+            /** Used */
+            used: boolean;
+        };
+        /**
+         * FallbackReason
+         * @description Why a turn was answered by the deterministic provider instead of the live one (§8.2).
+         * @enum {string}
+         */
+        FallbackReason: "PROVIDER_RATE_LIMITED" | "PROVIDER_TIMEOUT" | "PROVIDER_ERROR" | "BUDGET_EXCEEDED" | "CIRCUIT_OPEN" | "PROVIDER_NOT_CONFIGURED" | "INVALID_OUTPUT";
         /**
          * FulfillmentStatus
          * @enum {string}
@@ -1821,6 +2152,61 @@ export interface components {
             /** Stores */
             stores: components["schemas"]["StoreSummary"][];
         };
+        /**
+         * MessageKind
+         * @enum {string}
+         */
+        MessageKind: "CHAT" | "INVESTIGATION_SUMMARY" | "NOTE_DRAFT";
+        /** MessageOut */
+        MessageOut: {
+            /** @description Assistant CHAT and summary messages. */
+            answer: components["schemas"]["StructuredAnswer"] | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** @description Assistant NOTE_DRAFT messages. */
+            draft: components["schemas"]["NoteDraft"] | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            kind: components["schemas"]["MessageKind"];
+            /** @description Assistant messages only. */
+            meta: components["schemas"]["AnswerMeta"] | null;
+            role: components["schemas"]["MessageRole"];
+            /**
+             * Text
+             * @description User messages: the question or action requested.
+             */
+            text: string | null;
+        };
+        /**
+         * MessageRole
+         * @enum {string}
+         */
+        MessageRole: "user" | "assistant";
+        /** Metric */
+        Metric: {
+            /** Formula */
+            formula?: string | null;
+            /** Label */
+            label: string;
+            /** Refs */
+            refs: string[];
+            /**
+             * Unit
+             * @description Store currency, orders, units, hours, ...
+             */
+            unit: string;
+            /**
+             * Value
+             * @description The number exactly as a tool returned it.
+             */
+            value: string;
+        };
         /** MovementOut */
         MovementOut: {
             /** Created By */
@@ -1885,6 +2271,67 @@ export interface components {
              * @description Optimistic concurrency: 409 STALE_VERSION on mismatch
              */
             expected_version?: number | null;
+            /**
+             * @description AI_DRAFT_ACCEPTED when the person accepts (and may have edited) a copilot note draft; the author is still the person.
+             * @default USER
+             */
+            source: components["schemas"]["NoteSource"];
+        };
+        /**
+         * NoteDraft
+         * @description A validated note draft. Nothing is saved: a person edits it and saves it through the
+         *     exception notes endpoint with ``source = AI_DRAFT_ACCEPTED``.
+         */
+        NoteDraft: {
+            /** Body */
+            body: string;
+            data_window: components["schemas"]["DataWindow"];
+            /** Generated By */
+            generated_by: string;
+            /** Limitations */
+            limitations: string[];
+            /** References */
+            references: components["schemas"]["Reference"][];
+            /** Refs */
+            refs: string[];
+        };
+        /**
+         * NoteDraftOut
+         * @description A draft only. Nothing was saved: to keep it, a person with ``exceptions.work`` posts the
+         *     (edited) body to ``POST …/exceptions/{exception_id}/notes`` with
+         *     ``source = AI_DRAFT_ACCEPTED``.
+         */
+        NoteDraftOut: {
+            /**
+             * Conversation Id
+             * Format: uuid
+             */
+            conversation_id: string;
+            draft: components["schemas"]["NoteDraft"];
+            /**
+             * Exception Id
+             * Format: uuid
+             */
+            exception_id: string;
+            /**
+             * Message Id
+             * Format: uuid
+             */
+            message_id: string;
+            meta: components["schemas"]["AnswerMeta"];
+        };
+        /** NoteDraftRequest */
+        NoteDraftRequest: {
+            /**
+             * Exception Id
+             * Format: uuid
+             */
+            exception_id: string;
+            /**
+             * User Hint
+             * @description The user's own account of what they did; quoted in the draft as 'Reported:'.
+             */
+            user_hint?: string | null;
         };
         /**
          * NoteSource
@@ -2166,6 +2613,17 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[ConversationOut] */
+        Page_ConversationOut_: {
+            /** Items */
+            items: components["schemas"]["ConversationOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
         /** Page[EvaluationRunOut] */
         Page_EvaluationRunOut_: {
             /** Items */
@@ -2427,6 +2885,18 @@ export interface components {
          * @enum {string}
          */
         ProductStatus: "ACTIVE" | "DRAFT" | "ARCHIVED";
+        /** QuestionCreate */
+        QuestionCreate: {
+            /** Question */
+            question: string;
+        };
+        /** Recommendation */
+        Recommendation: {
+            /** Rationale */
+            rationale: string;
+            /** Text */
+            text: string;
+        };
         /**
          * ReconciliationOut
          * @description BR-104: cached balances compared with the ledger and reservations. Drift is a defect.
@@ -2443,6 +2913,18 @@ export interface components {
             is_consistent: boolean;
             /** Items */
             items: components["schemas"]["DriftOut"][];
+        };
+        /** Reference */
+        Reference: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "exception" | "order" | "product" | "import" | "evaluation_run" | "aggregate";
         };
         /** ReopenRequest */
         ReopenRequest: {
@@ -2682,6 +3164,35 @@ export interface components {
             /** Timezone */
             timezone: string;
         };
+        /**
+         * StructuredAnswer
+         * @description A validated answer as stored and returned. Rendered by the UI as labelled sections.
+         */
+        StructuredAnswer: {
+            data_window: components["schemas"]["DataWindow"];
+            /** Estimates */
+            estimates: components["schemas"]["EstimateItem"][];
+            /** Facts */
+            facts: components["schemas"]["Fact"][];
+            /**
+             * Generated By
+             * @description 'llm:<model id>' or 'deterministic'; set by the server.
+             */
+            generated_by: string;
+            /** Limitations */
+            limitations: string[];
+            /** Metrics */
+            metrics: components["schemas"]["Metric"][];
+            /** Recommendations */
+            recommendations: components["schemas"]["Recommendation"][];
+            /**
+             * References
+             * @description Every record the answer cites; labels are set by the server, not the model.
+             */
+            references: components["schemas"]["Reference"][];
+            /** Summary */
+            summary: string;
+        };
         /** SupplierDetail */
         SupplierDetail: {
             /**
@@ -2743,6 +3254,30 @@ export interface components {
             /** Timezone */
             timezone: string;
         };
+        /**
+         * ToolCallOrigin
+         * @description Who asked for the call: the live model, the deterministic router plan, or the
+         *     investigation ContextBuilder (AI_ARCHITECTURE.md §4.3).
+         * @enum {string}
+         */
+        ToolCallOrigin: "MODEL" | "ROUTER" | "CONTEXT_BUILDER";
+        /** ToolCallOut */
+        ToolCallOut: {
+            /** Duration Ms */
+            duration_ms: number | null;
+            origin: components["schemas"]["ToolCallOrigin"];
+            /** Row Count */
+            row_count: number | null;
+            status: components["schemas"]["ToolCallStatus"];
+            /** Tool Name */
+            tool_name: string;
+        };
+        /**
+         * ToolCallStatus
+         * @description Outcome of one tool call (TOOL_CATALOG.md §1.2).
+         * @enum {string}
+         */
+        ToolCallStatus: "SUCCESS" | "INVALID_ARGUMENTS" | "PERMISSION_DENIED" | "NOT_FOUND" | "TIMEOUT" | "REJECTED_LIMIT" | "UNKNOWN_TOOL" | "ERROR";
         /** TrendDay */
         TrendDay: {
             /**
@@ -2853,6 +3388,15 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** ValidationOut */
+        ValidationOut: {
+            /** Dropped Items */
+            dropped_items: number;
+            /** Dropped Refs */
+            dropped_refs: number;
+            /** Flags */
+            flags: string[];
         };
         /** VersionedRequest */
         VersionedRequest: {
@@ -3211,6 +3755,213 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CategoryList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_conversations_api_v1_stores__store_id__copilot_conversations_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                store_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ConversationOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_conversation_api_v1_stores__store_id__copilot_conversations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                store_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConversationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_conversation_api_v1_stores__store_id__copilot_conversations__conversation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: string;
+                store_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ask_api_v1_stores__store_id__copilot_conversations__conversation_id__messages_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: string;
+                store_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuestionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CopilotTurnOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    exception_summary_api_v1_stores__store_id__copilot_exception_summaries_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                store_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExceptionSummaryRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExceptionSummaryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    note_draft_api_v1_stores__store_id__copilot_note_drafts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                store_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteDraftOut"];
                 };
             };
             /** @description Validation Error */
