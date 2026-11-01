@@ -351,6 +351,8 @@ def test_untrusted_text_is_sanitised_and_marked(
     assert "​" not in record["name"]
     assert "‹b›" in record["name"]
     assert record["suspicious_text"] is True
+    assert record["ref"]["label"] == "KH-EVIL-1"  # labels never repeat instruction-like text
+    assert tools.ledger.label(f"product:{record['ref']['id']}") == "KH-EVIL-1"
     assert "records[].name" in envelope["untrusted_fields"]
 
 

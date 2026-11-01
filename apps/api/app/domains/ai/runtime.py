@@ -17,6 +17,7 @@ from app.core.clock import utcnow
 from app.core.config import Settings
 from app.core.rate_limit import SlidingWindowRateLimiter
 from app.domains.ai.budget import CircuitBreaker, LLMBudget
+from app.domains.ai.ledger import EvidenceLedger
 from app.domains.ai.models import FallbackReason
 from app.domains.ai.providers.base import LLMProvider
 from app.domains.ai.providers.gemini import GeminiProvider
@@ -24,7 +25,7 @@ from app.domains.ai.providers.openai_compatible import OpenAICompatibleProvider
 
 LiveProviderName = Literal["gemini", "openai_compatible"]
 ProviderFactory = Callable[[Settings, httpx.Client], LLMProvider | None]
-CandidateHook = Callable[[str, Any], None]
+CandidateHook = Callable[[str, Any, EvidenceLedger], None]  # provider, raw candidate, ledger
 
 
 def configured_provider(

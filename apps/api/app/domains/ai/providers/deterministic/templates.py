@@ -7,6 +7,7 @@ as "value at risk", the priority caveat, store-time-zone timestamps. The output 
 validator as a live model's answer.
 """
 
+import json
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -25,6 +26,10 @@ from app.domains.exceptions.rules.base import format_local
 from app.domains.exceptions.rules.order_fulfillment_overdue import STATUS_ACTIONS
 from app.domains.orders.models import OrderStatus
 
+UNUSUAL_TEXT = (
+    "A record contains unusual text that looks like an instruction; it was treated as data only "
+    "and is not repeated here."
+)
 PRIORITY_CAVEAT = (
     "The priority score is a ranking aid built from severity, affected orders, value at risk, "
     "deadline and time open; it is not a measure of business impact, and its weights are defaults "
@@ -128,11 +133,26 @@ def answer(
     }
 
 
+WITHHELD = "[text withheld: it looks like an instruction]"
+
+
+def safe_text(record: dict[str, Any], *path: str) -> str:
+    """Free text of a record, unless the tool flagged the record as containing
+    instruction-like text: templates never repeat such text (PROMPT_DESIGN.md §5)."""
+    if record.get("suspicious_text"):
+        return WITHHELD
+    value: Any = record
+    for name in path:
+        value = value.get(name) if isinstance(value, dict) else None
+    return str(value) if value is not None else ""
+
+
 def exception_line(rec: dict[str, Any], info: TemplateInfo, *, exposure: bool = False) -> str:
     owner = (rec.get("assignee") or {}).get("display_name") or "unassigned"
     due = when(rec.get("due_at"), info)
     parts = [
-        f"{rec['reference']} {rec.get('title', '')}: {rec['severity']}, {rec['priority_band']} "
+        f"{rec['reference']} {safe_text(rec, 'title')}: {rec['severity']}, "
+        f"{rec['priority_band']} "
         f"(score {rec['priority_score']}), {rec['status']}, due {due}"
         + (" (past due)" if rec.get("is_past_due") else ""),
         owner,
@@ -428,7 +448,8 @@ def changes_since_yesterday(r: RoutedIntent, res: Results, info: TemplateInfo) -
     facts += [fact(f"New: {exception_line(rec, info)}", key(rec)) for rec in new[:6]]
     facts += [
         fact(
-            f"Resolved: {rec['reference']} {rec.get('title', '')} ({rec.get('resolution_code')}).",
+            f"Resolved: {rec['reference']} {safe_text(rec, 'title')} "
+            f"({rec.get('resolution_code')}).",
             key(rec),
         )
         for rec in resolved[:3]
@@ -598,7 +619,7 @@ def exception_answer(r: RoutedIntent, res: Results, info: TemplateInfo) -> dict[
     owner = (rec.get("assignee") or {}).get("display_name") or "unassigned"
     criteria = rec.get("severity_criteria") or ""
     summary = (
-        f"{rec['reference']} ({clip(rec.get('title', ''), 120)}) is {rec['severity']} with "
+        f"{rec['reference']} ({clip(safe_text(rec, 'title'), 120)}) is {rec['severity']} with "
         f"priority score {rec['priority_score']} ({rec['priority_band']}). Severity rule: "
         f"{criteria} It is {rec['status']}, {owner}, due {when(rec.get('due_at'), info)}"
         + (", past due." if rec.get("is_past_due") else ".")
@@ -682,11 +703,6 @@ def exception_answer(r: RoutedIntent, res: Results, info: TemplateInfo) -> dict[
         limitations.append(EXPOSURE_CAVEAT)
     if estimates:
         limitations.append(ESTIMATE_CAVEAT)
-    if rec.get("suspicious_text") or (history or {}).get("suspicious_text"):
-        limitations.append(
-            "A record contains unusual text that looks like an instruction; it was treated as "
-            "data only."
-        )
     return answer(
         summary,
         facts=facts,
@@ -799,7 +815,7 @@ def product_lookup(r: RoutedIntent, res: Results, info: TemplateInfo) -> dict[st
         lead = supplier.get("lead_time_days")
         facts.append(
             fact(
-                f"Supplier {supplier.get('name')}"
+                f"Supplier {safe_text(product, 'supplier', 'name')}"
                 + (f", lead time {lead} days." if lead is not None else "."),
                 key(product),
             )
@@ -852,8 +868,9 @@ def order_lookup(r: RoutedIntent, res: Results, info: TemplateInfo) -> dict[str,
     for o in orders[:3]:
         facts.append(
             fact(
-                f"Order {o['order_number']}: placed {when(o.get('placed_at'), info)}, paid "
-                f"{when(o.get('paid_at'), info)}, ship-by {when(o.get('ship_by'), info)} "
+                f"Order {o['order_number']} is {o['status']} (payment {o['payment_status']}, "
+                f"fulfillment {o['fulfillment_status']}): placed {when(o.get('placed_at'), info)}, "
+                f"paid {when(o.get('paid_at'), info)}, ship-by {when(o.get('ship_by'), info)} "
                 f"({o.get('ship_by_source') or 'no source'}), shipped "
                 f"{when(o.get('shipped_at'), info)}.",
                 key(o),
@@ -1095,9 +1112,12 @@ def render(r: RoutedIntent, res: Results, info: TemplateInfo) -> dict[str, Any]:
             limitations=["Data that could not be read: " + ", ".join(failed) + "."],
         )
     rendered = TEMPLATES[r.intent](r, res, info)
+    notes = []
     if failed:
-        note = "Data that could not be read: " + ", ".join(failed) + "."
-        rendered["limitations"] = [note, *rendered["limitations"]][:8]
+        notes.append("Data that could not be read: " + ", ".join(failed) + ".")
+    if any('"suspicious_text": true' in json.dumps(e) for e in res.values()):
+        notes.append(UNUSUAL_TEXT)
+    rendered["limitations"] = [*notes, *rendered["limitations"]][:8]
     return rendered
 
 
@@ -1120,7 +1140,8 @@ def render_note(
         if not item.get("is_estimate") and item.get("value") not in (None, "")
     ][:3]
     parts = [
-        f"As of {when(info.as_of, info)}: {rec['reference']} ({clip(rec.get('title', ''), 120)}) "
+        f"As of {when(info.as_of, info)}: {rec['reference']} "
+        f"({clip(safe_text(rec, 'title'), 120)}) "
         f"is {rec['status']}, severity {rec['severity']}, priority {rec['priority_score']} "
         f"({rec['priority_band']}).",
     ]

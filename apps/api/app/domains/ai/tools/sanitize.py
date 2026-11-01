@@ -74,7 +74,25 @@ class TextGuard:
         return text
 
     def mark(self, record: dict[str, Any]) -> dict[str, Any]:
-        """Add ``suspicious_text: true`` to the record when any of its values tripped a check."""
+        """Add ``suspicious_text: true`` to the record when any of its values tripped a check.
+
+        Reference labels that carry the suspicious text fall back to their identifier part
+        ("SKU · name" → "SKU", "EXC-1042 · title" → "EXC-1042"): labels are server-authoritative
+        and shown next to answers, so they must not repeat instruction-like text.
+        """
         if self.suspicious:
             record["suspicious_text"] = True
+            _neutralise_labels(record)
         return record
+
+
+def _neutralise_labels(node: Any) -> None:
+    if isinstance(node, dict):
+        ref = node.get("ref")
+        if isinstance(ref, dict) and is_suspicious(str(ref.get("label") or "")):
+            ref["label"] = str(ref["label"]).split(" · ", 1)[0]
+        for value in node.values():
+            _neutralise_labels(value)
+    elif isinstance(node, list):
+        for item in node:
+            _neutralise_labels(item)

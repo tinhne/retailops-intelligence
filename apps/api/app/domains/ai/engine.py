@@ -319,7 +319,7 @@ class _LiveTurn:
 
     def _hook(self, candidate: Any) -> None:
         if self.runtime.candidate_hook is not None:
-            self.runtime.candidate_hook(self.provider.name, candidate)
+            self.runtime.candidate_hook(self.provider.name, candidate, self.tools.ledger)
 
 
 def run_turn(
@@ -390,7 +390,7 @@ def run_turn(
     if request.kind is MessageKind.NOTE_DRAFT:
         raw = render_note(routed, results, template_info, request.user_hint)
         if runtime.candidate_hook is not None:
-            runtime.candidate_hook(deterministic.NAME, raw)
+            runtime.candidate_hook(deterministic.NAME, raw, tools.ledger)
         note = validate_note(
             raw,
             tools.ledger,
@@ -404,7 +404,7 @@ def run_turn(
     else:
         raw = render(routed, results, template_info)
         if runtime.candidate_hook is not None:
-            runtime.candidate_hook(deterministic.NAME, raw)
+            runtime.candidate_hook(deterministic.NAME, raw, tools.ledger)
         checked = validate_answer(
             raw,
             tools.ledger,
