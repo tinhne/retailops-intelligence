@@ -29,7 +29,9 @@ from app.domains.ai.providers.base import (
 from app.domains.ai.providers.http import post_json
 
 API_BASE = "https://generativelanguage.googleapis.com/v1beta"
-DEFAULT_MODEL = "gemini-2.5-flash"  # Needs validation against Google's current free-tier list
+# As of 2026-11-01 Google answers 404 "no longer available to new users" for gemini-2.5-flash and
+# names gemini-3.8-flash as its replacement (ai.google.dev docs). Override with LLM_MODEL.
+DEFAULT_MODEL = "gemini-3.8-flash"
 _BLOCKED_FINISH = {
     "SAFETY",
     "RECITATION",
