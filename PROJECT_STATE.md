@@ -79,7 +79,7 @@
 
 | Task | Notes |
 |---|---|
-| Manual test pass | In progress when the session ended: demo viewer pass done (Overview, exception + AI panel, Copilot, Inventory, Movements, Orders, Imports, Settings, Audit log); owner pass started (Users & roles checked). Manager pass (lifecycle actions, note draft save, import upload/apply) not yet repeated after the merges |
+| Manual test pass | Done 2026-11-01 as demo viewer, owner and manager on seeded local data; no open findings |
 | T-081 Playwright E2E | BACKLOG (P0). 12-step journey; run against the compose stack in CI |
 | T-083 Accessibility review | BACKLOG (P1). keyboard, contrast, 375 px across all screens |
 | T-100 README and release | BACKLOG (P0). README, real screenshots, demo guide, release notes |
@@ -142,7 +142,6 @@
 
 ## Next three highest-priority actions
 
-1. Finish the manual test pass as manager (lifecycle actions, note draft save, import upload and
-   apply, Validate again) on the seeded data, then ask the owner to push `main`.
+1. Ask the owner to push `main` and confirm the GitHub Actions run.
 2. T-081 Playwright journey and T-083 accessibility review.
 3. T-100 README with real screenshots and release notes; T-093 once the owner picks a host.

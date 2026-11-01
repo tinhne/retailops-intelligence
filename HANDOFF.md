@@ -20,15 +20,12 @@ except the P1 analytics screen, including Copilot (S-14) and admin. `make check`
 vitest 265 passed. See `PROJECT_STATE.md` and `PROGRESS.md` (latest entry) for detail.
 
 ## 3. Currently being implemented
-**Where work stopped (2026-11-01):** a manual test pass on the seeded local data. Done: the demo
-viewer pass and the owner's Users & roles screen. Not yet repeated after the merges: the manager
-pass (acknowledge/start/resolve on an exception, "Draft with copilot" then Save note, import
-upload with progress, apply, discard, Validate again on a FAILED import). The working tree is
-clean; `main` is ahead of `origin/main` and not pushed (the owner approves pushes).
+**Manual test pass complete (2026-11-01)** on the seeded local data, as demo viewer, owner and
+manager, with no open findings (details in `PROGRESS.md`). The working tree is clean; `main` is
+ahead of `origin/main` and not pushed (the owner approves pushes).
 
-**Exact next step:** sign in locally as `manager@kestrel.example` (password: the
-`DEMO_STAFF_PASSWORD` used for `make seed`) and finish the manager pass above, fixing anything found.
-Then T-081 (Playwright journey), T-083 (accessibility), T-100 (README, screenshots, release notes).
+**Exact next step:** ask the owner to push `main`, confirm the GitHub Actions run, then start T-081
+(Playwright journey), T-083 (accessibility) and T-100 (README, screenshots, release notes).
 
 **Notes for the next task:**
 - Local stack: `make seed` (with `DEMO_STAFF_PASSWORD`), `make api-dev`, `pnpm web:dev`; or the

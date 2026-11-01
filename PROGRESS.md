@@ -311,3 +311,21 @@ add a correction entry instead.
   draft save, import upload and apply.
 - **Tests:** backend `make check` 865 passed on the merged tree; web lint, typecheck, build green,
   vitest 265 passed (3c5bf45).
+
+## 2026-11-01 (UTC+7): Orchestrator: manager manual test pass
+
+- **Owner:** the Roles and permissions tab renders the role matrix (left unverified in the previous
+  entry); self-action guards on the owner's own row.
+- **Manager, exception EXC-1001:** acknowledge, start work (self-assigned), "Draft with copilot"
+  filled the note box without saving, Save note stored it with "AI draft, accepted by Priya Raman",
+  resolve validation ("Choose how it was resolved.", the 10-character note minimum), resolve with
+  "Awaiting verification". The next import's evaluation reopened it with "verification failed"
+  because stock was still short, as the verification rule in STATE_MACHINES (reopen with `VERIFICATION_FAILED`) intends.
+- **Manager, imports:** upload through XHR ("Uploading 0%…", then "Validating…"), preview,
+  valid-rows-only apply with consent (2 unchanged, 1 skipped, no data changed), "View new
+  exceptions" filtered by the evaluation run (2 exceptions), duplicate-file warning on a second
+  upload, an interrupted apply (simulated on that local record by back-dating it in APPLYING, which
+  the API's housekeeping turns into FAILED), "Validate again" back to the preview, then discard.
+- **375 px:** exception page with the fixed action bar, import record, new import and copilot; no
+  sideways scroll and no console errors.
+- **Findings:** none. No code changed, so the earlier results stand (web 265 tests, backend 865).
