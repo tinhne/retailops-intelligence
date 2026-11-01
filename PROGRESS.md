@@ -385,3 +385,20 @@ add a correction entry instead.
 - Pushed `main` at 08539f7 (owner approved). GitHub Actions run 41294651337: **success** on all five
   jobs (API, web, dependency audit, Docker images, E2E against the Compose stack, where the demo still
   appears because demo mode is on and the demo is seeded).
+
+## 2026-11-01 (UTC+7): Orchestrator: sample shops, sales playbook, live Gemini check
+
+- **10 fictional Vietnamese sample shops** (`app/demo/sample_stores.py`, `sample-data/stores-vn`,
+  `make load-sample-stores`): loaded through provision plus the strict import pipeline in 24 s, 0
+  errors; each shop ends with exactly its 10 engineered active exceptions. 11 tests.
+  Sales and onboarding playbook: `docs/guides/QUY_TRINH_BAN_VA_ONBOARDING.md`.
+- **Live Gemini check with the owner's free key:** the key lists models, but generation failed.
+  `gemini-2.5-flash` (the code default) answered 404 "no longer available to new users, use
+  gemini-3.8-flash"; `generateContent` on gemini-3.8-flash and 3.5-flash answered 404 with an empty body
+  for this key (one 503, and the Interactions API timed out once). The deterministic fallback
+  covered every case: `make ai-eval PROVIDER=gemini` gave 65/65 with a fallback rate of 83.1%, which
+  shows the fallback works, not Gemini. That report was not kept, to avoid a misleading result.
+- **Fix:** default Gemini model changed to `gemini-3.8-flash` (Google's named replacement; override
+  with `LLM_MODEL`). Live generation is still **unverified**; it needs a standard AI Studio key.
+  The local `.env` keeps the key but uses the deterministic provider.
+- **Results:** backend `make check` 887 passed before this fix; provider unit tests 16 passed after it.

@@ -81,7 +81,7 @@ def test_gemini_sends_the_key_in_a_header_and_maps_tool_calls() -> None:
     sent = seen[0]
     assert KEY not in str(sent.url)
     assert sent.headers["x-goog-api-key"] == KEY
-    assert sent.url.path.endswith("/models/gemini-2.5-flash:generateContent")
+    assert sent.url.path.endswith("/models/gemini-3.8-flash:generateContent")
     body = json.loads(sent.content)
     assert body["systemInstruction"]["parts"][0]["text"] == prompts.SYSTEM.text
     roles = [c["role"] for c in body["contents"]]
