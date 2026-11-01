@@ -47,8 +47,9 @@ export const exceptionsApi = {
     apiFetch<ExceptionDetail>(`${base(storeId, id)}/reopen`, { method: "POST", body: { ...body, expected_version: version } }),
   setDueDate: (storeId: string, id: string, version: number, body: DueDateBody) =>
     apiFetch<ExceptionDetail>(`${base(storeId, id)}/due-date`, { method: "PATCH", body: { ...body, expected_version: version } }),
-  addNote: (storeId: string, id: string, version: number, body: string) =>
-    apiFetch<ExceptionNote>(`${base(storeId, id)}/notes`, { method: "POST", body: { body, expected_version: version } }),
+  /** `AI_DRAFT_ACCEPTED` records that a person reviewed and saved a copilot draft (S-04). */
+  addNote: (storeId: string, id: string, version: number, body: string, source: "USER" | "AI_DRAFT_ACCEPTED" = "USER") =>
+    apiFetch<ExceptionNote>(`${base(storeId, id)}/notes`, { method: "POST", body: { body, expected_version: version, source } }),
 };
 
 export const exceptionKeys = {

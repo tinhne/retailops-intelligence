@@ -239,6 +239,7 @@ describe("ExceptionScreen follow-ups (S-04)", () => {
       "How this was detected",
       "Evidence",
       "Affected orders",
+      "AI investigation",
       "Activity",
       "Details",
     ]);

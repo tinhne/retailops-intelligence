@@ -398,3 +398,31 @@ export const importIssueMeta: Record<string, { level: IssueLevel; fix: string }>
   ALREADY_APPLIED: { level: "WARNING", fix: "Nothing to do. Use a new reference for a genuinely new movement." },
   DUPLICATE_FILE: { level: "WARNING", fix: "Check that you meant to import it again; applying it is safe." },
 };
+
+export type ToolCallStatus = Schema<"ToolCallStatus">;
+
+/** Human labels for the copilot's read-only tools (docs/ai/TOOL_CATALOG.md). */
+export const copilotToolLabels: Record<string, string> = {
+  list_exceptions: "Exceptions list",
+  get_exception: "Exception detail",
+  get_exception_history: "Exception history",
+  get_related_orders: "Related orders",
+  get_overdue_orders: "Overdue orders",
+  get_product: "Product",
+  get_inventory_position: "Inventory position",
+  get_inventory_movements: "Inventory movements",
+  get_dashboard_summary: "Dashboard summary",
+  get_import_errors: "Import errors",
+  get_operational_trends: "Operational trends",
+};
+
+export const toolCallStatusLabels: Record<ToolCallStatus, string> = {
+  SUCCESS: "OK",
+  INVALID_ARGUMENTS: "Invalid arguments",
+  PERMISSION_DENIED: "Not available to your role",
+  NOT_FOUND: "Not found",
+  TIMEOUT: "Timed out",
+  REJECTED_LIMIT: "Over the size limit",
+  UNKNOWN_TOOL: "Unknown tool",
+  ERROR: "Failed",
+};

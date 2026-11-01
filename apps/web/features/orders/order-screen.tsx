@@ -1,13 +1,14 @@
 "use client";
 
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { AlarmClock, ChevronRight, Info, TriangleAlert } from "lucide-react";
+import { AlarmClock, ChevronRight, Info, MessagesSquare, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
 import { DateTime, Money, NoValue } from "@/components/data/values";
 import { sectionHref } from "@/components/shell/nav-config";
 import { CopyButton } from "@/components/states/copy-button";
+import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/states/error-state";
 import { NotFoundState } from "@/components/states/not-found-state";
 import { PermissionDenied } from "@/components/states/permission-denied";
@@ -209,6 +210,8 @@ export function OrderScreen() {
   const refund = exceptions.find((item) => item.exception_type === "ORDER_REFUND_PENDING" && item.is_active);
   const productHref = sectionHref(store.id, "products", store.permissions);
   const importsHref = sectionHref(store.id, "imports", store.permissions);
+  // Prefilled, never auto-sent (S-14 "Prefill entry points").
+  const copilotHref = sectionHref(store.id, "copilot", store.permissions, { q: `Summarise order ${data.order_number} and any open issues.` });
   const events =[...data.events].sort((a, b) => b.occurred_at.localeCompare(a.occurred_at));
 
   return (
@@ -225,6 +228,14 @@ export function OrderScreen() {
               <AlarmClock aria-hidden className="size-4" />
               {formatDue(data.ship_by, now).text}
             </span>
+          ) : null}
+          {copilotHref ? (
+            <Button asChild variant="secondary" size="sm" className="ml-auto">
+              <Link href={copilotHref}>
+                <MessagesSquare aria-hidden />
+                Ask the copilot
+              </Link>
+            </Button>
           ) : null}
         </div>
         <p className="text-sm text-muted-foreground">

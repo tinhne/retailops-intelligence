@@ -61,7 +61,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Intelligence",
     items: [
-      { label: "Copilot", segment: "copilot", icon: MessageSquareText, permission: ["copilot.use"], ready: false },
+      { label: "Copilot", segment: "copilot", icon: MessageSquareText, permission: ["copilot.use"], ready: true },
     ],
   },
   {

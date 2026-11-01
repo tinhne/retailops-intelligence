@@ -11,6 +11,7 @@ import { NotFoundState } from "@/components/states/not-found-state";
 import { ErrorState } from "@/components/states/error-state";
 import { PermissionDenied } from "@/components/states/permission-denied";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AIInvestigationPanel } from "@/features/copilot/ai-investigation-panel";
 import { isApiError } from "@/lib/api/errors";
 import { exceptionKeys, exceptionsApi } from "@/lib/api/exceptions-api";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
@@ -139,6 +140,7 @@ export function ExceptionScreen() {
     { id: "calculation", label: "How this was detected" },
     { id: "evidence", label: "Evidence" },
     ...(affected ? [{ id: "affected", label: "Affected orders" }] : []),
+    { id: "ai", label: "AI investigation" },
     { id: "activity", label: "Activity" },
     { id: "details", label: "Details" },
   ];
@@ -159,9 +161,12 @@ export function ExceptionScreen() {
           <CalculationBlock exception={exception} />
           <EvidenceTable exception={exception} />
           <AffectedOrders exception={exception} />
+          {/* Below 1280 px the AI panel follows the deterministic sections; above, it heads the aside. */}
+          <AIInvestigationPanel exception={exception} sectionId="ai" className="xl:hidden" />
           <Activity exception={exception} />
         </div>
         <aside aria-label="About this exception" className="flex flex-col gap-6 xl:sticky xl:top-20">
+          <AIInvestigationPanel exception={exception} className="hidden xl:block" />
           <DetailsCard exception={exception} />
         </aside>
       </div>

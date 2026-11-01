@@ -12,6 +12,7 @@ import {
   MessageSquare,
   RotateCcw,
   ScanSearch,
+  Sparkles,
   UserRound,
   type LucideIcon,
 } from "lucide-react";
@@ -23,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { copilotApi } from "@/lib/api/copilot-api";
 import { isApiError, userMessage } from "@/lib/api/errors";
 import { exceptionKeys, exceptionsApi, type ExceptionDetail, type ExceptionEvent, type ExceptionNote } from "@/lib/api/exceptions-api";
 import { formatDateTime } from "@/lib/format/datetime";
@@ -165,17 +167,31 @@ export function toTimelineItems(events: ExceptionEvent[], notes: ExceptionNote[]
   return [...fromEvents, ...fromNotes].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
 }
 
-/** Append-only notes (C-55). The AI draft path arrives with the copilot (T-073). */
+/**
+ * Append-only notes (C-55). "Draft with copilot" only fills the text box: a person reviews, edits
+ * and saves it, and the note records that it started as an AI draft.
+ */
 function NoteComposer({ exception }: { exception: ExceptionDetail }) {
   const store = useStore();
   const queryClient = useQueryClient();
   const gate = gateFor(exception, "add_note", store.organization.isDemo);
   const [body, setBody] = useState("");
+  const [fromDraft, setFromDraft] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const command = useExceptionCommand(exception);
   const save = useMutation({
-    mutationFn: () => exceptionsApi.addNote(store.id, exception.id, exception.version, body.trim()),
+    mutationFn: () => exceptionsApi.addNote(store.id, exception.id, exception.version, body.trim(), fromDraft ? "AI_DRAFT_ACCEPTED" : "USER"),
   });
+  const draft = useMutation({
+    mutationFn: () => copilotApi.noteDraft(store.id, exception.id),
+    onSuccess: (result) => {
+      setBody(result.draft.body.slice(0, NOTE_MAX));
+      setFromDraft(true);
+      setError(null);
+    },
+    onError: (caught) => setError(userMessage(caught)),
+  });
+  const canDraft = store.permissions.has("copilot.use");
 
   if (!gate?.allowed) {
     return (
@@ -193,6 +209,7 @@ function NoteComposer({ exception }: { exception: ExceptionDetail }) {
     try {
       await save.mutateAsync();
       setBody("");
+      setFromDraft(false);
       await queryClient.invalidateQueries({ queryKey: exceptionKeys.detail(store.id, exception.id) });
     } catch (caught) {
       if (isApiError(caught) && caught.code === "STALE_VERSION") {
@@ -223,7 +240,10 @@ function NoteComposer({ exception }: { exception: ExceptionDetail }) {
         maxLength={NOTE_MAX}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? "note-error" : undefined}
-        onChange={(event) => setBody(event.target.value)}
+        onChange={(event) => {
+          setBody(event.target.value);
+          if (!event.target.value) setFromDraft(false);
+        }}
         onKeyDown={(event) => {
           if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
             event.preventDefault();
@@ -243,10 +263,29 @@ function NoteComposer({ exception }: { exception: ExceptionDetail }) {
         ) : (
           <span />
         )}
-        <Button type="submit" size="sm" disabled={save.isPending} pending={save.isPending} pendingLabel="Adding…">
-          Add note
-        </Button>
+        <div className="flex items-center gap-2">
+          {canDraft ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={save.isPending}
+              pending={draft.isPending}
+              pendingLabel="Drafting…"
+              onClick={() => draft.mutate()}
+            >
+              <Sparkles aria-hidden />
+              Draft with copilot
+            </Button>
+          ) : null}
+          <Button type="submit" size="sm" disabled={save.isPending} pending={save.isPending} pendingLabel="Adding…">
+            {fromDraft ? "Save note" : "Add note"}
+          </Button>
+        </div>
       </div>
+      {fromDraft ? (
+        <p className="text-xs text-muted-foreground">AI draft. Review and edit it before saving; it is saved only when you choose Save note.</p>
+      ) : null}
     </form>
   );
 }
