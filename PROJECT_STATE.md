@@ -6,10 +6,10 @@
 |---|---|
 | Project | RetailOps Intelligence: E-commerce Operations & Decision Intelligence Platform |
 | Owner | Lê Văn Trung Tính (GitHub `tinhne`) |
-| Current milestone | **M6 frontend and M7 AI copilot done (T-060..T-074); ops, security and demo history done (T-056, T-082, T-090).** Next: E2E (T-081), accessibility (T-083), README and release (T-100); deployment waits on the owner (T-093) |
-| Current phase | Feature-complete locally: every screen, the copilot (deterministic provider, free-tier LLM optional), admin, compose stack. Final QA, docs and deployment remain |
-| Overall completion | All P0/P1 product tasks are implemented and tested except T-081 (Playwright journey), T-083 (accessibility review), T-100 (README, screenshots, release notes) and T-093/T-094 deployment (blocked on hosting choice). T-095 (P2) not started |
-| Last verified commit | `main` at 3c5bf45 (local; ahead of `origin/main` and not pushed): web lint, typecheck, 265 tests and build green on this tree; backend `make check` 865 passed on the merged tree before the web-only copilot commits |
+| Current milestone | **M8 quality and M10 release docs done locally (T-081, T-083, T-100).** Remaining: deployment and the public demo (T-093/T-094), which wait on the owner's hosting choice |
+| Current phase | v1.0 feature-complete and verified locally, end to end; deployment remains |
+| Overall completion | All P0/P1 product tasks are implemented and tested except T-093/T-094 deployment (blocked on hosting choice). T-095 (P2) not started |
+| Last verified commit | `main` after merging `feat/e2e-a11y` and the README (local, not pushed): backend 865, web 265, Playwright 19/19 against the Compose stack, copilot eval 65/65 |
 | Remote | https://github.com/tinhne/retailops-intelligence (public). The first CI run passed |
 | Architecture version | v1 (modular monolith; `docs/domain/*`, ADR-0001..0013) |
 | Last update | 2026-11-01 (UTC+7) |
@@ -80,10 +80,10 @@
 | Task | Notes |
 |---|---|
 | Manual test pass | Done 2026-11-01 as demo viewer, owner and manager on seeded local data; no open findings |
-| T-081 Playwright E2E | BACKLOG (P0). 12-step journey; run against the compose stack in CI |
-| T-083 Accessibility review | BACKLOG (P1). keyboard, contrast, 375 px across all screens |
-| T-100 README and release | BACKLOG (P0). README, real screenshots, demo guide, release notes |
-| Push | Pushed 2026-11-01 at 9a1e033 (CI green); later commits wait for the owner's approval |
+| T-081 Playwright E2E | DONE 2026-11-01. 19 tests incl. setup pass against the Compose stack; CI job `e2e` added (not yet run on GitHub) |
+| T-083 Accessibility review | DONE 2026-11-01. axe WCAG 2.1 A/AA on 11 screens: 3 serious findings and 1 moderate fixed, 0 remaining; keyboard and 375 px in E2E |
+| T-100 README and release | DONE 2026-11-01. README with real screenshots, demo guide, release notes v1.0.0 |
+| Push | Pushed 2026-11-01 at 9a1e033 (CI green); everything after waits for the owner's approval |
 
 ## Blocked
 
@@ -115,6 +115,10 @@
 
 ## Latest test results
 
+- Resume baseline (2026-11-01, `main` at 44cd6b0): `make check` **865 passed**; web lint, typecheck, vitest **265 passed**.
+- Playwright (2026-11-01, `pnpm --filter @retailops/web e2e` against an isolated Compose stack): **19 passed**
+  (setup, 12-step journey, public demo ×2, axe ×3, 375 px). Web vitest after the a11y fixes: 265 passed.
+- `make ai-eval` deterministic on `main` (bd5c8dd): **65/65**, gates PASS (`apps/api/evals/reports/2026-11-01_deterministic_bd5c8dd.md`).
 - `make check` (2026-11-01, merged tree of all five branches): ruff OK, ruff format OK, mypy --strict OK, pytest **865 passed**.
 - Web (2026-11-01, at 3c5bf45): `pnpm --filter @retailops/web lint`, `typecheck`, `build` green; vitest **265 passed**.
 - `make ai-eval` deterministic (run by the AI branch against its own database): 65/65 cases, gates PASS. No live-LLM run (no key).
@@ -142,6 +146,6 @@
 
 ## Next three highest-priority actions
 
-1. T-081 Playwright journey (12 steps, CI against the compose stack).
-2. T-083 accessibility review (keyboard, contrast, 375 px).
-3. T-100 README with real screenshots and release notes; T-093 once the owner picks a host.
+1. Push `main` (owner approval) and confirm the new `e2e` CI job passes on GitHub.
+2. T-093/T-094: once the owner picks a free host, the deploy pipeline, the public demo and its reset schedule.
+3. Open items in `SECURITY.md` §6 and the P1/P2 backlog (e.g. T-095 per-visitor sandbox).

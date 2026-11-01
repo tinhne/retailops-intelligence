@@ -329,3 +329,31 @@ add a correction entry instead.
 - **375 px:** exception page with the fixed action bar, import record, new import and copilot; no
   sideways scroll and no console errors.
 - **Findings:** none. No code changed, so the earlier results stand (web 265 tests, backend 865).
+
+## 2026-11-01 (UTC+7): Orchestrator: E2E, accessibility and README (T-081, T-083, T-100)
+
+- **Resume check:** `main` was 2 commits ahead of `origin/main` (demo guide and release notes) with
+  an uncommitted README draft that still had screenshot and testing placeholders and named
+  Playwright and axe before they existed. The draft was kept on `docs/readme-v1` and merged after
+  the work below. Baseline: `make check` 865 passed; web lint, typecheck, vitest 265 passed.
+- **T-081 Playwright** (`apps/web/tests/e2e`, `playwright.config.ts`): a serial 12-step journey for the
+  owner's required scenarios (CSV files generated per run), the public demo (read-only, a direct
+  mutation answered 403, copilot), a 375 px pass, a setup project that signs in to the demo once (demo
+  entry is rate limited at 5 a minute per IP), and an on-demand README screenshot capture. CI job
+  `e2e` runs it against the Compose stack via `make stack-up` with a throwaway staff password.
+- **T-083 accessibility:** axe-core WCAG 2.1 A/AA on sign-in plus 11 app views. Fixed: the sign-in footer
+  link relied on colour only (now underlined); the account menu's `aria-label` did not contain its
+  visible initials (now named by sr-only text, initials `aria-hidden`); the top bar's section label was
+  a second `nav` named "Breadcrumb" on detail pages (now plain text). Result: no violations of any
+  impact, including best practices, on the scanned views.
+- **Test-only adjustments, not app bugs:** the import type card's label covers its radio, so the test
+  clicks the label; the preview needs "Continue to apply"; in OPEN, Resolve sits in the More menu, so
+  the journey acknowledges first; Tab is pressed only after the page has loaded.
+- **Environment note:** another project listens on `*:3100` and `*:3000` (IPv6). Locally, point
+  `E2E_BASE_URL` at `127.0.0.1`, not `localhost`. The isolated stack used project `retailops-e2e` on
+  ports 3100/8100/54339.
+- **T-100:** README screenshots and testing sections filled with verified numbers; six real
+  screenshots in `docs/screenshots` captured from the seeded stack; links checked; release notes and
+  TEST_STRATEGY §10 updated to the implemented suite.
+- **Results:** Playwright 19 passed (21 s); vitest 265 passed; `make ai-eval` deterministic on `main`
+  65/65, gates PASS. Not pushed (owner approval pending).

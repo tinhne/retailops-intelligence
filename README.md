@@ -30,7 +30,17 @@ copilot explains the evidence without ever changing data.
 
 ## 2. Screenshots
 
-SCREENSHOTS_PLACEHOLDER
+Real screenshots of the running app (the fictional demo store, signed in as the read-only viewer),
+captured by `E2E_SCREENSHOTS=1 pnpm --filter @retailops/web e2e`.
+
+| | |
+|---|---|
+| ![Overview: KPIs, the attention list by priority, value at risk per category](docs/screenshots/overview.png) | ![Exception investigation: priority breakdown, recommended action, evidence](docs/screenshots/exception-detail.png) |
+| **Overview**: KPIs, the attention list by priority, value at risk per category | **Exception**: why this priority, the recommended action, evidence and lifecycle |
+| ![Exceptions inbox with triage views, filters and search](docs/screenshots/exceptions-inbox.png) | ![Copilot answer with labelled facts and record references](docs/screenshots/copilot.png) |
+| **Exceptions inbox**: triage views, filters, search | **Copilot**: labelled facts and metrics, each linked to its record |
+| ![Inventory positions with stock health](docs/screenshots/inventory.png) | ![CSV imports with status and the analysis each one triggered](docs/screenshots/imports.png) |
+| **Inventory**: on hand, reserved, available and stock health | **Imports**: history, status and the analysis each import triggered |
 
 ## 3. The problem
 
@@ -166,7 +176,7 @@ the ADRs in [`docs/decisions`](docs/decisions).
 | Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, shadcn/ui (Radix), TanStack Query, React Hook Form + Zod, Recharts |
 | Contracts | TypeScript types generated from the OpenAPI schema ([ADR-0013](docs/decisions/ADR-0013-openapi-generated-typescript-contracts.md)) |
 | AI | Provider abstraction over plain HTTPS: Gemini, OpenAI-compatible free tiers, deterministic fallback |
-| Quality | pytest against real PostgreSQL, mypy `--strict`, ruff, Vitest + Testing Library + axe, Playwright |
+| Quality | pytest against real PostgreSQL, mypy `--strict`, ruff, Vitest + Testing Library, Playwright with axe-core |
 | Delivery | Multi-stage Docker images (non-root), Docker Compose, GitHub Actions |
 
 ## 12. Data model
@@ -219,7 +229,20 @@ regenerate the TypeScript contracts with `pnpm contracts:generate`.
 
 ## 16. Testing and quality
 
-TESTING_PLACEHOLDER
+| Suite | What it covers | Command |
+|---|---|---|
+| Backend: 865 tests | pytest against a real PostgreSQL 16: every business rule (tests cite `BR-xxx` IDs), state machines, the rule engine and its reconciliation, imports, permissions and tenant isolation on every endpoint, the copilot tools and providers | `make check` (with ruff and `mypy --strict`) |
+| Web: 265 tests | Vitest + Testing Library: screens and their loading, empty, error and permission states, lifecycle actions, formatting, the API client | `pnpm --filter @retailops/web test` |
+| End to end: 18 tests | Playwright against the running stack: the 12-step operations journey (imports → detection → assign → note → resolve → audit → copilot), the read-only public demo, a 375 px pass with no sideways scroll, and axe-core WCAG 2.1 A/AA scans of 11 screens | `pnpm --filter @retailops/web e2e` |
+| Copilot evaluation: 65 cases | Intent, facts against the database, tool choice, attribution, permissions, prompt injection, no mutation; reports in [`apps/api/evals/reports`](apps/api/evals/reports) | `make ai-eval` |
+
+GitHub Actions runs all of it on every push: lint, types, unit and integration tests, migrations
+checked against the models, production builds, Docker images, a dependency audit, and the
+Playwright suite against the Docker Compose stack. Strategy and traceability:
+[`docs/operations/TEST_STRATEGY.md`](docs/operations/TEST_STRATEGY.md).
+
+To run the end-to-end suite locally against `make stack-up`, set `DEMO_STAFF_PASSWORD` before the
+stack seeds and pass the same value as `E2E_STAFF_PASSWORD`.
 
 ## 17. Demo data and accounts
 

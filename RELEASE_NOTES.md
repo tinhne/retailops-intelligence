@@ -49,6 +49,8 @@ manual tests. It runs locally; there is no hosted deployment yet.
 
 - Docker Compose stack (database, API with migrations on start, scheduled worker, web, demo seed)
   with health checks and non-root images; demo reset command; GitHub Actions CI.
+- Playwright end-to-end suite run in CI against the Compose stack: the 12-step operations journey,
+  the read-only public demo, a 375 px pass, and axe-core WCAG 2.1 A/AA scans of 11 screens.
 
 ### Fixes made while hardening for release
 
@@ -57,6 +59,9 @@ manual tests. It runs locally; there is no hosted deployment yet.
 - Request bodies and CSV headers are size-limited; a quadratic CSV header check was made linear.
 - The apply step reports the API's actual error codes and refetches the import after a conflict.
 - Copilot reference chips can no longer widen narrow layouts.
+- Accessibility (found by the axe scans): the sign-in footer link is underlined instead of
+  colour-only, the account menu's name no longer conflicts with its visible initials, and detail
+  pages no longer have two landmarks named "Breadcrumb".
 
 ### Breaking changes
 

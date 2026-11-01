@@ -20,30 +20,31 @@ except the P1 analytics screen, including Copilot (S-14) and admin. `make check`
 vitest 265 passed. See `PROJECT_STATE.md` and `PROGRESS.md` (latest entry) for detail.
 
 ## 3. Currently being implemented
-**Manual test pass complete (2026-11-01)** on the seeded local data, as demo viewer, owner and
-manager, with no open findings (details in `PROGRESS.md`). The working tree is clean; `main` is
-ahead of `origin/main` and not pushed (the owner approves pushes).
+**T-081, T-083 and T-100 are done (2026-11-01).** Playwright 19/19 against the Compose stack, axe
+WCAG 2.1 A/AA clean on 11 views, README with real screenshots. `main` is ahead of `origin/main` and
+not pushed (the owner approves pushes).
 
-**Exact next step:** `main` was pushed at 9a1e033 and CI passed (run 41271652506). Start T-081
-(Playwright journey), T-083 (accessibility) and T-100 (README, screenshots, release notes).
+**Exact next step:** ask the owner to push; then confirm the GitHub Actions run, including the new
+`e2e` job. After that, deployment (T-093/T-094) once the owner picks a free host.
 
 **Notes for the next task:**
+- E2E: `pnpm --filter @retailops/web e2e` against any running stack (`E2E_BASE_URL`, default
+  `http://localhost:3000`). The journey needs `E2E_STAFF_PASSWORD` = the stack's `DEMO_STAFF_PASSWORD`.
+  README screenshots: `E2E_SCREENSHOTS=1` on a freshly reset demo (`make stack-demo-reset`).
+- Locally another project may listen on `*:3000`/`*:3100` over IPv6: use `127.0.0.1` in `E2E_BASE_URL`.
+- Demo entry is rate limited (5/min per IP): viewer tests reuse the session from `demo.setup.ts`.
 - Local stack: `make seed` (with `DEMO_STAFF_PASSWORD`), `make api-dev`, `pnpm web:dev`; or the
   compose stack (`make stack-up`, `make stack-demo-reset`). The seed changes the store id, so open
   the app from `/login`.
 - Sign-in needs the pre-session CSRF token (`GET /auth/csrf`); backend tests use
   `tests.factories.login()` or `pre_session_csrf(client)`. A new mutating route a demo viewer may
   call must be listed in `VISITOR_PRIVATE` in `tests/integration/test_demo_read_only.py`.
-- Security headers include `X-Frame-Options: DENY`, so pages cannot be framed (also not in tests).
-- The sidebar lists only built pages; every v1 nav item is now `ready`. `sectionHref` still hides
-  links the role may not open.
-- Reuse: `lib/list-params.ts` + `useListState` for list URL state, `components/data/*`
-  (`DataTable` with `pinned`, `hideBelow` to `2xl`, `renderExpanded`), `components/data/section.tsx`,
-  `features/imports/import-actions.tsx` (`newImportHref`, `ImportLink`), `lib/api/download.ts`,
-  `features/copilot/copilot-answer.tsx` (`CopilotAnswer`, `ReferenceChip`).
+- Security headers include `X-Frame-Options: DENY`, so pages cannot be framed.
+- Reuse: `lib/list-params.ts` + `useListState`, `components/data/*`, `features/imports/import-actions.tsx`,
+  `lib/api/download.ts`, `features/copilot/copilot-answer.tsx`. Mutations on exceptions go through
+  `features/exceptions/detail/use-exception-command.ts`.
 - Any horizontal scroll container must be `relative`, page grids need `grid-cols-1`, and long
   inline labels need truncation, or pages scroll sideways.
-- Mutations on exceptions go through `features/exceptions/detail/use-exception-command.ts`.
 - Backend tests in parallel need separate databases (`TEST_DATABASE_URL`); the suite drops and
   recreates the schema.
 

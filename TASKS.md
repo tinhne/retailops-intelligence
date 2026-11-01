@@ -86,9 +86,9 @@ Agent roles: **ORCH** orchestrator · **PM** product/BA · **ARCH** architect ·
 | ID | Pri | Description | Deps | Agent | Status | Acceptance criteria | Files | Verification |
 |---|---|---|---|---|---|---|---|---|
 | T-080 | P0 | Test strategy document | T-022 | QA | DONE | Pyramid, tooling, data strategy, gates | `docs/operations/TEST_STRATEGY.md` | docs/operations/TEST_STRATEGY.md |
-| T-081 | P0 | Playwright E2E: 12-step critical journey from the directive §12 | T-062..T-065, T-073 | QA | BACKLOG | Passes in CI against docker compose | `apps/web/tests/e2e/` | CI |
+| T-081 | P0 | Playwright E2E: 12-step critical journey from the directive §12 | T-062..T-065, T-073 | QA | DONE | Passes in CI against docker compose | `apps/web/tests/e2e/` | 2026-11-01: 18 Playwright tests + setup pass against the Compose stack (19 passed); CI job `e2e` added |
 | T-082 | P0 | Security review plus `SECURITY.md` (threat model, controls, limitations), rate limiting, upload hardening | T-052, T-054 | QA | DONE | Findings fixed or documented | `SECURITY.md`, `docs/architecture/SECURITY_ARCHITECTURE.md` | 2026-11-01: SECURITY.md, findings F1–F12 fixed or documented, sign-in CSRF |
-| T-083 | P1 | Accessibility and responsive review (keyboard, contrast, 375 px) | T-061..T-066 | QA/FE | BACKLOG | Critical issues fixed | none | axe checks plus manual |
+| T-083 | P1 | Accessibility and responsive review (keyboard, contrast, 375 px) | T-061..T-066 | QA/FE | DONE | Critical issues fixed | none | 2026-11-01: axe WCAG 2.1 A/AA on 11 screens, 0 serious/critical after 3 fixes; one moderate best-practice finding fixed; keyboard and 375 px checks in E2E |
 
 ## M9: Infrastructure and deployment
 
@@ -105,7 +105,7 @@ Agent roles: **ORCH** orchestrator · **PM** product/BA · **ARCH** architect ·
 
 | ID | Pri | Description | Deps | Agent | Status | Acceptance criteria | Files | Verification |
 |---|---|---|---|---|---|---|---|---|
-| T-100 | P0 | README (21 sections), real screenshots, demo guide, release notes, final handoff | all | ORCH | BACKLOG | Everything described is implemented | `README.md`, `docs/` | Manual review |
+| T-100 | P0 | README (21 sections), real screenshots, demo guide, release notes, final handoff | all | ORCH | DONE | Everything described is implemented | `README.md`, `docs/` | 2026-11-01: README 21 sections with real screenshots (docs/screenshots), DEMO_GUIDE, RELEASE_NOTES v1.0.0; links checked |
 
 ## Blockers needing the product owner
 

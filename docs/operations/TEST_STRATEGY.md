@@ -329,42 +329,34 @@ nothing was written when the file is rejected. Rule ids: BR-601..608, `SM-IMPORT
 The product owner's required end-to-end scenarios are listed first. The suite below must cover
 every one of them:
 
-| # | Required scenario | Covered by |
+| # | Required scenario | Covered by (`apps/web/tests/e2e/journey.spec.ts`, signed in as the manager) |
 |---|---|---|
-| 1 | Create or initialize a demo organization | seeded stack (`make seed`) + j01 |
-| 2 | Import products | j02 (`products.csv` plus `inventory_adjustments.csv` that leave one SKU below its reorder point and one oversold) |
-| 3 | Import orders | j02–j03 (`orders.csv`, `order_items.csv`) |
-| 4 | Run operational analysis | j03 (import-triggered run) and j11 ("Run analysis") |
-| 5 | Detect low stock | j04 (`INVENTORY_BELOW_REORDER_POINT` listed for the imported SKU) |
-| 6 | Detect overselling | j04 (`INVENTORY_OVERSOLD` listed with affected orders) |
-| 7 | Open an exception | j05 |
-| 8 | Assign an owner | j09 |
-| 9 | Add an investigation note | j08 (AI draft accepted) and j10 (manual note) |
-| 10 | Resolve an exception | j10 |
-| 11 | Review audit history | j12 |
-| 12 | Ask the AI Copilot to summarize the situation | j07 |
+| 1 | Create or initialize a demo organization | the seeded stack (`demo-seed`); step 1 signs in and sees the demo banner |
+| 2 | Import products | step 2: `products.csv` plus `inventory_adjustments.csv` (cycle counts) generated per run |
+| 3 | Import orders | step 3: `orders.csv` and `order_items.csv` (one paid order) |
+| 4 | Run operational analysis | the import-triggered run after each apply, and step 4 "Run analysis" |
+| 5 | Detect low stock | step 5: `Below reorder point: <run>-LOW` in the inbox |
+| 6 | Detect overselling | step 6: `Oversold: <run>-SHORT` with its affected order |
+| 7 | Open an exception | step 7: evidence, affected order link, reference |
+| 8 | Assign an owner | step 8: assignee picker, "Assigned to Marcus Lee" |
+| 9 | Add an investigation note | step 9: the note appears in the activity timeline |
+| 10 | Resolve an exception | step 10: acknowledge, resolve with a code and note, "Resolved — awaiting verification" |
+| 11 | Review audit history | step 11: the audit log links the exception |
+| 12 | Ask the AI Copilot to summarize the situation | step 12: answer with provenance and record references |
 
-The journey runs as one serial suite (`test.describe.serial`) on a freshly seeded stack, because
-later steps depend on earlier ones. CSV fixtures are generated at run time (§3.3).
+Implemented suite (Playwright, Chromium; runs against any stack via `E2E_BASE_URL`):
 
-| # | Spec | Role | Steps | Assertions |
-|---|---|---|---|---|
-| 1 | `j01-sign-in-overview.spec.ts` | Manager | Sign in with the seeded demo manager account; open Overview | "Demo data" label visible; KPI tiles show numbers; attention list non-empty and sorted by priority |
-| 2 | `j02-import-preview.spec.ts` | Manager | Upload an `orders.csv` containing one new PAID order whose ship-by is 30 h in the past, plus rows with errors and an unknown column | Preview shows counts, row errors with codes (for example `ORDER_INVALID_STATUS_COMBINATION`, `INVALID_DATETIME`), the `UNKNOWN_COLUMN` warning; strict apply disabled with an explanation |
-| 3 | `j03-import-apply.spec.ts` | Manager | Download the error CSV; choose valid-rows-only; confirm the skipped-row count; apply | Error CSV contains the codes and an apostrophe-prefixed formula cell; status `COMPLETED_WITH_ERRORS`; history entry |
-| 4 | `j04-inbox.spec.ts` | Manager | Open the exception inbox; filter by type `ORDER_FULFILLMENT_OVERDUE`; sort by priority | The new exception for the imported order is listed with HIGH severity, created by an import-triggered evaluation |
-| 5 | `j05-exception-detail.spec.ts` | Manager | Open the exception | Evidence (ship-by, hours overdue, SLA source `IMPORTED`), calculation, priority breakdown whose components sum to the score, history with `DETECTED`, linked order |
-| 6 | `j06-copilot-explain.spec.ts` | Manager | Ask the copilot in the exception context "Why is this exception high severity?" | Labelled sections; references link to the exception and the order; "Rule-based assistant" label (deterministic in CI) |
-| 7 | `j07-copilot-attention.spec.ts` | Manager | Ask "What needs attention today?" in the general panel; click a reference | Answer lists top exceptions; the reference opens that exception |
-| 8 | `j08-ai-note-draft.spec.ts` | Manager | Click "Draft note"; check history; edit the draft; accept | No note before accepting; after accepting, the note shows "AI draft accepted" and a `NOTE_ADDED` event |
-| 9 | `j09-assign.spec.ts` | Manager | Assign the exception to the demo staff user | `ASSIGNED` event; assignee shown |
-| 10 | `j10-staff-resolve.spec.ts` | Staff | Filter "Assigned to me"; acknowledge; start; try to resolve with a 5-character note; resolve with code `ORDER_FULFILLED` and a valid note | Validation message for the short note; status RESOLVED; dismiss and assign actions not offered to Staff |
-| 11 | `j11-verify-reopen-autoresolve.spec.ts` | Manager | Run analysis; then import an `orders.csv` that moves the order to SHIPPED | After the run: REOPENED with reason `VERIFICATION_FAILED` (the order is still PAID). After the import: RESOLVED with `CONDITION_CLEARED`; the order timeline shows the skipped states |
-| 12 | `j12-audit-and-public-demo.spec.ts` | Owner, then public visitor | Owner opens the audit log and filters by action; a new browser context uses "Explore the demo" | Audit shows `import.apply`, the assignment, and the resolution with actors. The visitor sees data and can ask the copilot; mutation controls are absent or disabled with a reason; a direct mutating API request returns 403 |
+| File | Project | What it checks |
+|---|---|---|
+| `demo.setup.ts` | setup | One "Explore the demo" sign-in saved as a session for the viewer tests (demo entry is rate limited per IP) |
+| `journey.spec.ts` | desktop | The 12 required scenarios above, serially, with unique SKUs and order numbers per run. Needs `E2E_STAFF_PASSWORD` = the stack's `DEMO_STAFF_PASSWORD` (skipped without it) |
+| `public-demo.spec.ts` | desktop | The "Explore the demo" entry; lifecycle actions absent or disabled for the viewer; a direct `POST /evaluations` returns 403; the copilot answers |
+| `a11y.spec.ts` | desktop | axe-core WCAG 2.1 A/AA on sign-in plus 10 app screens and the exception page (serious or critical violations fail; all results attached); keyboard order on sign-in; skip link |
+| `mobile.spec.ts` | mobile (375 px) | Overview, exceptions, orders, inventory, imports, copilot and the exception page with no sideways scroll |
+| `screenshots.spec.ts` | desktop, only with `E2E_SCREENSHOTS=1` | The README screenshots in `docs/screenshots` |
 
-Other E2E specs: import file-level rejections (`FILE_ENCODING`, `MISSING_COLUMNS`), permission
-views per role (actions hidden or disabled with a reason), each data view's empty and error states
-where they can be produced, and the 375 px smoke project.
+CI (`e2e` job) starts the Compose stack with `make stack-up` and a throwaway staff password per run,
+installs Chromium, runs the suite, and uploads the HTML report on failure.
 
 ## 11. CI quality gates
 
