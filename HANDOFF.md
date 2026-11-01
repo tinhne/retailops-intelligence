@@ -24,8 +24,11 @@ vitest 265 passed. See `PROJECT_STATE.md` and `PROGRESS.md` (latest entry) for d
 WCAG 2.1 A/AA clean on 11 views, README with real screenshots. `main` is ahead of `origin/main` and
 not pushed (the owner approves pushes).
 
-**Exact next step:** ask the owner to push; then confirm the GitHub Actions run, including the new
-`e2e` job. After that, deployment (T-093/T-094) once the owner picks a free host.
+**Pushed** at ea205ec with the owner's approval; GitHub Actions run 41277118318 is green on all five
+jobs, including the first `e2e` run against the Compose stack.
+
+**Exact next step:** deployment (T-093/T-094) once the owner picks a free host; meanwhile the open
+items in `SECURITY.md` §6.
 
 **Notes for the next task:**
 - E2E: `pnpm --filter @retailops/web e2e` against any running stack (`E2E_BASE_URL`, default

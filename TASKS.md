@@ -86,7 +86,7 @@ Agent roles: **ORCH** orchestrator · **PM** product/BA · **ARCH** architect ·
 | ID | Pri | Description | Deps | Agent | Status | Acceptance criteria | Files | Verification |
 |---|---|---|---|---|---|---|---|---|
 | T-080 | P0 | Test strategy document | T-022 | QA | DONE | Pyramid, tooling, data strategy, gates | `docs/operations/TEST_STRATEGY.md` | docs/operations/TEST_STRATEGY.md |
-| T-081 | P0 | Playwright E2E: 12-step critical journey from the directive §12 | T-062..T-065, T-073 | QA | DONE | Passes in CI against docker compose | `apps/web/tests/e2e/` | 2026-11-01: 18 Playwright tests + setup pass against the Compose stack (19 passed); CI job `e2e` added |
+| T-081 | P0 | Playwright E2E: 12-step critical journey from the directive §12 | T-062..T-065, T-073 | QA | DONE | Passes in CI against docker compose | `apps/web/tests/e2e/` | 2026-11-01: 18 Playwright tests + setup pass against the Compose stack, locally (19 passed) and in GitHub Actions run 41277118318 |
 | T-082 | P0 | Security review plus `SECURITY.md` (threat model, controls, limitations), rate limiting, upload hardening | T-052, T-054 | QA | DONE | Findings fixed or documented | `SECURITY.md`, `docs/architecture/SECURITY_ARCHITECTURE.md` | 2026-11-01: SECURITY.md, findings F1–F12 fixed or documented, sign-in CSRF |
 | T-083 | P1 | Accessibility and responsive review (keyboard, contrast, 375 px) | T-061..T-066 | QA/FE | DONE | Critical issues fixed | none | 2026-11-01: axe WCAG 2.1 A/AA on 11 screens, 0 serious/critical after 3 fixes; one moderate best-practice finding fixed; keyboard and 375 px checks in E2E |
 

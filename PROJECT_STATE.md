@@ -9,7 +9,7 @@
 | Current milestone | **M8 quality and M10 release docs done locally (T-081, T-083, T-100).** Remaining: deployment and the public demo (T-093/T-094), which wait on the owner's hosting choice |
 | Current phase | v1.0 feature-complete and verified locally, end to end; deployment remains |
 | Overall completion | All P0/P1 product tasks are implemented and tested except T-093/T-094 deployment (blocked on hosting choice). T-095 (P2) not started |
-| Last verified commit | `main` after merging `feat/e2e-a11y` and the README (local, not pushed): backend 865, web 265, Playwright 19/19 against the Compose stack, copilot eval 65/65 |
+| Last verified commit | `ea205ec` (pushed 2026-11-01): GitHub Actions run 41277118318 green on all 5 jobs incl. the first E2E job; locally backend 865, web 265, Playwright 19/19, copilot eval 65/65 |
 | Remote | https://github.com/tinhne/retailops-intelligence (public). The first CI run passed |
 | Architecture version | v1 (modular monolith; `docs/domain/*`, ADR-0001..0013) |
 | Last update | 2026-11-01 (UTC+7) |
@@ -80,10 +80,10 @@
 | Task | Notes |
 |---|---|
 | Manual test pass | Done 2026-11-01 as demo viewer, owner and manager on seeded local data; no open findings |
-| T-081 Playwright E2E | DONE 2026-11-01. 19 tests incl. setup pass against the Compose stack; CI job `e2e` added (not yet run on GitHub) |
+| T-081 Playwright E2E | DONE 2026-11-01. 19 tests incl. setup pass against the Compose stack, locally and in CI (run 41277118318) |
 | T-083 Accessibility review | DONE 2026-11-01. axe WCAG 2.1 A/AA on 11 screens: 3 serious findings and 1 moderate fixed, 0 remaining; keyboard and 375 px in E2E |
 | T-100 README and release | DONE 2026-11-01. README with real screenshots, demo guide, release notes v1.0.0 |
-| Push | Pushed 2026-11-01 at 9a1e033 (CI green); everything after waits for the owner's approval |
+| Push | Pushed 2026-11-01 at ea205ec with the owner's approval; CI green |
 
 ## Blocked
 
@@ -115,6 +115,7 @@
 
 ## Latest test results
 
+- GitHub Actions run 41277118318 on ea205ec: **success** on all 5 jobs (API, web, dependency audit, Docker images, E2E Playwright against the Compose stack; the Playwright step ran 43 s).
 - Resume baseline (2026-11-01, `main` at 44cd6b0): `make check` **865 passed**; web lint, typecheck, vitest **265 passed**.
 - Playwright (2026-11-01, `pnpm --filter @retailops/web e2e` against an isolated Compose stack): **19 passed**
   (setup, 12-step journey, public demo ×2, axe ×3, 375 px). Web vitest after the a11y fixes: 265 passed.
@@ -146,6 +147,6 @@
 
 ## Next three highest-priority actions
 
-1. Push `main` (owner approval) and confirm the new `e2e` CI job passes on GitHub.
-2. T-093/T-094: once the owner picks a free host, the deploy pipeline, the public demo and its reset schedule.
-3. Open items in `SECURITY.md` §6 and the P1/P2 backlog (e.g. T-095 per-visitor sandbox).
+1. T-093/T-094: once the owner picks a free host, the deploy pipeline, the public demo and its reset schedule.
+2. Open items in `SECURITY.md` §6 and the P1/P2 backlog (e.g. T-095 per-visitor sandbox).
+3. Optional: a live free-tier Gemini evaluation (`make ai-eval PROVIDER=gemini`) once the owner provides a key.
