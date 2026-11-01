@@ -42,8 +42,10 @@ function applyProblem(error: unknown): Problem {
     case "IMPORT_HAS_ERRORS":
       return { tone: "danger", text: "Strict mode can't apply a file with row errors. Choose Valid rows only, or fix the file." };
     case "IMPORT_SKIPPED_ROWS_NOT_CONFIRMED":
+    case "SKIPPED_ROWS_NOT_CONFIRMED": // the code the API sends (imports.service)
       return { tone: "danger", text: "The number of rows to skip changed. Review the issues and confirm again." };
     case "IMPORT_PREVIEW_STALE":
+    case "IMPORT_DATA_CHANGED": // the code the API sends (imports.service)
       return {
         tone: "danger",
         text: "Store data changed since the preview, so a different set of rows would be skipped. Nothing was applied.",
@@ -87,9 +89,10 @@ export function ApplyStep({ record, onBack }: { record: ImportDetail; onBack: ()
     },
     onError: (error) => {
       if (!isApiError(error)) return;
-      if (error.code === "IMPORT_SKIPPED_ROWS_NOT_CONFIRMED") setConsent(false);
-      // These leave the import in a new state; the page renders it.
-      if (["IMPORT_PREVIEW_EXPIRED", "IMPORT_NOT_APPLICABLE", "IDEMPOTENT_REQUEST_IN_PROGRESS"].includes(error.code)) {
+      if (error.code === "IMPORT_SKIPPED_ROWS_NOT_CONFIRMED" || error.code === "SKIPPED_ROWS_NOT_CONFIRMED") setConsent(false);
+      // A refused or failed apply may leave the import in a new state (expired, FAILED with
+      // Validate again, already applying); the page renders whatever the server now holds.
+      if (error.status === 409 || error.status === 422) {
         void queryClient.invalidateQueries({ queryKey: importKeys.detail(store.id, record.id) });
       }
     },

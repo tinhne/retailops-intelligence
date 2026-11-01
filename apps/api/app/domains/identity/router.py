@@ -10,6 +10,7 @@ from app.api.deps import (
     Principal,
     get_principal,
     login_limiter,
+    require_pre_session_csrf,
 )
 from app.core.clock import utcnow
 from app.core.config import Settings, get_settings
@@ -21,6 +22,7 @@ from app.domains.identity import service as identity
 from app.domains.identity.models import User, UserSession
 from app.domains.identity.permissions import ROLE_PERMISSIONS, Role, permissions_for
 from app.domains.identity.schemas import (
+    CsrfTokenOut,
     LoginRequest,
     MembershipOut,
     MeResponse,
@@ -28,9 +30,13 @@ from app.domains.identity.schemas import (
     StoreSummary,
     UserOut,
 )
-from app.domains.identity.security import csrf_token_for
+from app.domains.identity.security import csrf_token_for, new_csrf_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+# A pre-session CSRF token only has to outlive the sign-in form; the web app fetches a fresh one
+# right before each sign-in attempt.
+PRE_SESSION_CSRF_MAX_AGE = 2 * 3600
 
 
 def _me(db: Session, user: User, session: UserSession, settings: Settings) -> MeResponse:
@@ -112,7 +118,42 @@ def _start_session(
     return me
 
 
-@router.post("/login", response_model=MeResponse)
+@router.get("/csrf", response_model=CsrfTokenOut)
+def csrf_token(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> CsrfTokenOut:
+    """Issue the CSRF token the sign-in forms send as ``X-CSRF-Token`` (ADR-0004).
+
+    Signed in, this is the session-bound token, so calling it never invalidates the token of a
+    live session. Otherwise it is a fresh random token for the double-submit check of
+    ``POST /auth/login`` and ``POST /auth/demo``. Sign-in replaces it with the session-bound one.
+    """
+    token: str | None = None
+    max_age = PRE_SESSION_CSRF_MAX_AGE
+    raw_session = request.cookies.get(SESSION_COOKIE)
+    if raw_session:
+        session = identity.resolve_session(db, raw_session, settings=settings, now=utcnow())
+        if session is not None:
+            token = csrf_token_for(session.token_hash, settings.session_secret.get_secret_value())
+            max_age = settings.session_absolute_days * 24 * 3600
+    if token is None:
+        token = new_csrf_token()
+    response.set_cookie(
+        CSRF_COOKIE,
+        token,
+        max_age=max_age,
+        httponly=False,
+        secure=settings.cookie_secure,
+        samesite="lax",
+        path="/",
+    )
+    return CsrfTokenOut(csrf_token=token)
+
+
+@router.post("/login", response_model=MeResponse, dependencies=[Depends(require_pre_session_csrf)])
 def login(
     body: LoginRequest,
     request: Request,
@@ -126,7 +167,7 @@ def login(
     return _start_session(db, request, response, user, settings, "auth.login")
 
 
-@router.post("/demo", response_model=MeResponse)
+@router.post("/demo", response_model=MeResponse, dependencies=[Depends(require_pre_session_csrf)])
 def demo_login(
     request: Request,
     response: Response,

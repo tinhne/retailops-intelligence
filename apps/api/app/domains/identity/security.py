@@ -49,5 +49,14 @@ def csrf_token_for(session_token_hash: str, secret: str) -> str:
     return digest.hexdigest()
 
 
+def new_csrf_token() -> str:
+    """Random token for the pre-session double-submit check (sign-in forms, ADR-0004)."""
+    return secrets.token_urlsafe(32)
+
+
 def csrf_matches(expected: str, provided: str | None) -> bool:
-    return provided is not None and hmac.compare_digest(expected, provided)
+    """Constant-time comparison. Bytes, because ``compare_digest`` rejects non-ASCII ``str``
+    (a crafted header would otherwise surface as a 500)."""
+    if not expected or provided is None:
+        return False
+    return hmac.compare_digest(expected.encode("utf-8"), provided.encode("utf-8"))

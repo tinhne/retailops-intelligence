@@ -82,6 +82,12 @@ class ImportOut(BaseModel):
     applied_by: uuid.UUID | None
     evaluation_run_id: uuid.UUID | None
     failure_reason: str | None
+    can_revalidate: bool = Field(
+        description=(
+            "FAILED with the file bytes still stored (until the preview's expiry), so "
+            "POST …/revalidate can validate it again. Otherwise the file must be uploaded again."
+        )
+    )
 
 
 class ImportDetailOut(ImportOut):

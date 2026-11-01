@@ -141,6 +141,8 @@ Order rules: `ORDER_FULFILLMENT_OVERDUE` supersedes `ORDER_STALLED_AFTER_PAYMENT
 - **Evidence:** on_hand, the last 10 movements, the last cycle count.
 - **Recommended action:** "Perform a cycle count and import it as a CYCLE_COUNT adjustment."
 - **Auto-resolves when:** `on_hand ≥ 0`.
+- **Stock health:** while the condition holds, the product's health is `DATA_ISSUE`, never an
+  availability class such as `OVERSOLD` (BUSINESS_RULES §2.5, BR-402a).
 
 ---
 

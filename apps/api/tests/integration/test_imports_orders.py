@@ -305,3 +305,48 @@ def test_line_lock_does_not_apply_before_shipping(client: TestClient, db: Sessio
 
     assert body["summary"]["preview"][0]["changed_fields"] == ["quantity"]
     assert body["summary"]["applied"]["updates"] == 1
+
+
+def _applied(api: ImportApi, import_type: str, content: bytes, filename: str) -> str:
+    upload = api.upload(import_type, content, filename)
+    assert upload.status_code == 201, upload.text
+    applied = api.apply(upload.json()["id"])
+    assert applied.status_code == 200, applied.text
+    import_id: str = applied.json()["id"]
+    return import_id
+
+
+def test_ledger_rows_and_order_history_name_their_import(client: TestClient, db: Session) -> None:
+    """Movements carry the import file name and a shipment's order; order events the file name."""
+    _, api = manager_api(client, db)
+    api.run("products", csv_bytes(PRODUCT_HEADER, product_row("KHK-MUG")))
+    counts = _applied(
+        api,
+        "inventory_adjustments",
+        csv_bytes(ADJUSTMENT_HEADER, adjustment_row("CC-1", "KHK-MUG", qty="20")),
+        "counts-october.csv",
+    )
+    orders = _applied(
+        api, "orders", csv_bytes(ORDER_HEADER, order_row("KHK-1", **SHIPPED)), "orders-oct.csv"
+    )
+    api.run("order_items", csv_bytes(ITEM_HEADER, item_row("KHK-1", 1, "KHK-MUG", qty="2")))
+    movements = f"/api/v1/stores/{api.store_id}/inventory/movements"
+    order = _order(db, "KHK-1")
+
+    from_counts = client.get(movements, params={"import_id": counts}).json()
+    from_orders = client.get(movements, params={"import_id": orders}).json()
+    shipments = client.get(movements, params={"movement_type": "SHIPMENT"}).json()
+    detail = client.get(f"/api/v1/stores/{api.store_id}/orders/{order.id}").json()
+
+    assert [(m["reference"], m["import_filename"]) for m in from_counts["items"]] == [
+        ("CC-1", "counts-october.csv")
+    ]
+    assert from_counts["items"][0]["order_id"] is None
+    assert from_orders["total"] == 0  # shipments are written by the system, not by the file
+    assert [(m["order_id"], m["import_id"]) for m in shipments["items"]] == [(str(order.id), None)]
+    imported = [e for e in detail["events"] if e["import_id"] is not None]
+    assert imported
+    assert {(e["import_id"], e["import_filename"]) for e in imported} == {
+        (orders, "orders-oct.csv")
+    }
+    assert client.get(movements, params={"import_id": "nope"}).status_code == 422

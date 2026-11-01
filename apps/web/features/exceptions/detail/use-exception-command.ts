@@ -21,6 +21,8 @@ export function isOwnVersion(exceptionId: string, version: number): boolean {
 type CommandOptions = {
   /** Toast after success, built from the updated exception. */
   successMessage?: (updated: ExceptionDetail) => string | null;
+  /** One action on that toast, e.g. "Next in queue" (§0.3 "Success toast"). */
+  successAction?: { label: string; onClick: () => void };
 };
 
 /**
@@ -52,7 +54,8 @@ export function useExceptionCommand(exception: ExceptionDetail) {
       }
       void refresh();
       const message = updated ? options?.successMessage?.(updated) : null;
-      if (message) toast.success(message);
+      if (message && options?.successAction) toast.success(message, { action: options.successAction });
+      else if (message) toast.success(message);
     },
   });
 

@@ -1,10 +1,10 @@
 """Read-side inventory queries: stock positions, movements, velocity and reconciliation.
 
 SELECT only; every write goes through ``inventory.service``. Health is computed on read (BR-141).
-``health_sql`` mirrors ``calculations.classify_health`` so lists can be filtered and paginated in
-the database; a parity test keeps the two identical, and displayed values always come from
-``classify_health`` itself. The building blocks here (balance subquery, health and velocity) are
-reused by the catalog and analytics queries so the formulas exist once.
+``health_sql`` mirrors ``product_health`` (and so ``calculations.classify_health``) so lists can be
+filtered and paginated in the database; a parity test keeps the two identical, and displayed values
+always come from ``product_health`` itself. The building blocks here (balance subquery, health and
+velocity) are reused by the catalog and analytics queries so the formulas exist once.
 """
 
 import uuid
@@ -32,6 +32,7 @@ from sqlalchemy.sql.elements import SQLCoreOperations
 
 from app.core.pagination import Page, PageParams
 from app.domains.catalog.models import Product, ProductStatus
+from app.domains.imports import service as imports_service
 from app.domains.inventory import service as inventory_service
 from app.domains.inventory.calculations import (
     StockHealth,
@@ -58,6 +59,8 @@ from app.domains.inventory.schemas import (
 )
 from app.domains.orders.models import Order, OrderItem
 from app.domains.orders.sql import counts_as_sale
+
+SHIPMENT_REFERENCE_PREFIX = "order_item:"  # inventory.service._ensure_shipment_movement
 
 # ---------------------------------------------------------------------------------------------
 # Building blocks shared with catalog and analytics queries
@@ -90,14 +93,19 @@ def stock_columns(
 
 
 def health_sql(
+    on_hand: ColumnElement[int],
     available: ColumnElement[int],
     reorder_point: SQLCoreOperations[int],
     status: SQLCoreOperations[Any],
     factor: Decimal,
 ) -> ColumnElement[Any]:
-    """SQL twin of ``classify_health`` (§2.5, BR-140). NULL for products that are not ACTIVE."""
+    """SQL twin of ``product_health`` (§2.5, BR-140, BR-402a).
+
+    DATA_ISSUE for any status when on_hand < 0; otherwise NULL for products that are not ACTIVE.
+    """
     threshold = func.ceil(cast(reorder_point, Numeric) * literal(factor, Numeric(4, 2)))
     return case(
+        (on_hand < 0, StockHealth.DATA_ISSUE.value),
         (status != ProductStatus.ACTIVE, null()),
         (available < 0, StockHealth.OVERSOLD.value),
         (available == 0, StockHealth.OUT_OF_STOCK.value),
@@ -114,12 +122,16 @@ def health_sql(
 
 
 def product_health(
-    status: ProductStatus, available_qty: int, reorder_point: int, factor: Decimal
+    status: ProductStatus, on_hand: int, available_qty: int, reorder_point: int, factor: Decimal
 ) -> StockHealth | None:
-    """Health shown to users: §2.5 applies to ACTIVE products only."""
-    if status is not ProductStatus.ACTIVE:
+    """Health shown to users. The availability classes of §2.5 apply to ACTIVE products only.
+
+    A negative on_hand is a DATA_ISSUE whatever the product status (BR-402a), matching
+    DATA_NEGATIVE_ON_HAND, which is raised for any status.
+    """
+    if status is not ProductStatus.ACTIVE and on_hand >= 0:
         return None
-    return classify_health(available_qty, reorder_point, factor)
+    return classify_health(on_hand, available_qty, reorder_point, factor)
 
 
 def velocity_window(as_of: datetime, window_days: int) -> tuple[datetime, datetime]:
@@ -296,7 +308,9 @@ def list_positions(
     if category:
         stmt = stmt.where(Product.category == category)
     if health:
-        health_col = health_sql(available_col, Product.reorder_point, Product.status, factor)
+        health_col = health_sql(
+            on_hand, available_col, Product.reorder_point, Product.status, factor
+        )
         stmt = stmt.where(health_col.in_([h.value for h in health]))
 
     total = _count(db, stmt)
@@ -331,7 +345,7 @@ def list_positions(
                 incoming=incoming,
                 incoming_eta=eta,
                 reorder_point=product.reorder_point,
-                health=product_health(product.status, avail, product.reorder_point, factor),
+                health=product_health(product.status, oh, avail, product.reorder_point, factor),
                 avg_daily_units=daily,
                 days_of_cover=days_of_cover(avail, daily),
                 last_cycle_count_at=counted_at,
@@ -349,12 +363,17 @@ def list_movements(
     product_id: uuid.UUID | None,
     movement_types: Sequence[MovementType] | None,
     source: MovementSource | None,
+    import_id: uuid.UUID | None = None,
     occurred_from: datetime | None,
     occurred_to: datetime | None,
     sort: MovementSort,
     paging: PageParams,
 ) -> Page[MovementOut]:
-    """Ledger rows (BR-110), newest recorded first by default. ``occurred_to`` is exclusive."""
+    """Ledger rows (BR-110), newest recorded first by default. ``occurred_to`` is exclusive.
+
+    Each row carries the file name of the import that wrote it and, for shipments, the order of
+    the line its ``order_item:{id}`` reference names. Both are looked up for the page only.
+    """
     stmt = (
         select(InventoryMovement, Product.sku, Product.name)
         .join(Product, Product.id == InventoryMovement.product_id)
@@ -366,6 +385,8 @@ def list_movements(
         stmt = stmt.where(InventoryMovement.movement_type.in_(list(movement_types)))
     if source is not None:
         stmt = stmt.where(InventoryMovement.source == source)
+    if import_id is not None:
+        stmt = stmt.where(InventoryMovement.import_id == import_id)
     if occurred_from is not None:
         stmt = stmt.where(InventoryMovement.occurred_at >= occurred_from)
     if occurred_to is not None:
@@ -381,6 +402,8 @@ def list_movements(
     else:
         order = (column.asc(), InventoryMovement.occurred_at.asc(), InventoryMovement.id.asc())
     rows = db.execute(stmt.order_by(*order).offset(paging.offset).limit(paging.page_size)).all()
+    filenames = imports_service.filenames_by_id(db, store_id, [m.import_id for m, _, _ in rows])
+    shipment_orders = _shipment_orders(db, store_id, [m.reference for m, _, _ in rows])
     return Page[MovementOut](
         items=[
             MovementOut(
@@ -398,6 +421,8 @@ def list_movements(
                 source=m.source,
                 reference=m.reference,
                 import_id=m.import_id,
+                import_filename=filenames.get(m.import_id) if m.import_id else None,
+                order_id=shipment_orders.get(m.reference) if m.reference else None,
                 note=m.note,
                 created_by=m.created_by,
             )
@@ -407,6 +432,27 @@ def list_movements(
         page_size=paging.page_size,
         total=total,
     )
+
+
+def _shipment_orders(
+    db: Session, store_id: uuid.UUID, references: Sequence[str | None]
+) -> dict[str, uuid.UUID]:
+    """``order_item:{id}`` references → the order of that line (derived, nothing stored)."""
+    item_ids: dict[uuid.UUID, str] = {}
+    for reference in references:
+        if reference and reference.startswith(SHIPMENT_REFERENCE_PREFIX):
+            try:
+                item_ids[uuid.UUID(reference.removeprefix(SHIPMENT_REFERENCE_PREFIX))] = reference
+            except ValueError:
+                continue
+    if not item_ids:
+        return {}
+    rows = db.execute(
+        select(OrderItem.id, OrderItem.order_id).where(
+            OrderItem.store_id == store_id, OrderItem.id.in_(item_ids)
+        )
+    ).all()
+    return {item_ids[item_id]: order_id for item_id, order_id in rows}
 
 
 def reconciliation(db: Session, store_id: uuid.UUID, *, checked_at: datetime) -> ReconciliationOut:

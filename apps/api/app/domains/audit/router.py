@@ -3,13 +3,14 @@ from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_permission
 from app.core.pagination import Page, PageParams, page_params
 from app.db.session import get_db
 from app.domains.audit import service
+from app.domains.identity import service as identity
 from app.domains.identity.permissions import Permission
 from app.domains.identity.service import StoreContext
 
@@ -21,6 +22,9 @@ class AuditLogOut(BaseModel):
     occurred_at: datetime
     action: str
     actor_user_id: uuid.UUID | None
+    actor_name: str | None = Field(
+        description="Full name of the actor (no email). Null for system actions."
+    )
     store_id: uuid.UUID | None
     target_type: str | None
     target_id: str | None
@@ -49,6 +53,7 @@ def list_audit_logs(
         offset=paging.offset,
         limit=paging.page_size,
     )
+    names = identity.user_names(db, (r.actor_user_id for r in rows if r.actor_user_id))
     return Page[AuditLogOut](
         items=[
             AuditLogOut(
@@ -56,6 +61,7 @@ def list_audit_logs(
                 occurred_at=r.occurred_at,
                 action=r.action,
                 actor_user_id=r.actor_user_id,
+                actor_name=names.get(r.actor_user_id) if r.actor_user_id else None,
                 store_id=r.store_id,
                 target_type=r.target_type,
                 target_id=r.target_id,

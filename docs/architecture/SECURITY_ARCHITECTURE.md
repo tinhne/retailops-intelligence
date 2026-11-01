@@ -1,9 +1,10 @@
 # Security Architecture
 
-> **Status:** v1 design (T-022), 2026-10-31. Describes planned controls; none is claimed as
-> implemented. The security review and `SECURITY.md` (T-082, QA) verify these controls and may
-> extend this document. Controls map to the settled decisions in ADR-0004, ADR-0007, ADR-0010 and
-> ADR-0011.
+> **Status:** v1 design (T-022), 2026-10-31, updated by the security review (T-082, 2026-11-01).
+> Which controls exist in the code, the tests that verify them, the review findings and the
+> deployment checklist are in [`SECURITY.md`](../../SECURITY.md); this document keeps the design and
+> the reasoning. Sections changed by the review say so. Controls map to the settled decisions in
+> ADR-0004, ADR-0007, ADR-0010 and ADR-0011.
 
 Related: [`SYSTEM_ARCHITECTURE.md`](SYSTEM_ARCHITECTURE.md) · [`DATA_FLOW.md`](DATA_FLOW.md) ·
 [`API_CONVENTIONS.md`](API_CONVENTIONS.md) · [`CONTAINER_DIAGRAM.md`](CONTAINER_DIAGRAM.md) ·
@@ -36,7 +37,7 @@ Objectives, in priority order:
 | Exception history, notes, order events, stock ledger | Integrity-critical | PostgreSQL, append-only tables | Tampering, repudiation |
 | Audit log | Integrity-critical; contains IP addresses (personal data) | `audit_log` | Tampering; over-exposure of IPs |
 | Uploaded CSV bytes | Confidential and **untrusted content** | `data_import.file_content`, kept only for the validation-to-apply window | Parser abuse, formula injection on export |
-| Secrets (`DATABASE_URL`, `SECRET_KEY`, `GEMINI_API_KEY`, `LLM_API_KEY`) | High | Environment variables of the `api` (and `worker` for the database URL) | Leakage via repository, logs, client bundle |
+| Secrets (`DATABASE_URL`, `SESSION_SECRET`, `GEMINI_API_KEY`, `LLM_API_KEY`) | High | Environment variables of the `api` (and `worker` for the database URL) | Leakage via repository, logs, client bundle |
 | Free-tier LLM quota | Availability asset | Provider account behind the key | Exhaustion by abusive or public users |
 | Demo dataset | Low confidentiality, medium integrity | Demo organization (`is_demo = true`) | Vandalism, confusing other visitors |
 
@@ -78,7 +79,7 @@ flowchart LR
 | Boundary | Crossing | Rule at the boundary |
 |---|---|---|
 | B1 | Browser → platform | HTTPS only in production; cookies `Secure`, `HttpOnly` (session), `SameSite=Lax`; every request is unauthenticated until `current_principal` proves otherwise |
-| B2 | `web` → `api` | `web` is a proxy, not a security component. It holds no secrets, and `api` authenticates, authorizes and scopes every request itself. `api` trusts `X-Forwarded-For` only from the peers listed in `FORWARDED_ALLOW_IPS` |
+| B2 | `web` → `api` | `web` is a proxy, not a security component. It holds no secrets, and `api` authenticates, authorizes and scopes every request itself. `api` reads the client address from `X-Forwarded-For` only when `TRUST_PROXY_HEADERS=true`, and then takes the right-most entry. The Next.js rewrite proxy forwards the browser's header unchanged and appends nothing, so the setting is safe only behind an edge that appends the client address (T-082; `SECURITY.md` §5). There is no `FORWARDED_ALLOW_IPS` |
 | B3 | Application → database | Parameterized SQLAlchemy queries only; a non-superuser application role; every store-scoped query carries `store_id` |
 | B4 | `api` → LLM provider | Only the question, recent history, tool schemas and capped tool results leave. No credentials, session data or customer personal data (BR-505) |
 | B5 | LLM provider → `api` | Model output is data: validated against the answer schema, never executed, never used to choose a store or user, and unable to write |
@@ -91,8 +92,8 @@ flowchart LR
 | S1 | Spoofing | Credential stuffing or brute force on login | argon2id; login limit 5 per minute per IP + email; one generic 401 for every failure; verification against a dummy hash for unknown emails (equal timing) | Distributed attacks across many IPs are only slowed; no MFA in v1 |
 | S2 | Spoofing | Session theft | Opaque 256-bit token in an `HttpOnly`, `Secure`, `SameSite=Lax` cookie; TLS + HSTS; 12 h sliding and 7 day absolute expiry; server-side revocation | Malware on the user's device |
 | S3 | Spoofing | Session fixation | A new token is generated at every login; a client-supplied token is never adopted; the CSRF token is rotated at login | none known |
-| S4 | Spoofing | Use of seeded demo staff accounts | Seeded fictional accounts get random, unpublished passwords on any public deployment; public visitors only get a VIEWER session through "Explore the demo" | Depends on the deployment process; checked in T-094 |
-| T1 | Tampering | Cross-site request forgery | `SameSite=Lax` plus signed double-submit token on POST, PUT, PATCH, DELETE; no CORS (same origin) | none known |
+| S4 | Spoofing | Use of seeded demo staff accounts | Seeded fictional accounts get random, unpublished passwords unless `DEMO_STAFF_PASSWORD` is set, and the seed refuses that variable when `APP_ENV=production`; public visitors only get a VIEWER session through "Explore the demo" (T-094) | none known |
+| T1 | Tampering | Cross-site request forgery | `SameSite=Lax` plus signed double-submit token on POST, PUT, PATCH, DELETE; pre-session double-submit token on login and demo sign-in; no CORS (same origin) | none known |
 | T2 | Tampering | Over-posting (setting `status`, `store_id`, `version` in a body) | Input schemas with `extra="forbid"`; `store_id` only from the path; status changes only through command endpoints and `state.py` | none known |
 | T3 | Tampering | SQL injection | SQLAlchemy parameter binding everywhere; no string-built SQL; no raw SQL tool for the AI | none known |
 | T4 | Tampering | Editing ledgers or histories through the application | No update or delete code path for append-only tables; corrections are compensating movements (BR-110); fitness tests | A database administrator can still alter rows (no database-level enforcement in v1) |
@@ -105,10 +106,10 @@ flowchart LR
 | I3 | Information disclosure | User enumeration | Identical 401 response and timing for unknown email and wrong password | Member management screens list emails to `users.read` holders by design |
 | I4 | Information disclosure | Secrets in logs or the client bundle | Settings use secret types that never render; logging redaction; no secret in `NEXT_PUBLIC_*` variables | none known |
 | I5 | Information disclosure | Store data sent to the LLM provider, whose free-tier terms may allow data use | Off unless a key is configured; no customer personal data exists (BR-505); tool results capped at 50 rows; the public demo uses fictional data | **Needs validation**: provider terms must be checked before real store data is connected |
-| I6 | Information disclosure | Demo visitors reading audit IPs or each other's copilot conversations | Proposed: redact `ip` and `user_agent` in the audit API for roles without `users.manage`; per-visitor demo identities (ADR-0011) | Open until the orchestrator decides (§16) |
+| I6 | Information disclosure | Demo visitors reading audit IPs or each other's copilot conversations | Decided (ADR-0011): the audit API never returns `ip` or `user_agent` for any role (verified in T-082); demo copilot conversations are scoped by session | Conversation scoping depends on the AI migration (T-073) |
 | I7 | Information disclosure | A member reading another member's copilot conversations | Conversations are filtered by `user_id`; others get 404 | none known |
-| D1 | Denial of service | Oversized or pathological uploads | 5 MB streamed cap, 20,000 rows, bounded field size and column count, one apply per store at a time | none known |
-| D2 | Denial of service | Request floods | 300 per minute per user; per-IP limits on unauthenticated routes; `page_size` ≤ 100; `statement_timeout` | In-process limiter is per instance; no WAF; volumetric attacks rely on the host |
+| D1 | Denial of service | Oversized or pathological uploads | 6 MB request body cap (413 before parsing), 5 MB file limit, 20,000 rows, 100 columns, 131,072 characters per field, one apply per store at a time (T-082) | none known |
+| D2 | Denial of service | Request floods | 300 per minute per user; per-IP limits on the sign-in routes; `page_size` ≤ 100. No `statement_timeout` is configured yet | In-process limiter is per instance; no WAF; volumetric attacks rely on the host |
 | D3 | Denial of service | Exhausting the shared free-tier LLM quota | Copilot limit 20 per minute per user; cool-down after a provider 429; automatic deterministic fallback; cached investigation summaries; capped tool iterations and timeouts | Many concurrent public visitors will see more deterministic answers |
 | D4 | Denial of service | Evaluation pile-up | Per-store advisory lock; scheduled runs skip when busy; manual trigger returns 409 | none known |
 | D5 | Denial of service | Locking users out on purpose | No account lockout by design; throttling instead | Throttling also slows the legitimate user during an attack |
@@ -139,16 +140,21 @@ over composition rules). Plaintext passwords are never logged or stored.
 **CSRF** (signed double-submit).
 
 - Before login, `GET /api/v1/auth/csrf` sets a random `ro_csrf` cookie (readable by JavaScript,
-  `SameSite=Lax`, `Secure` in production). Login and demo sign-in require it, which blocks login CSRF.
-- At login the token is replaced by `HMAC-SHA256(SECRET_KEY, session id)`. For every POST, PUT, PATCH
-  and DELETE the API requires `X-CSRF-Token` to equal the cookie **and** the HMAC for the current
-  session. Binding the token to the session defeats cookie injection from a sibling subdomain, the
+  `SameSite=Lax`, `Secure` in production, two hours) and returns the same value. Login and demo
+  sign-in require the `X-CSRF-Token` header to equal that cookie, which blocks login CSRF. The web
+  sign-in fetches a fresh token for every attempt. Called with a live session, the endpoint returns
+  the session-bound token instead, so it never breaks a signed-in tab (implemented in T-082).
+- At login the token is replaced by `HMAC-SHA256(SESSION_SECRET, session token hash)`. For every
+  POST, PUT, PATCH and DELETE the API requires `X-CSRF-Token` to equal the HMAC for the current
+  session (the web client reads it from the cookie). Binding the token to the session defeats cookie injection from a sibling subdomain, the
   known weakness of plain double-submit (**Industry practice**: OWASP CSRF Prevention Cheat Sheet).
 - GET, HEAD and OPTIONS never change state.
 
 **Demo sign-in.** `POST /api/v1/auth/demo` exists only when `DEMO_MODE_ENABLED=true`. It creates a
 session for the demo VIEWER identity in the demo organization, needs the pre-auth CSRF token, and is
-rate-limited per IP (proposed: 10 per minute). It cannot reach any non-demo organization.
+rate-limited per IP (implemented: the sign-in limiter, 5 per minute; see `SECURITY.md` §5 for how
+the proxy affects "per IP"). It cannot reach any non-demo organization, and it refuses a demo account
+that holds any role other than VIEWER.
 
 ## 6. Authorization
 
@@ -232,11 +238,11 @@ target customers (migrations and cost multiply per tenant).
 | Control | Detail |
 |---|---|
 | Access | `imports.run` and CSRF required |
-| Size | A declared `Content-Length` above the limit, or a stream that passes 5 MB, ends reading immediately; the attempt is recorded as a `REJECTED` import with `FILE_TOO_LARGE` and no bytes are kept (BR-602). The Next.js proxy must pass 5 MB multipart bodies (**Needs validation** in T-060) |
+| Size | Two limits (T-082). A request body above 6 MB (a declared `Content-Length`, or a chunked stream that passes it) is refused with 413 `PAYLOAD_TOO_LARGE` before anything is parsed, and nothing is recorded. A file between 5 MB and that cap is read, recorded as a `REJECTED` import with `FILE_TOO_LARGE`, and no bytes are kept (BR-602). The web client blocks files above 5 MB before uploading. Verified through the Next.js proxy on the compose stack: a 5.1 MB file became `REJECTED`, a 7 MB file got 413 |
 | Type | `.csv` extension (case-insensitive); the client's MIME type is ignored; content must decode as strict UTF-8 (a BOM is accepted and stripped) and contain no NUL bytes. No spreadsheet or archive formats, so no macro or decompression risks |
-| Parsing | Python `csv` module with an explicit dialect; bounded `csv.field_size_limit`; caps on rows (20,000) and columns; values stay strings until a validator converts them; nothing is ever evaluated |
-| Storage | Bytes are stored in PostgreSQL, never on disk; the original filename is metadata only (length-limited, never used as a path, rendered as text) |
-| Lifetime | Bytes are purged on apply, discard, rejection and expiry (24 h) |
+| Parsing | Python `csv` module with the default dialect; the default `csv.field_size_limit` (131,072 characters); at most 20,000 data rows and 100 header columns (`TOO_MANY_COLUMNS`, added in T-082 after a quadratic header check was found); values stay strings until a validator converts them; nothing is ever evaluated |
+| Storage | Bytes are stored in PostgreSQL. While the request is read, the multipart parser spools a file part above 1 MB to a temporary file that is deleted when the request ends; the application never writes the file anywhere. The original filename is metadata only (length-limited, never used as a path, rendered as text) |
+| Lifetime | Bytes are purged on apply, discard, rejection and expiry (24 h). A `FAILED` apply keeps them until that same preview expiry, so the file can be validated again |
 | Display | Raw values are rendered as text by React; `import_row_issue.raw_value` is truncated to a bounded length |
 | Idempotency | SHA-256 duplicate detection (BR-607); adjustment references unique per store (BR-112) |
 
@@ -276,7 +282,7 @@ as `=HYPERLINK(...)` would execute when a colleague opens the export in a spread
 - Placement: `GEMINI_API_KEY` and `LLM_API_KEY` exist only in the `api` container; the `worker`
   needs only `DATABASE_URL`; `web` holds no secrets and no secret ever uses the `NEXT_PUBLIC_` prefix.
 - Settings load secrets into secret-typed fields that render as `**********` if printed.
-- Rotation: rotating `SECRET_KEY` invalidates CSRF tokens only (clients fetch new ones); session
+- Rotation: rotating `SESSION_SECRET` invalidates CSRF tokens only (clients fetch new ones); session
   tokens are unaffected because they are random values, not signed ones. LLM keys and the database
   password can be rotated by redeploying with new values.
 - CI needs no LLM key: the test suite uses the deterministic provider and a fake provider.
@@ -300,21 +306,27 @@ fallback reason.
   data as demo data.
 - Copilot content is stored in `ai_message` under store scope, not in logs.
 
-## 13. Browser and transport hardening (planned)
+## 13. Browser and transport hardening
 
-| Control | Setting |
-|---|---|
-| HSTS | At the TLS edge in production |
-| Content Security Policy | Target: `default-src 'self'`, nonce-based scripts, `frame-ancestors 'none'`, `connect-src 'self'` (the browser only calls its own origin). Nonce support with the App Router: **Needs validation** in T-060 |
-| Other headers | `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` |
-| API responses | JSON only, `Cache-Control: no-store` on authenticated responses |
-| CORS | None configured; cross-origin browser calls to the API are not supported by design |
+Status after T-082: the rows marked "implemented" are set by `apps/web/next.config.ts` (pages) and
+`SecurityHeadersMiddleware` (API).
+
+| Control | Setting | Status |
+|---|---|---|
+| HSTS | At the TLS edge in production | Deployment (T-093) |
+| Content Security Policy | Implemented: `frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'`. Target: add `default-src 'self'`, nonce-based scripts and `connect-src 'self'` (the browser only calls its own origin) | Partial: the script policy needs nonce support with the App Router and its own tests |
+| Framing | `X-Frame-Options: DENY` (and `frame-ancestors 'none'`) | Implemented |
+| Other headers | `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` denying camera, microphone, geolocation and payment | Implemented |
+| API responses | JSON only; `Cache-Control: no-store`, `X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer` on every response | Implemented |
+| CORS | None configured; cross-origin browser calls to the API are not supported by design | Implemented (nothing to configure) |
 
 ## 14. Supply chain
 
 - Lockfiles for pnpm and Python dependencies are committed.
-- CI runs a dependency audit (T-091) and builds images from pinned base image versions.
-- Containers run as non-root users (T-090).
+- CI runs a dependency audit (T-091) and builds both images. Base images are pinned to a minor
+  version (`python:3.12-slim`, `node:24-alpine`, `postgres:16-alpine`) and the uv binary to an exact
+  version; pinning digests is a possible next step.
+- Containers run as non-root users (`app` for api and worker, `node` for web; T-090).
 - New dependencies need a reason (AGENTS.md §11).
 
 ## 15. Limitations (honest)
@@ -335,15 +347,13 @@ fallback reason.
 
 ## 16. Open security questions (for the orchestrator)
 
-1. **Demo visitor identity.** If all visitors share one VIEWER user, they share copilot conversations
-   (owner-only filtering becomes meaningless), the per-user rate limits and the audit attribution.
-   Recommendation: a per-visitor ephemeral VIEWER user per "Explore the demo" session. This needs a
-   domain model change (a password-less user, and a way to exclude visitors from member lists).
-2. **VIEWER holds `audit.read`.** Public visitors would see IP addresses and user agents of other
-   users of the demo organization. Recommendation: redact `ip` and `user_agent` in the audit API for
-   roles without `users.manage`, or remove `audit.read` from VIEWER.
-3. **Seeded staff accounts on public deployments** must have random, unpublished passwords or be
-   unable to sign in.
+1. ~~**Demo visitor identity.**~~ Decided (ADR-0011): copilot conversations and the copilot rate
+   limit are scoped by session for the shared VIEWER account; per-visitor users stay the P2 sandbox
+   option (T-095).
+2. ~~**VIEWER holds `audit.read`.**~~ Decided (ADR-0011): the audit API never returns `ip` or
+   `user_agent` for any role. Verified in T-082 (`AuditLogOut` has neither field).
+3. ~~**Seeded staff accounts on public deployments.**~~ Enforced in T-094: random passwords unless
+   `DEMO_STAFF_PASSWORD` is set, and the seed refuses that variable when `APP_ENV=production`.
 4. **Reserved movement references.** `SHIPMENT` movements use `reference = order_item:{id}` in the same
    per-store unique space as imported adjustment references. An imported reference starting with
    `order_item:` could block a shipment movement. Recommendation: reject that prefix in

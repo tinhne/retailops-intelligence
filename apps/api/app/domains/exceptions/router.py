@@ -76,6 +76,9 @@ def list_exceptions(
     ),
     product_id: uuid.UUID | None = None,
     order_id: uuid.UUID | None = None,
+    evaluation_run_id: uuid.UUID | None = Query(
+        None, description="Only exceptions this evaluation run detected (created)"
+    ),
     q: str | None = Query(None, max_length=100, description="Reference or title contains"),
     due_to: datetime | None = Query(
         None, description="Only exceptions due at or before this instant (with a time zone)"
@@ -101,6 +104,7 @@ def list_exceptions(
             assignee=assignee,
             product_id=product_id,
             order_id=order_id,
+            evaluation_run_id=evaluation_run_id,
             q=q,
             due_to=due_to,
         ),

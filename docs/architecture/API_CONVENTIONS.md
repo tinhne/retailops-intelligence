@@ -130,13 +130,18 @@ benchmark in T-053); a cursor-based list is the fallback if it is not.
 | `EXCEPTION_NEWER_OCCURRENCE_EXISTS` | 409 | Proposed: manual reopen of an occurrence when a newer active exception exists for the same dedup key |
 | (none) | 200 | A manual trigger while another run holds the store lock returns that request's run with status `SKIPPED`; it is not an error |
 | `IMPORT_NOT_APPLICABLE` | 409 | Apply, discard or revalidate called in a status that does not allow it |
+| `IMPORT_CONTENT_MISSING` | 409 | Revalidate (or apply) when the file bytes are no longer stored: a `FAILED` import keeps them only until its preview expiry |
 | `IMPORT_PREVIEW_EXPIRED` | 409 | Apply after the 24 h preview window |
 | `IMPORT_HAS_ERRORS` | 409 | Strict-mode apply of an import with error rows |
 | `IMPORT_PREVIEW_STALE` | 409 | Re-validation inside apply produced different error rows than the user confirmed |
 | `IMPORT_SKIPPED_ROWS_NOT_CONFIRMED` | 422 | Valid-rows-only apply without the matching skipped-row count |
 | `IDEMPOTENCY_KEY_REUSED` | 422 | Key already used for a different resource or with a different body |
 | `IDEMPOTENT_REQUEST_IN_PROGRESS` | 409 | The first request with this key is still running |
-| `LAST_OWNER` | 409 | Demoting or deactivating the last OWNER |
+| `LAST_OWNER` | 409 | Demoting or deactivating the last active OWNER |
+| `MEMBER_EXISTS` | 409 | Adding a member whose email is already a member of the organization |
+| `EMAIL_IN_USE` | 409 | Adding a member whose email has an account in another organization (attaching existing accounts is open question O-35) |
+| `MEMBER_IN_OTHER_ORGANIZATION` | 409 | Deactivating or reactivating an account that also belongs to another organization (`is_active` is per account) |
+| `OWN_MEMBERSHIP` | 403 | Changing your own role or status (ROLE_AND_PERMISSION_WORKFLOW §8.2) |
 | `CONVERSATION_FULL` | 409 | A copilot conversation reached `AI_MAX_MESSAGES_PER_CONVERSATION`; start a new one |
 | `INTERNAL_ERROR` | 500 | Unexpected error |
 
@@ -190,8 +195,8 @@ exception is rejected as an invalid transition, not duplicated) or protected by 
 - Exceeding a limit returns `429 RATE_LIMITED` with `Retry-After`.
 - The limiter is an in-process sliding window. **Limitation:** limits are per API process and reset
   on restart; v1 runs one API process. Scaling out needs a shared store such as Redis.
-- The client IP comes from `X-Forwarded-For` only when the immediate peer is in
-  `FORWARDED_ALLOW_IPS` (the `web` container).
+- The client IP comes from `X-Forwarded-For` only with `TRUST_PROXY_HEADERS=true`, which is safe
+  only behind an edge proxy that appends the client address (SECURITY.md §5).
 - "Principal" is the user id. For demo visitors it depends on the demo identity decision in
   ADR-0011 (per-visitor identity recommended, otherwise the session id).
 - A 429 **from the LLM provider** is not an API error: the copilot falls back to the deterministic
@@ -238,9 +243,9 @@ organization. All mutating routes require the CSRF header.
 | GET | `/stores/{store_id}` | member | Store name, code, currency, time zone, demo flag |
 | GET | `/stores/{store_id}/settings` | `settings.read` | Store settings (BUSINESS_RULES §7) |
 | PATCH | `/stores/{store_id}/settings` | `settings.manage` | Update thresholds, weights, evaluation interval; validated and audited |
-| GET | `/organizations/{organization_id}/members` | `users.read` | Members with role and status |
-| POST | `/organizations/{organization_id}/members` | `users.manage` | Add a member; the onboarding flow is defined by the role and permission workflow doc (T-010) |
-| PATCH | `/organizations/{organization_id}/members/{membership_id}` | `users.manage` | Change role or deactivate; last-OWNER guard; deactivation revokes sessions |
+| GET | `/organizations/{organization_id}/members` | `users.read` | Members with email, role, `status` (`ACTIVE`, `DEACTIVATED`), `joined_at`, `last_login_at`; `{items}` sorted by name, no paging |
+| POST | `/organizations/{organization_id}/members` | `users.manage` | Body `email`, `full_name`, `role`. Creates the account (no email delivery, ROLE_AND_PERMISSION_WORKFLOW §8.1) and returns 201 `{member, temporary_password}`, the password shown once; `409 MEMBER_EXISTS` / `EMAIL_IN_USE`. Audited as `user.create` |
+| PATCH | `/organizations/{organization_id}/members/{membership_id}` | `users.manage` | Body `role` and/or `status`. Last-OWNER guard; not your own membership (403 `OWN_MEMBERSHIP`); deactivation revokes every session. Audited as `user.role_change`, `user.deactivate` (+ `auth.session_revoked`), `user.reactivate` |
 
 ### 12.2 Catalog
 
@@ -273,21 +278,21 @@ Exceptions linked to an order use the exception list filter `order_id`.
 
 | Method | Path | Permission | Description |
 |---|---|---|---|
-| GET | `/stores/{store_id}/imports` | `imports.read` | Import history; filters `import_type`, `status` |
+| GET | `/stores/{store_id}/imports` | `imports.read` | Import history; filters `import_type`, `status` (repeatable). Items carry `can_revalidate` |
 | POST | `/stores/{store_id}/imports` | `imports.run` | Upload and validate (multipart); returns the import in `VALIDATED` or `REJECTED` |
 | GET | `/stores/{store_id}/imports/{import_id}` | `imports.read` | Preview summary: new, updated, unchanged, error and warning counts, duplicate-file flag, expiry |
-| GET | `/stores/{store_id}/imports/{import_id}/issues` | `imports.read` | Row issues; filters `severity`, `code`; sort `row_number` |
+| GET | `/stores/{store_id}/imports/{import_id}/issues` | `imports.read` | Row issues; filters `severity`, `code`, `row_number`; sort `row_number` |
 | GET | `/stores/{store_id}/imports/{import_id}/issues/export` | `imports.read` | Formula-safe CSV of the issues |
 | POST | `/stores/{store_id}/imports/{import_id}/apply` | `imports.run` | Body `mode`, `confirm_skipped_rows`; `Idempotency-Key`; runs the import-triggered evaluation afterwards |
 | POST | `/stores/{store_id}/imports/{import_id}/discard` | `imports.run` | `VALIDATED → DISCARDED` |
-| POST | `/stores/{store_id}/imports/{import_id}/revalidate` | `imports.run` | `FAILED → VALIDATING` using the stored bytes |
+| POST | `/stores/{store_id}/imports/{import_id}/revalidate` | `imports.run` | `FAILED → VALIDATING → VALIDATED \| REJECTED` using the stored bytes, synchronous like the upload. A failed apply keeps the bytes until the preview's expiry; afterwards `409 IMPORT_CONTENT_MISSING` |
 | GET | `/stores/{store_id}/import-templates/{import_type}` | `imports.read` | CSV template |
 
 ### 12.6 Exceptions and evaluations
 
 | Method | Path | Permission | Description |
 |---|---|---|---|
-| GET | `/stores/{store_id}/exceptions` | `exceptions.read` | Filters `status`, `active`, `exception_type`, `category`, `severity`, `priority_band`, `assignee_id` (uuid, `me`, `unassigned`), `product_id`, `order_id`, `due_to`; default sort `-priority_score`, also `due_at`, `-first_detected_at`, `severity` |
+| GET | `/stores/{store_id}/exceptions` | `exceptions.read` | Filters `status`, `active`, `exception_type`, `category`, `severity`, `priority_band`, `assignee_id` (uuid, `me`, `unassigned`), `product_id`, `order_id`, `evaluation_run_id` (exceptions that run detected), `due_to`; default sort `-priority_score`, also `due_at`, `-first_detected_at`, `severity` |
 | GET | `/stores/{store_id}/exceptions/{exception_id}` | `exceptions.read` | Evidence, calculation, priority breakdown, links, `version` |
 | GET | `/stores/{store_id}/exceptions/{exception_id}/events` | `exceptions.read` | Immutable history |
 | GET | `/stores/{store_id}/exceptions/{exception_id}/notes` | `exceptions.read` | Notes with source |

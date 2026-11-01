@@ -71,9 +71,9 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Administration",
     items: [
-      { label: "Users & roles", segment: "admin/users", icon: Users, permission: ["users.read"], ready: false },
-      { label: "Settings", segment: "admin/settings", icon: Settings, permission: ["settings.read"], ready: false },
-      { label: "Audit log", segment: "admin/audit-log", icon: ScrollText, permission: ["audit.read"], ready: false },
+      { label: "Users & roles", segment: "admin/users", icon: Users, permission: ["users.read"], ready: true },
+      { label: "Settings", segment: "admin/settings", icon: Settings, permission: ["settings.read"], ready: true },
+      { label: "Audit log", segment: "admin/audit-log", icon: ScrollText, permission: ["audit.read"], ready: true },
     ],
   },
 ];

@@ -7,6 +7,8 @@ from pydantic import SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _INSECURE_DEV_SECRET = "dev-only-insecure-session-secret"  # noqa: S105 - local default only
+# A placeholder such as "change-me" from .env.example must never reach production.
+_MIN_PRODUCTION_SECRET_LENGTH = 32
 
 
 class Settings(BaseSettings):
@@ -71,8 +73,14 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _production_safety(self) -> "Settings":
         if self.app_env == "production":
-            if self.session_secret.get_secret_value() == _INSECURE_DEV_SECRET:
+            secret = self.session_secret.get_secret_value()
+            if secret == _INSECURE_DEV_SECRET:
                 raise ValueError("SESSION_SECRET must be set in production")
+            if len(secret) < _MIN_PRODUCTION_SECRET_LENGTH:
+                raise ValueError(
+                    f"SESSION_SECRET must be at least {_MIN_PRODUCTION_SECRET_LENGTH} characters "
+                    "in production (for example `openssl rand -hex 32`)"
+                )
             if not self.cookie_secure:
                 raise ValueError("COOKIE_SECURE must be true in production")
         return self

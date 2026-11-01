@@ -27,4 +27,8 @@ EXPOSE 8000
 HEALTHCHECK --interval=15s --timeout=3s --start-period=10s --retries=3 \
   CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/live', timeout=2)"]
 # exec form: uvicorn is PID 1 and receives SIGTERM directly for graceful shutdown.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-server-header"]
+# --no-proxy-headers: the application alone decides whether X-Forwarded-For is trusted
+# (TRUST_PROXY_HEADERS, see SECURITY.md); uvicorn must not rewrite the client address first.
+# The same image runs the worker (python -m app.workers.scheduler) and the demo seed and reset
+# (python -m app.demo); docker-compose.yml shows all three.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-server-header", "--no-proxy-headers"]

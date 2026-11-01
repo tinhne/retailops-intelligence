@@ -2,6 +2,30 @@
 // Do not edit by hand. Run `pnpm contracts:generate` after changing API schemas.
 
 export interface paths {
+    "/api/v1/auth/csrf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Csrf Token
+         * @description Issue the CSRF token the sign-in forms send as ``X-CSRF-Token`` (ADR-0004).
+         *
+         *     Signed in, this is the session-bound token, so calling it never invalidates the token of a
+         *     live session. Otherwise it is a fresh random token for the double-submit check of
+         *     ``POST /auth/login`` and ``POST /auth/demo``. Sign-in replaces it with the session-bound one.
+         */
+        get: operations["csrf_token_api_v1_auth_csrf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/demo": {
         parameters: {
             query?: never;
@@ -105,6 +129,54 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Members
+         * @description Members with email, role and status. Organizations are small, so there is no paging.
+         */
+        get: operations["list_members_api_v1_organizations__organization_id__members_get"];
+        put?: never;
+        /**
+         * Add Member
+         * @description Create an account with a temporary password shown once, audited as ``user.create``.
+         *
+         *     ``409 MEMBER_EXISTS`` when the email is already a member here, ``409 EMAIL_IN_USE`` when it
+         *     has an account in another organization (not supported in v1, open question O-35).
+         */
+        post: operations["add_member_api_v1_organizations__organization_id__members_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_id}/members/{membership_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Member
+         * @description Change the role and/or status. ``409 LAST_OWNER`` keeps one active owner; deactivation
+         *     revokes every session of the member. Members cannot change their own membership (403).
+         */
+        patch: operations["update_member_api_v1_organizations__organization_id__members__membership_id__patch"];
         trace?: never;
     };
     "/api/v1/roles": {
@@ -700,6 +772,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stores/{store_id}/imports/{import_id}/revalidate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revalidate Import
+         * @description FAILED -> VALIDATING -> VALIDATED | REJECTED, using the bytes a failed apply keeps.
+         */
+        post: operations["revalidate_import_api_v1_stores__store_id__imports__import_id__revalidate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/stores/{store_id}/inventory/movements": {
         parameters: {
             query?: never;
@@ -1023,6 +1115,11 @@ export interface components {
         AuditLogOut: {
             /** Action */
             action: string;
+            /**
+             * Actor Name
+             * @description Full name of the actor (no email). Null for system actions.
+             */
+            actor_name: string | null;
             /** Actor User Id */
             actor_user_id: string | null;
             /** Details */
@@ -1176,6 +1273,14 @@ export interface components {
              * Format: uuid
              */
             user_message_id: string;
+        };
+        /**
+         * CsrfTokenOut
+         * @description The value to send as ``X-CSRF-Token``; the same value is set in the ``ro_csrf`` cookie.
+         */
+        CsrfTokenOut: {
+            /** Csrf Token */
+            csrf_token: string;
         };
         /** DashboardOut */
         DashboardOut: {
@@ -1816,6 +1921,11 @@ export interface components {
             /** Applied By */
             applied_by: string | null;
             /**
+             * Can Revalidate
+             * @description FAILED with the file bytes still stored (until the preview's expiry), so POST …/revalidate can validate it again. Otherwise the file must be uploaded again.
+             */
+            can_revalidate: boolean;
+            /**
              * Created At
              * Format: date-time
              */
@@ -1897,6 +2007,11 @@ export interface components {
             applied_at: string | null;
             /** Applied By */
             applied_by: string | null;
+            /**
+             * Can Revalidate
+             * @description FAILED with the file bytes still stored (until the preview's expiry), so POST …/revalidate can validate it again. Otherwise the file must be uploaded again.
+             */
+            can_revalidate: boolean;
             /**
              * Created At
              * Format: date-time
@@ -1998,6 +2113,8 @@ export interface components {
         /**
          * InventoryHealthSummary
          * @description ACTIVE products by health from current balances (§2.5), not from exceptions.
+         *
+         *     The six counts are disjoint and add up to ``active_products``.
          */
         InventoryHealthSummary: {
             /** Active Products */
@@ -2006,11 +2123,19 @@ export interface components {
             approaching_reorder_point: number;
             /** Below Reorder Point */
             below_reorder_point: number;
+            /**
+             * Data Issue
+             * @description ACTIVE products with on_hand < 0 (BR-402a). The stock figure is invalid, so they are in none of the availability classes above until a cycle count corrects them.
+             */
+            data_issue: number;
             /** Healthy */
             healthy: number;
             /** Out Of Stock */
             out_of_stock: number;
-            /** Oversold */
+            /**
+             * Oversold
+             * @description available < 0 with on_hand ≥ 0.
+             */
             oversold: number;
         };
         /** InventoryPositionOut */
@@ -2032,7 +2157,7 @@ export interface components {
              * @description Estimate (BR-151, BR-152); null means not enough sales history.
              */
             days_of_cover: string | null;
-            /** @description §2.5; null for products that are not ACTIVE. */
+            /** @description §2.5. DATA_ISSUE when on_hand < 0, whatever the product status: the stock figure is invalid, so no availability class applies (BR-402a). Otherwise null for products that are not ACTIVE. */
             health: components["schemas"]["StockHealth"] | null;
             /**
              * Incoming
@@ -2114,6 +2239,26 @@ export interface components {
             memberships: components["schemas"]["MembershipOut"][];
             user: components["schemas"]["UserOut"];
         };
+        /**
+         * MemberCreate
+         * @description Add a member by creating their account (§8.1). The email must not have an account yet.
+         */
+        MemberCreate: {
+            /** Email */
+            email: string;
+            /** Full Name */
+            full_name: string;
+            role: components["schemas"]["Role"];
+        };
+        /** MemberCreated */
+        MemberCreated: {
+            member: components["schemas"]["OrganizationMemberOut"];
+            /**
+             * Temporary Password
+             * @description Shown once so the owner can hand it over outside the product. Only its argon2id hash is stored; it is never logged or written to the audit log.
+             */
+            temporary_password: string;
+        };
         /** MemberList */
         MemberList: {
             /** Items */
@@ -2134,6 +2279,23 @@ export interface components {
              */
             id: string;
             role: components["schemas"]["Role"];
+        };
+        /**
+         * MemberStatus
+         * @description Account status of a member. v1 stores it on the user (``app_user.is_active``).
+         * @enum {string}
+         */
+        MemberStatus: "ACTIVE" | "DEACTIVATED";
+        /**
+         * MemberUpdate
+         * @description Change a member's role, deactivate or reactivate them (§8.2, §8.3).
+         *
+         *     Omitted fields keep their value; an explicit ``null`` is rejected, and at least one field is
+         *     required.
+         */
+        MemberUpdate: {
+            role?: components["schemas"]["Role"] | null;
+            status?: components["schemas"]["MemberStatus"] | null;
         };
         /** MembershipOut */
         MembershipOut: {
@@ -2216,6 +2378,11 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Import Filename
+             * @description original_filename of the import, if any.
+             */
+            import_filename: string | null;
             /** Import Id */
             import_id: string | null;
             /** Incoming After */
@@ -2234,6 +2401,11 @@ export interface components {
             on_hand_after: number;
             /** On Hand Delta */
             on_hand_delta: number;
+            /**
+             * Order Id
+             * @description The order a SHIPMENT belongs to, from its order_item:{id} reference (BR-131).
+             */
+            order_id: string | null;
             /**
              * Product Id
              * Format: uuid
@@ -2482,6 +2654,11 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Import Filename
+             * @description original_filename of the import that made the change, if any.
+             */
+            import_filename: string | null;
             /** Import Id */
             import_id: string | null;
             /**
@@ -2590,6 +2767,42 @@ export interface components {
          * @enum {string}
          */
         OrderStatus: "CREATED" | "PAYMENT_PENDING" | "PAYMENT_FAILED" | "PAID" | "PROCESSING" | "READY_TO_SHIP" | "SHIPPED" | "DELIVERED" | "RETURN_REQUESTED" | "RETURNED" | "CANCELLED" | "REFUNDED";
+        /** OrganizationMemberList */
+        OrganizationMemberList: {
+            /** Items */
+            items: components["schemas"]["OrganizationMemberOut"][];
+        };
+        /**
+         * OrganizationMemberOut
+         * @description A member as shown on the Users & roles screen (``users.read``).
+         */
+        OrganizationMemberOut: {
+            /** Email */
+            email: string;
+            /** Full Name */
+            full_name: string;
+            /**
+             * Id
+             * Format: uuid
+             * @description Membership id, used in the member PATCH path.
+             */
+            id: string;
+            /**
+             * Joined At
+             * Format: date-time
+             * @description When the membership was created.
+             */
+            joined_at: string;
+            /** Last Login At */
+            last_login_at: string | null;
+            role: components["schemas"]["Role"];
+            status: components["schemas"]["MemberStatus"];
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+        };
         /** OrganizationOut */
         OrganizationOut: {
             /**
@@ -2812,7 +3025,7 @@ export interface components {
              */
             created_at: string;
             days_of_cover: components["schemas"]["Estimate"];
-            /** @description §2.5; null for products that are not ACTIVE. */
+            /** @description §2.5. DATA_ISSUE when on_hand < 0, whatever the product status: the stock figure is invalid, so no availability class applies (BR-402a). Otherwise null for products that are not ACTIVE. */
             health: components["schemas"]["StockHealth"] | null;
             /**
              * Id
@@ -2849,7 +3062,7 @@ export interface components {
             available: number;
             /** Category */
             category: string | null;
-            /** @description §2.5; null for products that are not ACTIVE. */
+            /** @description §2.5. DATA_ISSUE when on_hand < 0, whatever the product status: the stock figure is invalid, so no availability class applies (BR-402a). Otherwise null for products that are not ACTIVE. */
             health: components["schemas"]["StockHealth"] | null;
             /**
              * Id
@@ -3041,9 +3254,10 @@ export interface components {
         ShipBySource: "IMPORTED" | "STORE_SLA";
         /**
          * StockHealth
+         * @description §2.5 classes in evaluation order. DATA_ISSUE is not an availability class (BR-402a).
          * @enum {string}
          */
-        StockHealth: "OVERSOLD" | "OUT_OF_STOCK" | "BELOW_REORDER_POINT" | "APPROACHING_REORDER_POINT" | "HEALTHY";
+        StockHealth: "DATA_ISSUE" | "OVERSOLD" | "OUT_OF_STOCK" | "BELOW_REORDER_POINT" | "APPROACHING_REORDER_POINT" | "HEALTHY";
         /** StockSnapshot */
         StockSnapshot: {
             /** Available */
@@ -3415,6 +3629,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    csrf_token_api_v1_auth_csrf_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CsrfTokenOut"];
+                };
+            };
+        };
+    };
     demo_login_api_v1_auth_demo_post: {
         parameters: {
             query?: never;
@@ -3544,6 +3778,108 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    list_members_api_v1_organizations__organization_id__members_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationMemberList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_member_api_v1_organizations__organization_id__members_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberCreated"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_member_api_v1_organizations__organization_id__members__membership_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                membership_id: string;
+                organization_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationMemberOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -4102,6 +4438,8 @@ export interface operations {
                 assignee?: string | null;
                 product_id?: string | null;
                 order_id?: string | null;
+                /** @description Only exceptions this evaluation run detected (created) */
+                evaluation_run_id?: string | null;
                 /** @description Reference or title contains */
                 q?: string | null;
                 /** @description Only exceptions due at or before this instant (with a time zone) */
@@ -4533,7 +4871,8 @@ export interface operations {
         parameters: {
             query?: {
                 import_type?: components["schemas"]["ImportType"] | null;
-                status?: components["schemas"]["ImportStatus"] | null;
+                /** @description Repeatable. */
+                status?: components["schemas"]["ImportStatus"][] | null;
                 sort?: "created_at" | "-created_at" | "applied_at" | "-applied_at" | "status" | "-status" | "import_type" | "-import_type";
                 page?: number;
                 page_size?: number;
@@ -4740,6 +5079,8 @@ export interface operations {
             query?: {
                 severity?: components["schemas"]["IssueSeverity"] | null;
                 code?: string | null;
+                /** @description Issues of this CSV row only. */
+                row_number?: number | null;
                 sort?: "row_number" | "-row_number" | "code" | "-code" | "severity" | "-severity";
                 page?: number;
                 page_size?: number;
@@ -4805,6 +5146,38 @@ export interface operations {
             };
         };
     };
+    revalidate_import_api_v1_stores__store_id__imports__import_id__revalidate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                import_id: string;
+                store_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_movements_api_v1_stores__store_id__inventory_movements_get: {
         parameters: {
             query?: {
@@ -4812,6 +5185,8 @@ export interface operations {
                 /** @description Repeatable. */
                 movement_type?: components["schemas"]["MovementType"][] | null;
                 source?: components["schemas"]["MovementSource"] | null;
+                /** @description Rows written by this import. */
+                import_id?: string | null;
                 /** @description Inclusive. */
                 from?: string | null;
                 /** @description Exclusive. */
@@ -4853,7 +5228,7 @@ export interface operations {
             query?: {
                 /** @description Substring of SKU or name. */
                 q?: string | null;
-                /** @description Repeatable. */
+                /** @description Repeatable. DATA_ISSUE selects products with on_hand < 0 (BR-402a). */
                 health?: components["schemas"]["StockHealth"][] | null;
                 category?: string | null;
                 /** @description Include DRAFT and ARCHIVED products. */
@@ -5042,7 +5417,7 @@ export interface operations {
                 status?: components["schemas"]["ProductStatus"] | null;
                 category?: string | null;
                 supplier_id?: string | null;
-                /** @description Repeatable. ACTIVE products. */
+                /** @description Repeatable. The availability classes cover ACTIVE products; DATA_ISSUE covers on_hand < 0 for any status (BR-402a). */
                 health?: components["schemas"]["StockHealth"][] | null;
                 sort?: "sku" | "-sku" | "name" | "-name" | "updated_at" | "-updated_at" | "available" | "-available";
                 page?: number;

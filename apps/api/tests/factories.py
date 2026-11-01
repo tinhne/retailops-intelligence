@@ -56,9 +56,20 @@ def create_user(
     return user
 
 
+def pre_session_csrf(client: TestClient) -> dict[str, str]:
+    """Fetch the sign-in CSRF token (``GET /auth/csrf``, ADR-0004) as request headers."""
+    response = client.get("/api/v1/auth/csrf")
+    assert response.status_code == 200, response.text
+    return {"X-CSRF-Token": response.json()["csrf_token"]}
+
+
 def login(client: TestClient, email: str, password: str = DEFAULT_PASSWORD) -> str:
     """Sign in and return the CSRF token for subsequent mutating requests."""
-    response = client.post("/api/v1/auth/login", json={"email": email, "password": password})
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"email": email, "password": password},
+        headers=pre_session_csrf(client),
+    )
     assert response.status_code == 200, response.text
     token: str = response.json()["csrf_token"]
     return token

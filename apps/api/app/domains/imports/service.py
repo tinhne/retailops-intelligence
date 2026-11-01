@@ -14,12 +14,12 @@ import csv
 import io
 import logging
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Collection, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Protocol
 
-from sqlalchemy import Integer, cast, func, insert, literal, select, update
+from sqlalchemy import Integer, cast, delete, func, insert, literal, select, update
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -137,10 +137,77 @@ def create_import(
     )
     db.add(record)
     db.flush()
+    _validate_into(db, ctx, record, upload, now)
+    db.commit()
+    return _detail(db, record)
 
+
+def revalidate_import(
+    db: Session, ctx: StoreContext, import_id: uuid.UUID, *, now: datetime
+) -> ImportDetailOut:
+    """FAILED -> VALIDATING -> VALIDATED | REJECTED from the stored bytes (STATE_MACHINES §4).
+
+    A failed apply keeps the file bytes until the preview's original expiry, so the same file
+    can be validated again against current data (IMPORT_PIPELINE §9). Once they are purged, the
+    only way forward is a new upload (``IMPORT_CONTENT_MISSING``).
+    """
+    record = _load(db, ctx.store_id, import_id, lock=True)
+    _refresh_lifecycle(record, now)  # purges the bytes of an expired failure
+    if record.status is not ImportStatus.FAILED:
+        raise ConflictError(
+            f"Only a FAILED import can be validated again; this one is {record.status.value}.",
+            code="IMPORT_NOT_APPLICABLE",
+        )
+    if record.content is None:
+        raise ConflictError(
+            "The uploaded file is no longer stored. Upload the file again.",
+            code="IMPORT_CONTENT_MISSING",
+        )
+    upload = parsing.Upload(
+        filename=record.original_filename,
+        size_bytes=record.size_bytes,
+        sha256=record.file_sha256,
+        content=record.content,
+    )
+    previous_failure = record.failure_reason
+    record.status = ImportStatus.VALIDATING
+    record.mode = None
+    record.applied_by = None
+    record.applied_at = None
+    record.failure_reason = None
+    record.evaluation_run_id = None
+    db.execute(delete(ImportRowIssue).where(ImportRowIssue.import_id == record.id))
+    db.flush()
+    _validate_into(db, ctx, record, upload, now)
+    audit.record(
+        db,
+        action="import.revalidated",
+        organization_id=ctx.organization_id,
+        store_id=ctx.store_id,
+        actor_user_id=ctx.user.id,
+        target_type="data_import",
+        target_id=record.id,
+        details={
+            "import_type": record.import_type.value,
+            "status": record.status.value,
+            "previous_failure": previous_failure,
+        },
+    )
+    db.commit()
+    return _detail(db, record)
+
+
+def _validate_into(
+    db: Session, ctx: StoreContext, record: DataImport, upload: parsing.Upload, now: datetime
+) -> None:
+    """Parse and validate ``upload`` into ``record``: VALIDATED with a preview, or REJECTED."""
+    import_type = record.import_type
     outcome = _parse(upload, templates.contract_for(import_type))
     if isinstance(outcome, parsing.FileIssue):
         record.status = ImportStatus.REJECTED
+        record.content = None
+        record.row_count = None
+        record.expires_at = None
         record.summary = ImportSummary(issue_counts_by_code={outcome.code: 1}).model_dump(
             mode="json"
         )
@@ -169,8 +236,6 @@ def create_import(
         record.expires_at = now + PREVIEW_TTL
         record.content = upload.content
         _store_issues(db, record.id, result.all_issues)
-    db.commit()
-    return _detail(db, record)
 
 
 def _parse(
@@ -266,7 +331,7 @@ def list_imports(
     ctx: StoreContext,
     *,
     import_type: ImportType | None,
-    status: ImportStatus | None,
+    statuses: Sequence[ImportStatus] | None,
     sort: ImportSort,
     offset: int,
     limit: int,
@@ -277,8 +342,8 @@ def list_imports(
     stmt = select(DataImport).where(DataImport.store_id == ctx.store_id)
     if import_type is not None:
         stmt = stmt.where(DataImport.import_type == import_type)
-    if status is not None:
-        stmt = stmt.where(DataImport.status == status)
+    if statuses:
+        stmt = stmt.where(DataImport.status.in_(list(statuses)))
     total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     rows = db.scalars(
         stmt.order_by(*_IMPORT_ORDER[sort], DataImport.created_at.desc(), DataImport.id)
@@ -312,6 +377,7 @@ def list_issues(
     *,
     severity: IssueSeverity | None,
     code: str | None,
+    row_number: int | None = None,
     sort: IssueSort,
     offset: int,
     limit: int,
@@ -322,11 +388,28 @@ def list_issues(
         stmt = stmt.where(ImportRowIssue.severity == severity)
     if code:
         stmt = stmt.where(ImportRowIssue.code == code.upper())
+    if row_number is not None:
+        stmt = stmt.where(ImportRowIssue.row_number == row_number)
     total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     rows = db.scalars(
         stmt.order_by(*_ISSUE_ORDER[sort], *_ISSUE_TIEBREAK).offset(offset).limit(limit)
     ).all()
     return [_issue_out(issue) for issue in rows], total
+
+
+def filenames_by_id(
+    db: Session, store_id: uuid.UUID, import_ids: Collection[uuid.UUID | None]
+) -> dict[uuid.UUID, str]:
+    """``original_filename`` of the given imports of one store, for read models linking them."""
+    ids = {import_id for import_id in import_ids if import_id is not None}
+    if not ids:
+        return {}
+    rows = db.execute(
+        select(DataImport.id, DataImport.original_filename).where(
+            DataImport.store_id == store_id, DataImport.id.in_(ids)
+        )
+    ).all()
+    return {import_id: filename for import_id, filename in rows}
 
 
 def export_issues_csv(db: Session, ctx: StoreContext, import_id: uuid.UUID) -> str:
@@ -656,7 +739,7 @@ def _record_failure(
     record.mode = mode
     record.applied_by = ctx.user.id
     record.failure_reason = f"{error.code}: {error.message}"[:500]
-    record.content = None
+    # The bytes stay until the preview's expiry so the file can be validated again (revalidate).
     audit.record(
         db,
         action="import.failed",
@@ -756,7 +839,10 @@ def _refresh_lifecycle(record: DataImport, now: datetime) -> bool:
     if record.status is ImportStatus.APPLYING and record.updated_at < now - APPLYING_STALE_AFTER:
         record.status = ImportStatus.FAILED
         record.failure_reason = "IMPORT_INTERRUPTED: the apply did not finish; no data was changed."
-        record.content = None
+        return True
+    failed = record.status is ImportStatus.FAILED
+    if failed and record.content is not None and _expired(record, now):
+        record.content = None  # a failed import keeps its bytes only until the preview expiry
         return True
     return False
 
@@ -783,13 +869,24 @@ def _expire_previews(db: Session, store_id: uuid.UUID, now: datetime) -> bool:
         )
         .values(
             status=ImportStatus.FAILED,
-            content=None,
             failure_reason="IMPORT_INTERRUPTED: the apply did not finish; no data was changed.",
         )
         .execution_options(synchronize_session=False)
         .returning(DataImport.id)
     ).all()
-    return bool(expired or stuck)
+    purged = db.execute(
+        update(DataImport)
+        .where(
+            DataImport.store_id == store_id,
+            DataImport.status == ImportStatus.FAILED,
+            DataImport.content.is_not(None),
+            DataImport.expires_at <= now,
+        )
+        .values(content=None)
+        .execution_options(synchronize_session=False)
+        .returning(DataImport.id)
+    ).all()
+    return bool(expired or stuck or purged)
 
 
 # --- Helpers -------------------------------------------------------------------------------
@@ -831,6 +928,7 @@ def _out(record: DataImport) -> ImportOut:
         applied_by=record.applied_by,
         evaluation_run_id=record.evaluation_run_id,
         failure_reason=record.failure_reason,
+        can_revalidate=record.status is ImportStatus.FAILED and record.content is not None,
     )
 
 

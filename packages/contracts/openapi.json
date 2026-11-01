@@ -362,6 +362,18 @@
             "title": "Action",
             "type": "string"
           },
+          "actor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Full name of the actor (no email). Null for system actions.",
+            "title": "Actor Name"
+          },
           "actor_user_id": {
             "anyOf": [
               {
@@ -440,6 +452,7 @@
           "occurred_at",
           "action",
           "actor_user_id",
+          "actor_name",
           "store_id",
           "target_type",
           "target_id",
@@ -726,6 +739,20 @@
           "meta"
         ],
         "title": "CopilotTurnOut",
+        "type": "object"
+      },
+      "CsrfTokenOut": {
+        "description": "The value to send as ``X-CSRF-Token``; the same value is set in the ``ro_csrf`` cookie.",
+        "properties": {
+          "csrf_token": {
+            "title": "Csrf Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "csrf_token"
+        ],
+        "title": "CsrfTokenOut",
         "type": "object"
       },
       "DashboardOut": {
@@ -2422,6 +2449,11 @@
             ],
             "title": "Applied By"
           },
+          "can_revalidate": {
+            "description": "FAILED with the file bytes still stored (until the preview's expiry), so POST \u2026/revalidate can validate it again. Otherwise the file must be uploaded again.",
+            "title": "Can Revalidate",
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -2565,6 +2597,7 @@
           "applied_by",
           "evaluation_run_id",
           "failure_reason",
+          "can_revalidate",
           "file_issues"
         ],
         "title": "ImportDetailOut",
@@ -2718,6 +2751,11 @@
             ],
             "title": "Applied By"
           },
+          "can_revalidate": {
+            "description": "FAILED with the file bytes still stored (until the preview's expiry), so POST \u2026/revalidate can validate it again. Otherwise the file must be uploaded again.",
+            "title": "Can Revalidate",
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -2853,7 +2891,8 @@
           "created_by",
           "applied_by",
           "evaluation_run_id",
-          "failure_reason"
+          "failure_reason",
+          "can_revalidate"
         ],
         "title": "ImportOut",
         "type": "object"
@@ -2961,7 +3000,7 @@
         "type": "string"
       },
       "InventoryHealthSummary": {
-        "description": "ACTIVE products by health from current balances (\u00a72.5), not from exceptions.",
+        "description": "ACTIVE products by health from current balances (\u00a72.5), not from exceptions.\n\nThe six counts are disjoint and add up to ``active_products``.",
         "properties": {
           "active_products": {
             "title": "Active Products",
@@ -2975,6 +3014,11 @@
             "title": "Below Reorder Point",
             "type": "integer"
           },
+          "data_issue": {
+            "description": "ACTIVE products with on_hand < 0 (BR-402a). The stock figure is invalid, so they are in none of the availability classes above until a cycle count corrects them.",
+            "title": "Data Issue",
+            "type": "integer"
+          },
           "healthy": {
             "title": "Healthy",
             "type": "integer"
@@ -2984,6 +3028,7 @@
             "type": "integer"
           },
           "oversold": {
+            "description": "available < 0 with on_hand \u2265 0.",
             "title": "Oversold",
             "type": "integer"
           }
@@ -2994,7 +3039,8 @@
           "out_of_stock",
           "below_reorder_point",
           "approaching_reorder_point",
-          "healthy"
+          "healthy",
+          "data_issue"
         ],
         "title": "InventoryHealthSummary",
         "type": "object"
@@ -3043,7 +3089,7 @@
                 "type": "null"
               }
             ],
-            "description": "\u00a72.5; null for products that are not ACTIVE."
+            "description": "\u00a72.5. DATA_ISSUE when on_hand < 0, whatever the product status: the stock figure is invalid, so no availability class applies (BR-402a). Otherwise null for products that are not ACTIVE."
           },
           "incoming": {
             "description": "Never counted in available (BR-103).",
@@ -3275,6 +3321,53 @@
         "title": "MeResponse",
         "type": "object"
       },
+      "MemberCreate": {
+        "additionalProperties": false,
+        "description": "Add a member by creating their account (\u00a78.1). The email must not have an account yet.",
+        "properties": {
+          "email": {
+            "maxLength": 254,
+            "minLength": 3,
+            "pattern": "^[^@\\s]+@[^@\\s]+$",
+            "title": "Email",
+            "type": "string"
+          },
+          "full_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Full Name",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          }
+        },
+        "required": [
+          "email",
+          "full_name",
+          "role"
+        ],
+        "title": "MemberCreate",
+        "type": "object"
+      },
+      "MemberCreated": {
+        "properties": {
+          "member": {
+            "$ref": "#/components/schemas/OrganizationMemberOut"
+          },
+          "temporary_password": {
+            "description": "Shown once so the owner can hand it over outside the product. Only its argon2id hash is stored; it is never logged or written to the audit log.",
+            "title": "Temporary Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "member",
+          "temporary_password"
+        ],
+        "title": "MemberCreated",
+        "type": "object"
+      },
       "MemberList": {
         "properties": {
           "items": {
@@ -3318,6 +3411,43 @@
           "can_work_exceptions"
         ],
         "title": "MemberOut",
+        "type": "object"
+      },
+      "MemberStatus": {
+        "description": "Account status of a member. v1 stores it on the user (``app_user.is_active``).",
+        "enum": [
+          "ACTIVE",
+          "DEACTIVATED"
+        ],
+        "title": "MemberStatus",
+        "type": "string"
+      },
+      "MemberUpdate": {
+        "additionalProperties": false,
+        "description": "Change a member's role, deactivate or reactivate them (\u00a78.2, \u00a78.3).\n\nOmitted fields keep their value; an explicit ``null`` is rejected, and at least one field is\nrequired.",
+        "properties": {
+          "role": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Role"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MemberStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "MemberUpdate",
         "type": "object"
       },
       "MembershipOut": {
@@ -3529,6 +3659,18 @@
             "title": "Id",
             "type": "string"
           },
+          "import_filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "original_filename of the import, if any.",
+            "title": "Import Filename"
+          },
           "import_id": {
             "anyOf": [
               {
@@ -3575,6 +3717,19 @@
           "on_hand_delta": {
             "title": "On Hand Delta",
             "type": "integer"
+          },
+          "order_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The order a SHIPMENT belongs to, from its order_item:{id} reference (BR-131).",
+            "title": "Order Id"
           },
           "product_id": {
             "format": "uuid",
@@ -3624,6 +3779,8 @@
           "source",
           "reference",
           "import_id",
+          "import_filename",
+          "order_id",
           "note",
           "created_by"
         ],
@@ -4188,6 +4345,18 @@
             "title": "Id",
             "type": "string"
           },
+          "import_filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "original_filename of the import that made the change, if any.",
+            "title": "Import Filename"
+          },
           "import_id": {
             "anyOf": [
               {
@@ -4231,6 +4400,7 @@
           "fulfillment_status",
           "source",
           "import_id",
+          "import_filename",
           "actor_user_id",
           "occurred_at"
         ],
@@ -4476,6 +4646,82 @@
         ],
         "title": "OrderStatus",
         "type": "string"
+      },
+      "OrganizationMemberList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OrganizationMemberOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "OrganizationMemberList",
+        "type": "object"
+      },
+      "OrganizationMemberOut": {
+        "description": "A member as shown on the Users & roles screen (``users.read``).",
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "id": {
+            "description": "Membership id, used in the member PATCH path.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "joined_at": {
+            "description": "When the membership was created.",
+            "format": "date-time",
+            "title": "Joined At",
+            "type": "string"
+          },
+          "last_login_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Login At"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MemberStatus"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "full_name",
+          "email",
+          "role",
+          "status",
+          "joined_at",
+          "last_login_at"
+        ],
+        "title": "OrganizationMemberOut",
+        "type": "object"
       },
       "OrganizationOut": {
         "properties": {
@@ -5081,7 +5327,7 @@
                 "type": "null"
               }
             ],
-            "description": "\u00a72.5; null for products that are not ACTIVE."
+            "description": "\u00a72.5. DATA_ISSUE when on_hand < 0, whatever the product status: the stock figure is invalid, so no availability class applies (BR-402a). Otherwise null for products that are not ACTIVE."
           },
           "id": {
             "format": "uuid",
@@ -5198,7 +5444,7 @@
                 "type": "null"
               }
             ],
-            "description": "\u00a72.5; null for products that are not ACTIVE."
+            "description": "\u00a72.5. DATA_ISSUE when on_hand < 0, whatever the product status: the stock figure is invalid, so no availability class applies (BR-402a). Otherwise null for products that are not ACTIVE."
           },
           "id": {
             "format": "uuid",
@@ -5722,7 +5968,9 @@
         "type": "string"
       },
       "StockHealth": {
+        "description": "\u00a72.5 classes in evaluation order. DATA_ISSUE is not an availability class (BR-402a).",
         "enum": [
+          "DATA_ISSUE",
           "OVERSOLD",
           "OUT_OF_STOCK",
           "BELOW_REORDER_POINT",
@@ -6626,6 +6874,28 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/auth/csrf": {
+      "get": {
+        "description": "Issue the CSRF token the sign-in forms send as ``X-CSRF-Token`` (ADR-0004).\n\nSigned in, this is the session-bound token, so calling it never invalidates the token of a\nlive session. Otherwise it is a fresh random token for the double-submit check of\n``POST /auth/login`` and ``POST /auth/demo``. Sign-in replaces it with the session-bound one.",
+        "operationId": "csrf_token_api_v1_auth_csrf_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CsrfTokenOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Csrf Token",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/auth/demo": {
       "post": {
         "description": "Sign in as the read-only public demo viewer (ADR-0011).",
@@ -6765,6 +7035,166 @@
         "summary": "Ready",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organization_id}/members": {
+      "get": {
+        "description": "Members with email, role and status. Organizations are small, so there is no paging.",
+        "operationId": "list_members_api_v1_organizations__organization_id__members_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organization_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organization Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationMemberList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Members",
+        "tags": [
+          "members"
+        ]
+      },
+      "post": {
+        "description": "Create an account with a temporary password shown once, audited as ``user.create``.\n\n``409 MEMBER_EXISTS`` when the email is already a member here, ``409 EMAIL_IN_USE`` when it\nhas an account in another organization (not supported in v1, open question O-35).",
+        "operationId": "add_member_api_v1_organizations__organization_id__members_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organization_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organization Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Member",
+        "tags": [
+          "members"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organization_id}/members/{membership_id}": {
+      "patch": {
+        "description": "Change the role and/or status. ``409 LAST_OWNER`` keeps one active owner; deactivation\nrevokes every session of the member. Members cannot change their own membership (403).",
+        "operationId": "update_member_api_v1_organizations__organization_id__members__membership_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "membership_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Membership Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organization_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organization Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationMemberOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Member",
+        "tags": [
+          "members"
         ]
       }
     },
@@ -7934,6 +8364,25 @@
             }
           },
           {
+            "description": "Only exceptions this evaluation run detected (created)",
+            "in": "query",
+            "name": "evaluation_run_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only exceptions this evaluation run detected (created)",
+              "title": "Evaluation Run Id"
+            }
+          },
+          {
             "description": "Reference or title contains",
             "in": "query",
             "name": "q",
@@ -8791,18 +9240,23 @@
             }
           },
           {
+            "description": "Repeatable.",
             "in": "query",
             "name": "status",
             "required": false,
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/ImportStatus"
+                  "items": {
+                    "$ref": "#/components/schemas/ImportStatus"
+                  },
+                  "type": "array"
                 },
                 {
                   "type": "null"
                 }
               ],
+              "description": "Repeatable.",
               "title": "Status"
             }
           },
@@ -9223,6 +9677,25 @@
             }
           },
           {
+            "description": "Issues of this CSV row only.",
+            "in": "query",
+            "name": "row_number",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Issues of this CSV row only.",
+              "title": "Row Number"
+            }
+          },
+          {
             "in": "query",
             "name": "sort",
             "required": false,
@@ -9342,6 +9815,60 @@
         ]
       }
     },
+    "/api/v1/stores/{store_id}/imports/{import_id}/revalidate": {
+      "post": {
+        "description": "FAILED -> VALIDATING -> VALIDATED | REJECTED, using the bytes a failed apply keeps.",
+        "operationId": "revalidate_import_api_v1_stores__store_id__imports__import_id__revalidate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "import_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Import Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "store_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Store Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revalidate Import",
+        "tags": [
+          "imports"
+        ]
+      }
+    },
     "/api/v1/stores/{store_id}/inventory/movements": {
       "get": {
         "operationId": "list_movements_api_v1_stores__store_id__inventory_movements_get",
@@ -9408,6 +9935,25 @@
                 }
               ],
               "title": "Source"
+            }
+          },
+          {
+            "description": "Rows written by this import.",
+            "in": "query",
+            "name": "import_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Rows written by this import.",
+              "title": "Import Id"
             }
           },
           {
@@ -9551,7 +10097,7 @@
             }
           },
           {
-            "description": "Repeatable.",
+            "description": "Repeatable. DATA_ISSUE selects products with on_hand < 0 (BR-402a).",
             "in": "query",
             "name": "health",
             "required": false,
@@ -9567,7 +10113,7 @@
                   "type": "null"
                 }
               ],
-              "description": "Repeatable.",
+              "description": "Repeatable. DATA_ISSUE selects products with on_hand < 0 (BR-402a).",
               "title": "Health"
             }
           },
@@ -10145,7 +10691,7 @@
             }
           },
           {
-            "description": "Repeatable. ACTIVE products.",
+            "description": "Repeatable. The availability classes cover ACTIVE products; DATA_ISSUE covers on_hand < 0 for any status (BR-402a).",
             "in": "query",
             "name": "health",
             "required": false,
@@ -10161,7 +10707,7 @@
                   "type": "null"
                 }
               ],
-              "description": "Repeatable. ACTIVE products.",
+              "description": "Repeatable. The availability classes cover ACTIVE products; DATA_ISSUE covers on_hand < 0 for any status (BR-402a).",
               "title": "Health"
             }
           },

@@ -12,6 +12,7 @@ This is the only background process in the system.
 Usage:
     python -m app.workers.scheduler            # run forever
     python -m app.workers.scheduler --once     # one pass, e.g. from an external cron
+    python -m app.workers.scheduler --heartbeat /tmp/worker-heartbeat   # container health check
 """
 
 import argparse
@@ -21,6 +22,7 @@ import threading
 import uuid
 from collections.abc import Callable
 from datetime import datetime, timedelta
+from pathlib import Path
 from types import FrameType
 
 from sqlalchemy import func, select
@@ -90,9 +92,25 @@ def run_once(
     return runs
 
 
+def touch_heartbeat(path: Path | None) -> None:
+    """Record that a pass finished; the container health check reads the file's age."""
+    if path is None:
+        return
+    try:
+        path.touch()
+    except OSError:
+        logger.warning("worker_heartbeat_failed", extra={"path": str(path)}, exc_info=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="RetailOps scheduled evaluation worker")
     parser.add_argument("--once", action="store_true", help="run a single pass and exit")
+    parser.add_argument(
+        "--heartbeat",
+        type=Path,
+        default=None,
+        help="file touched after every pass (for container health checks)",
+    )
     args = parser.parse_args()
     configure_logging(get_settings().log_level)
     factory = get_session_factory()
@@ -115,6 +133,8 @@ def main() -> None:
             run_once(factory)
         except Exception:
             logger.exception("worker_pass_failed")
+        else:
+            touch_heartbeat(args.heartbeat)
         stop.wait(POLL_SECONDS)
     logger.info("worker_stopped")
 

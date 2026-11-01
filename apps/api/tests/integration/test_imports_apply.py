@@ -221,6 +221,7 @@ def test_interrupted_apply_is_reported_as_failed_on_read(client: TestClient, db:
 
     assert detail["status"] == "FAILED"
     assert detail["failure_reason"].startswith("IMPORT_INTERRUPTED")
+    assert detail["can_revalidate"] is True  # nothing was applied; the file is still stored
 
 
 def test_discard_purges_bytes_and_is_audited(client: TestClient, db: Session) -> None:
@@ -328,7 +329,9 @@ def test_br606_failure_mid_apply_rolls_back_every_business_change(
     assert record.status is ImportStatus.FAILED
     assert record.failure_reason is not None
     assert record.failure_reason.startswith("IMPORT_APPLY_FAILED")
-    assert record.content is None
+    # A failed import keeps its bytes until the preview expiry, so it can be validated again.
+    assert record.content is not None
+    assert api.get(body["id"]).json()["can_revalidate"] is True
     assert record.evaluation_run_id is None
     assert _actions(db) == ["import.failed"]
 
@@ -396,6 +399,118 @@ def test_revalidation_detects_data_changed_since_preview(client: TestClient, db:
     db.expire_all()
     assert db.scalars(select(Order.status)).one() is OrderStatus.DELIVERED
     assert _record(db, pending["id"]).status is ImportStatus.FAILED
+
+
+def test_validate_again_checks_the_stored_file_against_current_data(
+    client: TestClient, db: Session
+) -> None:
+    """STATE_MACHINES §4 FAILED → VALIDATING (retry): the stale row now shows as an error."""
+    _, api = manager_api(client, db)
+    api.run("orders", csv_bytes(ORDER_HEADER, order_row("KHK-1", status="PAID")))
+    pending = api.validated(
+        "orders",
+        csv_bytes(
+            ORDER_HEADER,
+            order_row("KHK-1", status="PROCESSING", fulfillment="IN_PROGRESS"),
+            order_row("KHK-2", status="PAID"),
+        ),
+    )
+    api.run(
+        "orders",
+        csv_bytes(
+            ORDER_HEADER,
+            order_row(
+                "KHK-1",
+                status="DELIVERED",
+                fulfillment="DELIVERED",
+                shipped_at="2026-10-29T10:00:00-04:00",
+                delivered_at="2026-10-30T10:00:00-04:00",
+            ),
+        ),
+    )
+    assert api.apply(pending["id"]).json()["error"]["code"] == "IMPORT_DATA_CHANGED"
+    assert api.get(pending["id"]).json()["can_revalidate"] is True
+
+    response = api.revalidate(pending["id"])
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["status"] == "VALIDATED"
+    assert (body["mode"], body["failure_reason"], body["can_revalidate"]) == (None, None, False)
+    assert body["summary"]["rows_with_errors"] == 1
+    assert body["summary"]["creates"] == 1
+    assert api.codes(pending["id"]) == {(2, "ORDER_TRANSITION_NOT_ALLOWED")}
+    assert "import.revalidated" in _actions(db)
+    again = api.revalidate(pending["id"])
+    assert again.status_code == 409
+    assert again.json()["error"]["code"] == "IMPORT_NOT_APPLICABLE"
+
+    applied = api.apply(pending["id"], mode="VALID_ROWS_ONLY", confirm=1)
+
+    assert applied.status_code == 200, applied.text
+    assert applied.json()["status"] == "COMPLETED_WITH_ERRORS"
+    db.expire_all()
+    rows = db.execute(select(Order.order_number, Order.status)).all()
+    assert {number: status for number, status in rows} == {
+        "KHK-1": OrderStatus.DELIVERED,
+        "KHK-2": OrderStatus.PAID,
+    }
+
+
+def test_validate_again_after_a_failed_apply_then_apply(
+    client: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _, api = manager_api(client, db)
+    body = api.validated("products", csv_bytes(PRODUCT_HEADER, product_row("KHK-1")))
+
+    def broken(*args: Any, **kwargs: Any) -> tuple[Product, bool]:
+        raise RuntimeError("disk full")
+
+    monkeypatch.setattr(catalog, "upsert_product", broken)
+    assert api.apply(body["id"]).json()["error"]["code"] == "IMPORT_APPLY_FAILED"
+    monkeypatch.undo()
+
+    revalidated = api.revalidate(body["id"])
+
+    assert revalidated.status_code == 200, revalidated.text
+    assert revalidated.json()["status"] == "VALIDATED"
+    assert revalidated.json()["applied_by"] is None
+    assert api.apply(body["id"]).json()["status"] == "COMPLETED"
+    assert _skus(db) == ["KHK-1"]
+    assert _record(db, body["id"]).content is None  # purged once applied
+
+
+def test_a_failed_import_keeps_its_file_only_until_the_preview_expiry(
+    client: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _, api = manager_api(client, db)
+    first = api.validated("products", csv_bytes(PRODUCT_HEADER, product_row("KHK-1")))
+    second = api.validated("products", csv_bytes(PRODUCT_HEADER, product_row("KHK-2")))
+
+    def broken(*args: Any, **kwargs: Any) -> tuple[Product, bool]:
+        raise RuntimeError("disk full")
+
+    monkeypatch.setattr(catalog, "upsert_product", broken)
+    for body in (first, second):
+        assert api.apply(body["id"]).status_code == 409
+    monkeypatch.undo()
+    db.execute(
+        update(DataImport)
+        .where(DataImport.id.in_([uuid.UUID(first["id"]), uuid.UUID(second["id"])]))
+        .values(expires_at=utcnow() - timedelta(minutes=1))
+    )
+    db.commit()
+
+    detail = api.get(first["id"]).json()  # lazy purge of one record
+    listing = client.get(api.base, params={"status": "FAILED"}).json()  # bulk purge
+    refused = api.revalidate(first["id"])
+
+    assert (detail["status"], detail["can_revalidate"]) == ("FAILED", False)
+    assert [item["can_revalidate"] for item in listing["items"]] == [False, False]
+    assert _record(db, first["id"]).content is None
+    assert _record(db, second["id"]).content is None
+    assert refused.status_code == 409
+    assert refused.json()["error"]["code"] == "IMPORT_CONTENT_MISSING"
 
 
 def test_br112_reimporting_adjustments_changes_stock_once(client: TestClient, db: Session) -> None:

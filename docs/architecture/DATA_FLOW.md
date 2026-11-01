@@ -55,7 +55,7 @@ sequenceDiagram
     opt Session missing, revoked, idle over 12 h, older than 7 days, or user inactive
         A-->>B: 401 AUTH_REQUIRED
     end
-    A->>A: Header equals cookie and equals HMAC(SECRET_KEY, session id)
+    A->>A: Header equals cookie and equals HMAC(SESSION_SECRET, session id)
     opt CSRF check fails
         A-->>B: 403 CSRF_FAILED
     end

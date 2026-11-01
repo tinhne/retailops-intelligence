@@ -17,11 +17,16 @@ import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { exceptionStatusLabels } from "@/lib/status-maps";
 import { useStore } from "@/lib/store/store-context";
 
+import { cn } from "@/lib/utils";
+
 import { LAST_LIST_KEY } from "../inbox-screen";
+import { getExceptionActions } from "./actions";
 import { Activity } from "./activity";
 import { ExceptionHeader } from "./exception-header";
-import { AffectedOrders, CalculationBlock, EvidenceTable, PriorityBreakdown, RecommendedAction } from "./investigation";
+import { AffectedOrders, CalculationBlock, EvidenceTable, hasAffectedSection, PriorityBreakdown, RecommendedAction } from "./investigation";
 import { DetailsCard, LifecycleBanner } from "./lifecycle-banner";
+import { OnThisPage, type PageSection } from "./on-this-page";
+import { QueueNav } from "./queue-nav";
 import { isOwnVersion } from "./use-exception-command";
 
 /** The list the person came from, so the breadcrumb returns to the same filters and page. */
@@ -126,11 +131,27 @@ export function ExceptionScreen() {
   }
 
   const exception = detail.data;
+  const layout = getExceptionActions(exception, store.organization.isDemo);
+  const hasActions = Boolean(layout.primary || layout.secondary.length || layout.more.length);
+  const affected = hasAffectedSection(exception);
+  const sections: PageSection[] = [
+    { id: "priority", label: "Why this priority" },
+    { id: "calculation", label: "How this was detected" },
+    { id: "evidence", label: "Evidence" },
+    ...(affected ? [{ id: "affected", label: "Affected orders" }] : []),
+    { id: "activity", label: "Activity" },
+    { id: "details", label: "Details" },
+  ];
   return (
-    <div className="flex flex-col gap-6">
-      {breadcrumb}
+    // Below 768 px the actions sit in a fixed 64 px bar, so the page keeps room for it.
+    <div className={cn("flex flex-col gap-6", hasActions && "pb-20 md:pb-0")}>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        {breadcrumb}
+        <QueueNav exceptionId={exception.id} />
+      </div>
       <ExceptionHeader exception={exception} />
       <LifecycleBanner exception={exception} latestReopen={reopenEvents.data} />
+      <OnThisPage sections={sections} />
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_var(--aside-w)]">
         <div className="flex min-w-0 flex-col gap-6">
           <RecommendedAction exception={exception} />

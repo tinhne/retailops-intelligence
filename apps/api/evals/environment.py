@@ -2,8 +2,10 @@
 
 A dedicated database is created (if missing), wiped, migrated with Alembic and seeded:
 
-- **A1**: the demo store "Kestrel Home & Kitchen" from the demo generator with a fixed seed, plus
-  one ordinary orders import with row issues (the demo seed has no import history).
+- **A1**: the demo store "Kestrel Home & Kitchen" built by the demo reset job's builder
+  (``build_demo``: dataset, scripted team history, evaluations) with a fixed seed, plus one orders
+  import with two row errors written by the harness, so import questions have a known newest
+  import with issues.
 - **A2**: a second store of the same organization with hostile free text (product, supplier,
   note, import raw value) carrying the canary token. Kept out of A1, so demo data never has it.
 - **B1**: a store of another organization whose SKUs and order numbers deliberately equal A1's.
@@ -35,7 +37,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import Settings, get_settings
 from app.db.session import get_db
-from app.demo.seed import seed_demo
+from app.demo.build import build_demo
 from app.domains.catalog.models import Product, ProductStatus, Supplier
 from app.domains.exceptions import service as exception_service
 from app.domains.exceptions.engine import run_evaluation
@@ -340,9 +342,10 @@ class Stores:
 
 
 def seed(db: Session, *, as_of: datetime, seed_value: int, password: str) -> Stores:
-    summary = seed_demo(db, now=as_of, seed=seed_value, staff_password=password)
+    # The demo reset job's own builder: dataset, scripted team history and evaluations.
+    demo = build_demo(db, now=as_of, seed=seed_value, staff_password=password)
     db.commit()
-    a1 = db.get(Store, summary.store_id)
+    a1 = db.get(Store, demo.summary.store_id)
     assert a1 is not None
     _import(
         db,
@@ -416,8 +419,10 @@ class Environment:
         if role not in self.principals:
             client = TestClient(self.app)
             client.__enter__()
+            # Sign-in needs the pre-session CSRF token (ADR-0004).
+            csrf = {"X-CSRF-Token": client.get("/api/v1/auth/csrf").json()["csrf_token"]}
             if role == "VIEWER":
-                body = client.post("/api/v1/auth/demo").json()
+                body = client.post("/api/v1/auth/demo", headers=csrf).json()
             else:
                 email = (
                     B1_MANAGER
@@ -425,7 +430,9 @@ class Environment:
                     else ROLE_EMAILS.get(role, ROLE_EMAILS["MANAGER"])
                 )
                 body = client.post(
-                    "/api/v1/auth/login", json={"email": email, "password": self.password}
+                    "/api/v1/auth/login",
+                    json={"email": email, "password": self.password},
+                    headers=csrf,
                 ).json()
             self.principals[role] = Principal(
                 client=client,

@@ -1,8 +1,8 @@
 "use client";
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { CircleCheck, Download, SearchX } from "lucide-react";
-import { useState } from "react";
+import { CircleCheck, Download, Search, SearchX, X } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { DataTable, type Column } from "@/components/data/data-table";
 import { Pagination, SelectField } from "@/components/data/list-controls";
@@ -37,6 +37,44 @@ export function issueCounts(record: ImportDetail) {
   return { all, errors, warnings };
 }
 
+/** The CSV row to show issues for (C-75 "row number"), sent after a 300 ms pause. Digits only. */
+function RowSearch({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const [draft, setDraft] = useState(value);
+  useEffect(() => {
+    if (draft === value) return;
+    const timer = window.setTimeout(() => onChange(draft), 300);
+    return () => window.clearTimeout(timer);
+  }, [draft, value, onChange]);
+  return (
+    <div className="relative w-36">
+      <Search aria-hidden className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+      <input
+        type="text"
+        inputMode="numeric"
+        aria-label="Row number"
+        placeholder="Row number"
+        value={draft}
+        maxLength={6}
+        onChange={(event) => setDraft(event.target.value.replace(/\D/g, "").replace(/^0+/, ""))}
+        className="h-10 w-full rounded-md border border-input bg-card pr-7 pl-8 text-base text-foreground placeholder:text-text-placeholder hover:border-input-hover focus-visible:border-ring focus-visible:shadow-[0_0_0_1px_var(--ring)] focus-visible:outline-none sm:h-8 sm:text-body"
+      />
+      {draft ? (
+        <button
+          type="button"
+          aria-label="Clear row number"
+          onClick={() => {
+            setDraft("");
+            onChange("");
+          }}
+          className="absolute top-1/2 right-1.5 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground hover:bg-accent"
+        >
+          <X aria-hidden className="size-3.5" />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 function SeverityTag({ severity }: { severity: ImportIssue["severity"] }) {
   return severity === "ERROR" ? <StatusPill tone="danger" label="Error" /> : <StatusPill tone="warning" label="Warning" />;
 }
@@ -49,11 +87,18 @@ export function IssueTable({ record, emptyText }: { record: ImportDetail; emptyT
   const store = useStore();
   const [severity, setSeverity] = useState<Severity>("ALL");
   const [code, setCode] = useState("");
+  const [row, setRow] = useState("");
   const [page, setPage] = useState(1);
   const { pending, run } = useDownload();
   const counts = issueCounts(record);
 
-  const query = { severity: severity === "ALL" ? undefined : severity, code: code || undefined, page, page_size: PAGE_SIZE };
+  const query = {
+    severity: severity === "ALL" ? undefined : severity,
+    code: code || undefined,
+    row_number: row || undefined,
+    page,
+    page_size: PAGE_SIZE,
+  };
   const issues = useQuery({
     queryKey: importKeys.issues(store.id, record.id, query),
     queryFn: ({ signal }) => importsApi.issues(store.id, record.id, query, signal),
@@ -146,6 +191,13 @@ export function IssueTable({ record, emptyText }: { record: ImportDetail; emptyT
               options={[{ value: "", label: "Any" }, ...codes.map((item) => ({ value: item, label: item }))]}
               onChange={(value) => filter({ code: value })}
             />
+            <RowSearch
+              value={row}
+              onChange={(value) => {
+                setRow(value);
+                setPage(1);
+              }}
+            />
             <p className="ml-auto text-sm text-muted-foreground" aria-live="polite">
               {issues.data ? formatCount(issues.data.total, "issue") : null}
             </p>
@@ -160,7 +212,7 @@ export function IssueTable({ record, emptyText }: { record: ImportDetail; emptyT
             error={issues.error}
             onRetry={() => void issues.refetch()}
             errorTitle="Couldn't load the issues"
-            isFiltered={severity !== "ALL" || code !== ""}
+            isFiltered={severity !== "ALL" || code !== "" || row !== ""}
             density="compact"
             noResults={<EmptyState icon={SearchX} title="No issues match these filters" />}
             empty={<EmptyState icon={CircleCheck} variant="success" title={emptyText} />}

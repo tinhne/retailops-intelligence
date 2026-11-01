@@ -3,7 +3,7 @@ API_DIR := apps/api
 UV := uv --directory $(API_DIR)
 
 .DEFAULT_GOAL := help
-.PHONY: help setup db-up db-down migrate seed api-dev api-test api-lint api-typecheck ai-eval check test down reset
+.PHONY: help setup db-up db-down migrate seed api-dev api-test api-lint api-typecheck ai-eval check test stack-up stack-demo-reset down reset
 
 # Copilot evaluation (docs/ai/EVALUATION_STRATEGY.md §5). PROVIDER: deterministic (no key),
 # gemini, openai_compatible, or all. REPEATS=0 means 1 for deterministic and 3 for live providers.
@@ -25,7 +25,7 @@ db-down: ## Stop PostgreSQL
 migrate: db-up ## Apply database migrations
 	$(UV) run alembic upgrade head
 
-seed: migrate ## (Re)generate the demo dataset for "Kestrel Home & Kitchen"
+seed: migrate ## (Re)generate the demo organization: dataset, evaluations and team history
 	$(UV) run python -m app.demo
 
 api-dev: migrate ## Run the API with auto-reload on http://localhost:8000
@@ -47,6 +47,12 @@ ai-eval: db-up ## Copilot evaluation into retailops_eval (PROVIDER=deterministic
 check: api-lint api-typecheck api-test ## All backend quality gates
 
 test: api-test ## Run every test suite
+
+stack-up: ## Build and start db, api, worker and web (http://localhost:3000), seeding the demo once
+	docker compose up --build -d --wait db api worker web
+
+stack-demo-reset: ## Reset the demo organization inside the running compose stack
+	docker compose run --rm --no-deps demo-seed python -m app.demo
 
 down: ## Stop all services
 	docker compose down

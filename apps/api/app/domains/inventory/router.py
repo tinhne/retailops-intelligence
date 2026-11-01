@@ -30,7 +30,9 @@ router = APIRouter(prefix="/stores/{store_id}/inventory", tags=["inventory"])
 @router.get("/positions", response_model=Page[InventoryPositionOut])
 def list_positions(
     q: str | None = Query(None, max_length=100, description="Substring of SKU or name."),
-    health: list[StockHealth] | None = Query(None, description="Repeatable."),
+    health: list[StockHealth] | None = Query(
+        None, description="Repeatable. DATA_ISSUE selects products with on_hand < 0 (BR-402a)."
+    ),
     category: str | None = Query(None, max_length=100),
     include_inactive: bool = Query(False, description="Include DRAFT and ARCHIVED products."),
     sort: PositionSort = "available",
@@ -59,6 +61,7 @@ def list_movements(
     product_id: uuid.UUID | None = None,
     movement_type: list[MovementType] | None = Query(None, description="Repeatable."),
     source: MovementSource | None = None,
+    import_id: uuid.UUID | None = Query(None, description="Rows written by this import."),
     occurred_from: AwareDatetime | None = Query(None, alias="from", description="Inclusive."),
     occurred_to: AwareDatetime | None = Query(None, alias="to", description="Exclusive."),
     sort: MovementSort = "-recorded_at",
@@ -72,6 +75,7 @@ def list_movements(
         product_id=product_id,
         movement_types=movement_type,
         source=source,
+        import_id=import_id,
         occurred_from=occurred_from,
         occurred_to=occurred_to,
         sort=sort,

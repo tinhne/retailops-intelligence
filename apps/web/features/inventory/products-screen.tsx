@@ -19,11 +19,11 @@ import { formatCount, formatQuantity } from "@/lib/format/number";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { useListState } from "@/lib/hooks/use-list-state";
 import { defineListParams } from "@/lib/list-params";
-import { productStatusMeta, stockHealthMeta, type ProductStatus, type StockHealth } from "@/lib/status-maps";
+import { STOCK_HEALTH_ORDER, productStatusMeta, stockHealthMeta, type ProductStatus, type StockHealth } from "@/lib/status-maps";
 import { useStore } from "@/lib/store/store-context";
 import { cn } from "@/lib/utils";
 
-const HEALTH: StockHealth[] = ["OVERSOLD", "OUT_OF_STOCK", "BELOW_REORDER_POINT", "APPROACHING_REORDER_POINT", "HEALTHY"];
+const HEALTH = STOCK_HEALTH_ORDER;
 
 export const productsList = defineListParams(
   {

@@ -153,7 +153,7 @@ export function DetailsCard({ exception }: { exception: ExceptionDetail }) {
   if (exception.supersedes.length) rows.push(["Supersedes", exception.supersedes.map((ref) => ref.reference).join(", ")]);
 
   return (
-    <section aria-labelledby="details-title" className="rounded-lg border bg-card p-4 md:p-5">
+    <section id="details" aria-labelledby="details-title" className="scroll-mt-20 rounded-lg border bg-card p-4 md:p-5">
       <h2 id="details-title" className="text-title-sm">
         Details
       </h2>

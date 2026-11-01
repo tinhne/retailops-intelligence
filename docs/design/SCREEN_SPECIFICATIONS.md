@@ -136,20 +136,20 @@ exist.
 | Store | `GET /stores/{id}` → `{store, settings, data_freshness}` | implemented | Shell, S-16 |
 | Settings | `GET /stores/{id}/settings`, `PATCH /stores/{id}/settings` (partial update) | implemented | S-16 |
 | Store members (assignee picker) | `GET /stores/{id}/members` → `{items[] {id, full_name, role, can_work_exceptions}}`, permission `exceptions.read`, no emails | implemented | S-03 (assignee filter), S-04 (assign) |
-| Organization members | `GET /organizations/{org_id}/members` (`users.read`, with email and status). `PATCH …/members/{membership_id} {role}` (`users.manage`, P1, `409 LAST_OWNER`) | API_CONVENTIONS | S-17 |
+| Organization members | `GET /organizations/{org_id}/members` (`users.read`) → `{items[] {id (membership), user_id, full_name, email, role, status: ACTIVE \| DEACTIVATED, joined_at, last_login_at}}`, sorted by name, no paging. `POST …/members {email, full_name, role}` (`users.manage`) → `201 {member, temporary_password}`; `409 MEMBER_EXISTS` (already a member here), `409 EMAIL_IN_USE` (account in another organization, O-35). `PATCH …/members/{membership_id} {role?, status?}` (`users.manage`) → the member; `409 LAST_OWNER`, `409 MEMBER_IN_OTHER_ORGANIZATION` (status of an account shared with another organization), `403 OWN_MEMBERSHIP`. Deactivation revokes every session. Other organizations answer 404 | implemented | S-17 |
 | Dashboard | `GET /stores/{id}/analytics/dashboard` → `DashboardOut` (see S-02 Data) | implemented | S-02, sidebar badge |
 | Trends | `GET /stores/{id}/analytics/trends?date_from&date_to&granularity` → `days[] {date, orders_placed, units, gmv, exceptions_detected, exceptions_resolved, shipped_on_time, shipped_late}`, `partial_last_day` | implemented | S-02 chart, S-20 |
 | Exception breakdown | `GET /stores/{id}/analytics/exceptions-breakdown` → per type: active, detected, resolved, median hours to resolve | implemented | S-20, S-22 |
-| Exceptions | `GET /stores/{id}/exceptions` (filters `status` (default: the active statuses), `exception_type`, `category`, `severity`, `priority_band`, `assignee` = uuid \| `me` \| `unassigned`, `product_id`, `order_id`, `due_to`, `q` = reference or title; items include `resolution_code`, `verified_at`, `dismissed_reason`, `closed_at`), `GET …/exceptions/{eid}` (includes `reference`, `version`), `GET …/{eid}/events`, `GET\|POST …/{eid}/notes` | implemented | S-02, S-03, S-04 |
+| Exceptions | `GET /stores/{id}/exceptions` (filters `status` (default: the active statuses), `exception_type`, `category`, `severity`, `priority_band`, `assignee` = uuid \| `me` \| `unassigned`, `product_id`, `order_id`, `evaluation_run_id` (exceptions whose `DETECTED` event that run wrote), `due_to`, `q` = reference or title; items include `resolution_code`, `verified_at`, `dismissed_reason`, `closed_at`), `GET …/exceptions/{eid}` (includes `reference`, `version`), `GET …/{eid}/events`, `GET\|POST …/{eid}/notes` | implemented | S-02, S-03, S-04 |
 | Exception commands | `POST …/{eid}/acknowledge`, `/start`, `/resolve {resolution_code, resolution_note}`, `/dismiss {dismissal_reason, note}`, `/reopen {reason}`, `/assign {assignee_id}` (claim = assign yourself, unassign = `assignee_id: null`), `PATCH …/{eid}/due-date {due_at, note?}`. Every body also carries `expected_version`. A mismatch returns `409 STALE_VERSION`. The detail response lists `available_actions` and `blocked_actions {action, code, reason}` for the caller | implemented | S-04 |
-| Evaluation runs | `POST /stores/{id}/evaluations` ("Run analysis", synchronous, `Idempotency-Key`, returns the run. Status `SKIPPED` when another run holds the store lock), `GET …/evaluations`, `GET …/evaluations/{rid}`. Statuses `RUNNING`, `SUCCEEDED`, `FAILED`, `SKIPPED` | API_CONVENTIONS | S-02, S-03, S-21 |
-| Orders | `GET /stores/{id}/orders` (filters `q` = order number, `status`, `payment_status`, `fulfillment_status`, `channel`, `placed_from`, `placed_to`, `overdue`. Items include `line_count`, `is_overdue`), `GET …/orders/{oid}` (lines with reservation, amounts with `expected_total`, `difference`, `has_total_mismatch`, events, linked exceptions with `reference`) | implemented | S-05, S-06 |
-| Products | `GET /stores/{id}/products` (filters `q` = SKU or name substring, `status`, `category`, `supplier_id`, `health` repeatable. Items include `on_hand`, `reserved`, `available`, `health`), `GET …/products/{pid}` (stock snapshot, `health`, `approaching_threshold`, `avg_daily_units` and `days_of_cover` as `Estimate {value, basis, window_days}`, `active_exception_count`), `GET /stores/{id}/suppliers`, `GET /stores/{id}/categories` | implemented | S-07, S-08 |
-| Inventory | `GET /stores/{id}/inventory/positions` (filters `health`, `category`, `q`), `GET …/inventory/movements` (filters `product_id`, `movement_type`, `source`, `from`, `to`; no `import_id` filter yet), `GET …/inventory/reconciliation` (P1) | implemented | S-08, S-09, S-10 |
-| Imports | `POST /stores/{id}/imports` (multipart `import_type`, `file`. Validates synchronously and returns `201` with the import in `VALIDATED` or `REJECTED`), `GET …/imports` (filters `import_type`, `status`), `GET …/imports/{iid}` (`ImportDetailOut` with `summary` and `file_issues`), `GET …/{iid}/issues` (filters `severity`, `code`), `GET …/{iid}/issues.csv`, `POST …/{iid}/apply {mode, confirm_skipped_rows}` (`Idempotency-Key`), `POST …/{iid}/discard`, `GET …/imports/templates/{import_type}` | implemented | S-11, S-12, S-13 |
-| Import retry | `POST …/imports/{iid}/revalidate` (`FAILED → VALIDATING`, stored bytes) | API_CONVENTIONS | S-13 |
+| Evaluation runs | `POST /stores/{id}/evaluations` ("Run analysis", synchronous, `Idempotency-Key`, returns the run. Status `SKIPPED` when another run holds the store lock), `GET …/evaluations`, `GET …/evaluations/{rid}`. Statuses `RUNNING`, `SUCCEEDED`, `FAILED`, `SKIPPED` | implemented | S-02, S-03, S-13, S-21 |
+| Orders | `GET /stores/{id}/orders` (filters `q` = order number, `status`, `payment_status`, `fulfillment_status`, `channel`, `placed_from`, `placed_to`, `overdue`. Items include `line_count`, `is_overdue`), `GET …/orders/{oid}` (lines with reservation, amounts with `expected_total`, `difference`, `has_total_mismatch`, events with `import_id` and `import_filename`, linked exceptions with `reference`) | implemented | S-05, S-06 |
+| Products | `GET /stores/{id}/products` (filters `q` = SKU or name substring, `status`, `category`, `supplier_id`, `health` repeatable. Items include `on_hand`, `reserved`, `available`, `health`; `health` is `DATA_ISSUE` when `on_hand < 0`, any status, BR-402a), `GET …/products/{pid}` (stock snapshot, `health`, `approaching_threshold`, `avg_daily_units` and `days_of_cover` as `Estimate {value, basis, window_days}`, `active_exception_count`), `GET /stores/{id}/suppliers`, `GET /stores/{id}/categories` | implemented | S-07, S-08 |
+| Inventory | `GET /stores/{id}/inventory/positions` (filters `health` including `DATA_ISSUE`, `category`, `q`), `GET …/inventory/movements` (filters `product_id`, `movement_type`, `source`, `import_id`, `from`, `to`; rows carry `import_filename` and, for shipments, the `order_id` behind the `order_item:{id}` reference, both derived on read), `GET …/inventory/reconciliation` (P1) | implemented | S-08, S-09, S-10 |
+| Imports | `POST /stores/{id}/imports` (multipart `import_type`, `file`. Validates synchronously and returns `201` with the import in `VALIDATED` or `REJECTED`), `GET …/imports` (filters `import_type`, `status` repeatable; items carry `can_revalidate`), `GET …/imports/{iid}` (`ImportDetailOut` with `summary` and `file_issues`), `GET …/{iid}/issues` (filters `severity`, `code`, `row_number`), `GET …/{iid}/issues.csv`, `POST …/{iid}/apply {mode, confirm_skipped_rows}` (`Idempotency-Key`), `POST …/{iid}/discard`, `GET …/imports/templates/{import_type}` | implemented | S-11, S-12, S-13 |
+| Import retry | `POST …/imports/{iid}/revalidate` (`FAILED → VALIDATING → VALIDATED \| REJECTED` from the stored bytes, synchronous). A failed apply keeps the bytes until the preview's expiry; afterwards `409 IMPORT_CONTENT_MISSING` and `can_revalidate` is false | implemented | S-13 |
 | Copilot | `GET\|POST /stores/{id}/copilot/conversations`, `GET …/conversations/{cid}`, `POST …/conversations/{cid}/messages`, `POST /stores/{id}/copilot/exception-summaries {exception_id, refresh?}`, `POST /stores/{id}/copilot/note-drafts` | API_CONVENTIONS | S-04, S-14 |
-| Audit | `GET /stores/{id}/audit-logs` (filters `action` prefix, `actor_user_id`, `from`, `to`) | implemented | S-15 |
+| Audit | `GET /stores/{id}/audit-logs` (filters `action` prefix, `actor_user_id`, `from`, `to`; items include `actor_name`, the actor's full name without email, `null` for system actions). Store entries plus organization-level entries (`store_id` null, such as `user.*`) | implemented | S-15 |
 
 **JSON documents the investigation UI renders** (JSONB on `operational_exception`, as produced by
 `apps/api/app/domains/exceptions/priority.py` and `rules/base.py`). The UI renders them
@@ -283,6 +283,7 @@ Last imports: Orders Oct 31, 8:02 AM EDT · Order items 8:04 AM · Inventory adj
                                                                | Below reorder point     11 |
                                                                | Approaching reorder pt.  7 |
                                                                | Healthy                 96 |
+                                                               | Data issue               1 |
                                                                +----------------------------+
 +------------------------------------------------------------------------------------------+
 | Shipments per day, on time vs late, last 30 days (ET)                     [Chart | Table] |
@@ -336,7 +337,7 @@ their cell shows "—".
 | Triage count | `GET /stores/{id}/exceptions?status=OPEN&status=REOPENED&page_size=1` → `total` |
 | Active by category: count | `active_exceptions.by_category.{INVENTORY, FULFILLMENT, PAYMENT, DATA_QUALITY}` |
 | Active by category: order value at risk | `active_exceptions.exposure_by_category.{…}` = Σ `exposure_amount` of active exceptions per category (implemented 2026-11-01). Never summed client-side. `DATA_QUALITY` shows "—" because data-quality findings claim no exposure (EXCEPTION_CATALOG). |
-| Stock health | `inventory.{oversold, out_of_stock, below_reorder_point, approaching_reorder_point, healthy}` (ACTIVE products). Products with `on_hand < 0` should be left out of these classes and shown as a sixth row, "Data issue" (BR-402a). `InventoryHealthSummary` has no such count yet. Until it does, the row is not rendered, and those products appear through the Data-quality category count (`DATA_NEGATIVE_ON_HAND`). |
+| Stock health | `inventory.{oversold, out_of_stock, below_reorder_point, approaching_reorder_point, healthy, data_issue}` (ACTIVE products; the six counts add up to `active_products`). `data_issue` counts products with `on_hand < 0`, which are in none of the availability classes (BR-402a). It is the sixth row, "Data issue" (attention tone, `database` icon), after Healthy, and links to `/inventory?health=DATA_ISSUE`. |
 | Shipments chart | `GET /stores/{id}/analytics/trends?days=30` (daily, store-local days, the last one partial) → `days[].{date, shipped_on_time, shipped_late}`, `partial_last_day` |
 | Recent imports | `GET /stores/{id}/imports?page_size=3` |
 
@@ -433,7 +434,12 @@ Exceptions                                     Last evaluation 9:45 AM EDT (5m a
 | At risk | `exposure_amount` → `Money` ("—" when 0, i.e. no order value at risk) | right | lg |
 | Assignee | `assignee.full_name` (avatar initials 20 px + name) or "Unassigned" (muted) | left | md |
 | Due | `due_at` → `formatDue` (overdue in `--overdue-fg` with `alarm-clock`) | left | never |
-| Last detected | `last_detected_at` → `RelativeTime` | left | xl (column hidden by default, toggle in Density menu) |
+| Last detected | `last_detected_at` → `RelativeTime` (full date in the tooltip) | left | xl (column hidden by default, toggle in Density menu) |
+
+**Density.** A **Density** menu next to Sort (≥ 768 px; stacked rows below have no density)
+offers Comfortable (44 px rows, default) and Compact (36 px rows), plus a **Last detected
+(wide screens)** column toggle. Both choices are per-viewer preferences kept in `localStorage`
+(`ro.exceptions.compact`, `ro.exceptions.lastDetectedColumn`), not in the URL.
 
 In the **Closed** view, Due is replaced by **Closed** (`resolved_at`, or the dismissal event time),
 and the status pill uses the RESOLVED forms from DESIGN_SYSTEM §3.5: "Resolved — awaiting
@@ -462,12 +468,14 @@ are intentionally not shown as successes.
 | Type | `exception_type` | The 9 catalog types, grouped by category, with labels: Oversold, Oversell risk, Out of stock, Below reorder point, Fulfillment overdue, Stalled after payment, Refund pending, Order total mismatch, Negative on-hand |
 | Assignee | `assignee_id` | `me`, `unassigned`, then members from `GET /stores/{id}/members` with `can_work_exceptions = true` (searchable combobox, name and role, no emails) |
 | Due | `due` (UI) → `due_to` (API) | Overdue → `due_to={now}`. Due within 24 h → `due_to={now + 24 h}`. Any → omitted. The UI keeps the relative choice in the URL and computes `due_to` at request time. |
-| Detected in run (hidden) | `evaluation_run_id` | Set by links from S-13/S-21. Shown as a removable chip "From evaluation run Oct 31, 8:05 AM EDT". Needs the API filter (IA Q-IA-6). |
+| Detected in run (hidden) | `evaluation_run_id` | Set by "View new exceptions" on S-13 (and S-21 later). The API returns the exceptions whose `DETECTED` event that run wrote, within the view's statuses. Shown as a removable chip "From evaluation run Oct 31, 8:05 AM EDT" (the run's `started_at`; "From an evaluation run" until it loads). Clear all and the view tabs remove it. |
 | Related entity (hidden) | `order_id`, `product_id` | Set by links from S-06/S-08. Shown as a chip "Order KHK-10482". |
 | Sort | `sort` | The sorts the API accepts (API_CONVENTIONS §12.6): Priority (`-priority_score`), Due soonest (`due_at`), Newest (`-first_detected_at`), Severity (`severity`) |
 
 **Pagination.** Server-side, 25 per page (25/50/100). **Refresh.** Refetch on window focus and
 every 60 s while the tab is visible. Keyboard focus stays on the same exception ID across refetches.
+**Queue.** The rows on screen (IDs and references, in order) and the list URL are kept per tab in
+`sessionStorage`; S-04 steps through them with Previous / Next in queue.
 
 | State | Behaviour |
 |---|---|
@@ -484,7 +492,7 @@ every 60 s while the tab is visible. Keyboard focus stays on the same exception 
 | Pending action | Run analysis only. |
 | Confirmation dialog | N/A. |
 | Disabled action | Run analysis per permission. |
-| Responsive | < 768: stacked rows (DESIGN_SYSTEM §11.5). Tabs scroll horizontally with fade edges. Filters collapse into "Filters (n)", which opens a bottom sheet with **Apply** and **Reset**. Sort is a select. 768–1279: Assignee and At risk hidden per the column table. |
+| Responsive | < 768: stacked rows (DESIGN_SYSTEM §11.5). Tabs scroll horizontally. Search stays inline; the other filters collapse into "Filters (n)" (n = filters in use), which opens a bottom sheet of checkbox groups (Severity, Priority, Status, Category, Type) and selects (Assignee, Due) editing a draft: **Apply** writes the draft to the URL and closes the sheet, **Reset** clears the draft only. Sort is a select next to it. No Density menu. 768–1279: Assignee and At risk hidden per the column table. |
 
 ---
 
@@ -550,10 +558,13 @@ First detected Oct 31, 9:45 AM EDT · Last detected 9:45 AM EDT · Detected 1 ti
 
 ### Layout
 - **Header block** (full width): breadcrumb (parent link restores the remembered list URL), queue
-  navigation (**Previous** / **Next in queue**: neighbours in the remembered list page, hidden when
-  the user arrived without a list), title (`h1`, `operational_exception.title`), meta line, status
-  row, detection line, then the **ExceptionActionBar** (right-aligned, wraps under the status row
-  below 1024 px).
+  navigation on the same row ("2 of 25", **Previous** / **Next in queue**: neighbours on the
+  remembered list page, kept per tab by S-03; not rendered when the person arrived without a list
+  or the exception is not on that page; at either end of the page the missing direction stays
+  visible but `aria-disabled` with "This is the first/last exception on that page of the list."),
+  title (`h1`, `operational_exception.title`), meta line, status row, detection line, then the
+  **ExceptionActionBar** (wraps under the status row), with **How resolution works** (C-63) next to
+  it for VIEWER only.
 - **Lifecycle banner** (conditional, directly under the header):
 
 | Condition | Tone | Copy |
@@ -593,9 +604,11 @@ First detected Oct 31, 9:45 AM EDT · Last detected 9:45 AM EDT · Detected 1 ti
      `id` (copy), `evaluation_run_id`, `version`.
 - **Below 1280 px:** single column in this order: header → banner → Recommended action → Why this
   priority → How this was detected → Evidence → Affected orders → **AI investigation** → Activity
-  → Details. Deterministic sections always come first. An "On this page" select (≥ 768) or
-  menu (< 768) jumps to section anchors (`#priority`, `#calculation`, `#evidence`, `#affected`,
-  `#ai`, `#activity`).
+  → Details. Deterministic sections always come first. An "On this page" select (768–1279) or
+  menu (< 768), placed under the lifecycle banner, jumps to the sections the page rendered
+  (`#priority`, `#calculation`, `#evidence`, `#affected` when shown, `#activity`, `#details`;
+  `#ai` joins once the AI panel exists): it scrolls the section into view and moves focus to its
+  heading.
 
 ### Data
 
@@ -609,8 +622,8 @@ First detected Oct 31, 9:45 AM EDT · Last detected 9:45 AM EDT · Detected 1 ti
 | Detection line | `first_detected_at`, `last_detected_at`, `detection_count` |
 | Recommended action | `recommended_action` (deterministic, rule-authored) |
 | Calculation | `calculation.{formulas[], inputs{}, outputs{}, steps[]?}` (§0.4) |
-| Evidence | `evidence.facts[] {key, label, value, unit, estimate, volatile, source}` (§0.4). `estimate` facts get `EstimateLabel`. `evidence.notes[]` render as a bullet list under the table. |
-| Affected orders | `evidence.records.affected_orders[]` (order, paid at, ship by, uncovered quantity, value at risk; BR-402), linked to S-06 through `exception_entity_link (role=AFFECTED)`. Other `evidence.records` groups render as titled sub-tables with the same component. |
+| Evidence | `evidence.facts[] {key, label, value, unit, estimate, volatile, source}` (§0.4). `estimate` facts get `EstimateLabel`. `evidence.notes[]` render as a bullet list under the table. The Source cell links by `source.type`: `product` and `inventory_balance` → S-08 `/products/{id}`, `order` → S-06, `data_import` → S-13, each only with the page's permission; `supplier` and other types stay text; no source reads "Calculated". |
+| Affected orders | `evidence.records.affected_orders[]` (order, paid at, ship by, uncovered quantity, value at risk; BR-402). The order number links to S-06 through the row's `order_id` (with `orders.read`). Other `evidence.records` groups render as titled sub-tables with the same component, plus a Source column (same links) when their rows carry a `source` and no order number. |
 | Lifecycle banner | `status`, `resolution_code`, `resolution_note`, `resolved_by`, `resolved_at`, `verified_at`, `dismissed_reason`, `superseded_by_id`, `previous_occurrence_id`, the latest `REOPENED` event payload `reason` |
 | Timeline | `GET …/events` → `exception_event.{event_type, actor_type, actor_id, from_status, to_status, payload, occurred_at, evaluation_run_id}`. `GET …/notes` → `exception_note.{author_id, body, source, created_at}` |
 | AI panel | Latest `ai_conversation` with `context_type=EXCEPTION, context_id={id}` for the current user, plus its last `ai_message.content` (structured answer) |
@@ -692,11 +705,11 @@ the evidence lists more, a muted line says "Showing 50 of {n} affected orders".
 | Permission denied | Standard (`exceptions.read`). Action-level per the table. |
 | Conflict (409) | `STALE_VERSION`: standard (§0.3). Warning toast "Someone else updated EXC-1042. The latest details are now shown. Review them and try again.", automatic refetch, open dialog kept with its input. `EXCEPTION_TRANSITION_NOT_ALLOWED` (for example someone already resolved it): the toast names the new status and the action bar re-renders from the refetched state. |
 | Changed by others | Refetch on focus and every 60 s. When `status` or `assignee` changed since the last render and the user has no dialog open: info toast "Updated by {actor}: status is now In progress". |
-| Success toast | Acknowledge → "Exception acknowledged". Start → "Work started. Assigned to you." Claim → "Assigned to you". Resolve → "EXC-1042 resolved. Awaiting verification after the next import, or within 24 h." · **Next in queue**. Dismiss → "Exception dismissed" · **Next in queue**. Reopen → "Exception reopened". Assign → "Assigned to {name}". Due → "Due date updated". Note → no toast (the note appears in the timeline, which is announced via a polite live region). |
+| Success toast | Acknowledge → "Exception acknowledged". Start → "Work started. Assigned to you." Claim → "Assigned to you". Resolve → "EXC-1042 resolved. Awaiting verification after the next import, or within 24 h." · **Next in queue**. Dismiss → "Exception dismissed" · **Next in queue** (the action appears only when the queue has a next exception). Reopen → "Exception reopened". Assign → "Assigned to {name}". Due → "Due date updated". Note → no toast (the note appears in the timeline, which is announced via a polite live region). |
 | Pending action | Standard. The whole action bar is `aria-disabled` while one transition is in flight. |
 | Confirmation dialog | Resolve, Dismiss, Reopen (the form dialogs above). |
-| Disabled action | Per the action table. In demo orgs, every mutating control shows "The public demo is read-only." In addition, **How resolution works** (a popover with the lifecycle explainer) is shown next to the action bar for VIEWER only. |
-| Responsive | < 768: the action bar becomes a sticky bottom bar (`--z-sticky-bar`, 64 px, `--card` with a top border) holding the primary action and **More** (a bottom sheet listing the other actions with their disabled reasons). Status pills wrap to two lines. Evidence and affected-orders tables scroll horizontally with the first column pinned. The PriorityBreakdown meter column is hidden below 400 px (points stay). |
+| Disabled action | Per the action table. In demo orgs, every mutating control shows "The public demo is read-only." In addition, **How resolution works** (C-63, a popover with the lifecycle explainer and live examples fetched when it opens) is shown next to the action bar for VIEWER only. |
+| Responsive | < 768: the action bar becomes a bar fixed to the bottom of the screen (`--z-sticky-bar`, 64 px, `--card` with a top border; the page keeps 80 px of bottom padding for it) holding the primary action (large, fills the row) and **More** (a bottom sheet titled "Actions" listing the secondary and More-menu actions; refused ones stay listed, `aria-disabled`, with their reason under the label). Choosing a dialog action closes the sheet and opens the dialog. Status pills wrap to two lines. Evidence and affected-orders tables scroll horizontally with the first column pinned. The PriorityBreakdown meter column is hidden below 400 px (points stay). |
 
 ---
 
@@ -725,8 +738,12 @@ FilterBar → DataTable → Pagination.
 
 **Filters / sort / search.** Search `q`: order number or customer reference (customer references are
 opaque IDs per BR-505, and are searchable here only, never in global search, IA §8). Status (multi, repeated `status`, grouped by status group). Payment status. Fulfillment
-status. Channel. Placed (`placed_from` / `placed_to`; presets Today, Last 7 days, Last 30 days,
-Last 60 days, Custom range in store-local dates). **Overdue only** toggle (`overdue=true`). Sort:
+status. Channel. Placed (`placed`: presets Today, Last 7 days, Last 30 days, Last 60 days, and
+Custom range. A custom range keeps store-local days in the URL, `placed=custom&placed_from=YYYY-MM-DD&placed_to=YYYY-MM-DD`,
+either end optional, edited with two date inputs under the filter row; the API receives the start
+day's store midnight as `placed_from` and the midnight after the end day as `placed_to`, which is
+exclusive. The chip reads "Placed: Oct 1 – Oct 31", "From Oct 1" or "Until Oct 31").
+**Overdue only** toggle (`overdue=true`). Sort:
 the sorts `OrderSort` accepts, default Placed newest (`-placed_at`), also Placed oldest, Ship by
 soonest (`ship_by`), Total highest (`-total`) and Order number.
 **Pagination:** 25 (25/50/100).
@@ -736,7 +753,7 @@ soonest (`ship_by`), Total highest (`-total`) and Order number.
 | Initial loading | Standard. |
 | Empty | "No orders yet". "Orders come from CSV imports (orders.csv, then order_items.csv)." Action **Import orders** (`imports.run`). |
 | Populated / search results / filtered | Standard. The Overdue-only empty result uses a success tone: "No overdue orders". |
-| Validation error | Custom date range: "End date must be on or after start date." |
+| Validation error | Custom date range: "End date must be on or after start date." under the inputs (`role="alert"`, the end input `aria-invalid`); the reversed range is not applied, so the list keeps its last valid range. A reversed or malformed range in a shared link is dropped like any unknown filter (§0.3). |
 | API error / permission denied | Standard (`orders.read`). |
 | Success toast / pending / confirmation / disabled | N/A (read-only screen). |
 | Responsive | < 768: stacked rows. Line 1: order number + Status pill + total. Line 2: placed · payment · fulfillment. Line 3: ship by with the overdue flag. |
@@ -778,13 +795,14 @@ touching it. **Personas.** Staff, Manager.
    AFFECTED).
 7. **Status history** (`OrderTimeline`): each `order_event` as "Paid → Shipped, via Processing,
    Ready to ship" (`skipped_statuses`), source tag Import / User / System, time, and for imports
-   the file name linking to S-13.
+   the file name (`import_filename`, mono) linking to S-13 with `imports.read`, plain text
+   otherwise.
 
 **Data.** `GET /stores/{id}/orders/{oid}` (`OrderDetail`): order fields with `ship_by_source`,
 `lines[] {line_number, product_id, sku, product_sku, product_name, quantity, unit_price,
 line_discount, line_total, reservation {status, quantity}}`, `amounts {subtotal, discount_total,
 shipping_total, tax_total, total, lines_total, expected_total, difference, has_total_mismatch}`,
-events `{from_status, to_status, skipped_statuses, source, import_id, occurred_at}`, linked
+events `{from_status, to_status, skipped_statuses, source, import_id, import_filename, occurred_at}`, linked
 exceptions `{id, reference, exception_type, severity, status, …}`, `is_overdue`. Product health
 for the Stock column comes from `GET /stores/{id}/inventory/positions?q={sku}` only when
 `inventory.read` is held. Otherwise the column is omitted.
@@ -818,12 +836,12 @@ settings. **Personas.** Manager, Analyst.
 | Supplier | `supplier.name` | left | xl |
 | Reorder point / qty | `reorder_point` / `reorder_quantity` | right | lg |
 | Available | `available` (BR-101) | right | md |
-| Stock | `health` + `on_hand` → `HealthBadge` ("Data issue" when `on_hand < 0`, BR-402a) | left | never |
+| Stock | `health` → `HealthBadge` ("Data issue" for `DATA_ISSUE`, i.e. `on_hand < 0`, BR-402a; `on_hand` only adds the figure to its tooltip) | left | never |
 
 **Actions.** Open product. No catalog editing in v1 (CSV import only).
 **Filters / sort / search.** `q`: substring of SKU or name. Status (default: Active). Category
 (from `GET /stores/{id}/categories`). Supplier (`supplier_id`). Stock health (`health`,
-repeatable). Sort: SKU (default), Name, Recently updated (`-updated_at`), Available.
+repeatable, the five availability classes then Data issue). Sort: SKU (default), Name, Recently updated (`-updated_at`), Available.
 **Pagination:** 25 (25/50/100).
 
 | State | Behaviour |
@@ -844,15 +862,15 @@ recent ledger entries and linked exceptions (IA §3 A3). **Personas.** Staff, Ma
 
 **Layout.**
 1. PageHeader: breadcrumb "Products / KHK-DO55-SGE". Title = `product.name`. Meta: SKU, category,
-   status tag, `HealthBadge` (md; "Data issue" when `on_hand < 0`).
+   status tag, `HealthBadge` (md; "Data issue" when `health` is `DATA_ISSUE`).
 2. **Stock position** (`inventory.read`): a row of `StatTile`s: On hand, Reserved, **Available**
    (danger text when negative, with the minus sign), Incoming (+ ETA), Avg daily
    units (est.), Days of cover (est.). Under the tiles, one formula line in `text-mono`:
    "available = on_hand − reserved = 18 − 22 = −4 (BR-101). Incoming is not counted (BR-103)."
    Health explanation: "Oversold: available is below 0." For the reorder-point classes:
    "Reorder point 10. Approaching from 11 to 13 (reorder point × 1.25, rounded up)." (from
-   `approaching_threshold`). When `on_hand < 0`: an attention-tone callout replaces the health
-   explanation: "Data issue: on hand is −3, which is physically impossible. Stock health and
+   `approaching_threshold`). When `health` is `DATA_ISSUE` (`on_hand < 0`, any product status): an
+   attention-tone callout replaces the health explanation: "Data issue: on hand is −3, which is physically impossible. Stock health and
    inventory exceptions are suspended for this product until a cycle count corrects it (BR-402a).
    See EXC-1051 (Negative on-hand)." The Available tile shows the value with "not reliable" in
    muted text. Days of cover shows "—" with "not reliable", since it is derived from the same
@@ -880,7 +898,7 @@ Movements: `GET …/inventory/movements?product_id={id}&page_size=10`. Exception
 | State | Behaviour |
 |---|---|
 | Initial loading | Standard. |
-| Empty sub-sections | No reservations: "No units are reserved for paid orders." No movements: "No ledger entries yet. Stock arrives through inventory adjustment imports." Days of cover null: "Not enough sales history" (BR-151). Non-ACTIVE product: health "Not tracked" with "Stock health is computed for active products only." |
+| Empty sub-sections | No reservations: "No units are reserved for paid orders." No movements: "No ledger entries yet. Stock arrives through inventory adjustment imports." Days of cover null: "Not enough sales history" (BR-151). Non-ACTIVE product with valid stock (health null): "Not tracked" with "Stock health is computed for active products only." A non-ACTIVE product with `on_hand < 0` is still `DATA_ISSUE` and gets the callout. |
 | Not found | Standard. |
 | API error / permission denied | Standard. Sections omitted per permission. |
 | Search / filtered / validation / toast / pending / confirmation / disabled | N/A. |
@@ -893,11 +911,13 @@ Movements: `GET …/inventory/movements?product_id={id}&page_size=10`. Exception
 **Purpose.** See stock risk across all SKUs at once, ranked by health. **Personas.** Manager,
 Staff.
 
-**Layout.** PageHeader "Inventory" → **Health summary bar**: five toggle buttons with counts
-("Oversold 2", "Out of stock 4", "Below reorder point 11", "Approaching 7", "Healthy 96"), from the
-dashboard's `inventory` counts. Each is a real `button` with `aria-pressed` and sets the `health`
-filter. Products with `on_hand < 0` show "Data issue" in the Health column, whatever `health` the
-API returns, because their inventory rules are suppressed (BR-402a). Then a caption: "Available = on
+**Layout.** PageHeader "Inventory" → **Health summary bar**: six toggle buttons with counts
+("Oversold 2", "Out of stock 4", "Below reorder point 11", "Approaching 7", "Healthy 96", then,
+after a divider, "Data issue 1"), from the dashboard's `inventory` counts. Each is a real `button`
+with `aria-pressed` and sets the `health` filter. The API classifies products with `on_hand < 0` as
+`DATA_ISSUE` instead of by `available`, because their inventory rules are suppressed (BR-402a), so
+they are counted and filtered as "Data issue", never as Oversold. The divider marks that it is not
+an availability class. Then a caption: "Available = on
 hand − reserved. Incoming stock is shown separately and never counted as available (BR-101,
 BR-103)." → FilterBar → DataTable (compact default) → Pagination.
 
@@ -905,7 +925,7 @@ BR-103)." → FilterBar → DataTable (compact default) → Pagination.
 |---|---|---|---|
 | SKU | `product.sku` (link to S-08) | left | never |
 | Product | `product.name` | left | md |
-| Health | `health` + `on_hand` → `HealthBadge` ("Data issue" when `on_hand < 0`) | left | never |
+| Health | `health` → `HealthBadge` ("Data issue" for `DATA_ISSUE`) | left | never |
 | On hand | `inventory_balance.on_hand` | right | md |
 | Reserved | `reserved` | right | md |
 | Available | `available` (BR-101, danger text if < 0) | right | never |
@@ -915,9 +935,9 @@ BR-103)." → FilterBar → DataTable (compact default) → Pagination.
 | Days of cover (est.) | `days_of_cover` (1 dp, or "—" with a tooltip "Not enough sales history"). Hidden for "Data issue" rows | right | lg |
 | Last count (ET) | `last_cycle_count_at` | left | xl |
 
-**Filters / sort / search.** `q`: substring of SKU or name. Health (multi, repeated `health`).
-Category. **Include inactive products** toggle (`include_inactive=true`; they show "Not
-tracked"). Sort (`PositionSort`): Available, lowest first (default, which puts oversold and
+**Filters / sort / search.** `q`: substring of SKU or name. Health (multi, repeated `health`,
+including `DATA_ISSUE`). Category. **Include inactive products** toggle (`include_inactive=true`;
+they show "Not tracked", or "Data issue" when on-hand is negative). Sort (`PositionSort`): Available, lowest first (default, which puts oversold and
 out-of-stock first), Days of cover (lowest first), SKU. **Pagination:** 50 default (50/100), since
 the table is compact.
 
@@ -925,7 +945,7 @@ the table is compact.
 |---|---|
 | Initial loading | Standard. The summary bar shows skeleton chips. |
 | Empty | "No stock positions yet". "Import products, then inventory adjustments (a CYCLE_COUNT sets on-hand)." Action **Import inventory adjustments** (`imports.run`). |
-| Populated / search / filtered | Standard. "Oversold" filter with no rows: success tone, "No oversold products". |
+| Populated / search / filtered | Standard. "Oversold" filter with no rows: success tone, "No oversold products". "Data issue" filter with no rows: success tone, "No data issues", "No active product has a negative on-hand figure." |
 | Validation / toast / pending / confirmation / disabled | N/A. |
 | API error / permission denied | Standard (`inventory.read`). |
 | Responsive | < 768: stacked rows. Line 1: SKU + health. Line 2: name. Line 3: "Available −4 · On hand 18 · Incoming 40 (Nov 4)". The summary bar scrolls horizontally. |
@@ -949,18 +969,22 @@ entries."). FilterBar → DataTable (compact) → Pagination.
 | Incoming Δ | `incoming_delta` → `formatDelta` | right | md |
 | Source | `source` (Import, Order, System) | left | lg |
 | On hand after | `on_hand_after` (the running balance) | right | md |
-| Reference | `reference`. Shipments (`order_item:{id}`) render their note, "Order KHK-10482", as a link to the Orders list searched for that number: the movement carries no order ID, so the exact line link waits for the API (T-067). Others as plain text in mono. | left | md |
+| Reference | `reference`. Shipments (`order_item:{id}`) render their note, "Order KHK-10482", as a link to that order (S-06) through the movement's derived `order_id`; if the line no longer resolves, to the Orders list searched for the number. Others as plain text in mono. | left | md |
 | Note | `note` (truncated, tooltip). Omitted for shipments, whose note is already the reference | left | xl |
-| Import | `import_id` → file name (link to S-13). Not rendered until S-13 exists (T-065, T-067) | left | xl |
+| Import | `import_filename` (mono), linking to S-13 (`/imports/{import_id}`) with `imports.read`, plain text otherwise, "—" for rows no import wrote (shipments, system rows) | left | xl |
 | Recorded by | `created_by` → name via `GET /stores/{id}/members`, "Former member" if absent, or "System" | left | xl |
 | Recorded (ET) | `recorded_at` | left | 2xl |
 
-**Filters / sort / search.** Product (`product_id`; set by links from S-08, chip "KHK-DO55-SGE";
-a combobox is T-067). Type (multi, repeated `movement_type`). Source (`source`). Occurred (`from`;
-store-local presets Today, Last 7, 30 and 90 days; a custom range with `to` is T-067). Import
-(`import_id`; set by links from S-13, chip with the file name) waits for an API filter. Sort
-(`MovementSort`): Occurred newest (default), Occurred oldest, Recorded newest (`-recorded_at`).
-There is no free-text search on this endpoint. **Pagination:** 50 (50/100).
+**Filters / sort / search.** Product (`product_id`): a combobox that searches SKU and name on the
+server (`GET …/inventory/positions?q&include_inactive=true&sort=sku`, 20 results, 300 ms debounce,
+arrow keys and Enter, "Any product" to clear); links from S-08 set it too; chip "Product:
+KHK-DO55-SGE". Type (multi, repeated `movement_type`). Source (`source`). Occurred (`occurred`:
+store-local presets Today, Last 7, 30 and 90 days, sent as `from`; or Custom range,
+`occurred=custom&occurred_from&occurred_to` in store days, sent as `from` (inclusive) and `to`
+(exclusive midnight after the end day), validated as S-05). Import (`import_id`, set by
+**View ledger entries** on S-13 for applied inventory adjustment imports; chip "Import: {file
+name}"). Sort (`MovementSort`): Occurred newest (default), Occurred oldest, Recorded newest
+(`-recorded_at`). There is no free-text search on this endpoint. **Pagination:** 50 (50/100).
 
 | State | Behaviour |
 |---|---|
@@ -1007,8 +1031,8 @@ references the ones before it (IMPORT_PIPELINE §10)." FilterBar → DataTable �
 | Download template | `imports.read` | none |
 | Open import | `imports.read` | none |
 
-**Filters / sort / search.** Type (`import_type`), Status (`status`; the API takes one value, so
-the filter is single-select). The endpoint has no text search, so there is no search box. Sort: newest first. **Pagination:** 25. **Live
+**Filters / sort / search.** Type (`import_type`), Status (`status`, multi, repeated; chip
+"Status: Failed, Rejected"). The endpoint has no text search, so there is no search box. Sort: newest first. **Pagination:** 25. **Live
 status:** upload validation and apply run inside their requests, so rows are rarely mid-flight.
 If a visible row is `UPLOADED`, `VALIDATING` or `APPLYING`, refetch every 2 s until none are.
 
@@ -1150,14 +1174,16 @@ Applying runs in one transaction. If anything fails, nothing changes.
 - Apply runs inside the request. The pending state shows "Applying 1,226 rows… This runs in one
   transaction. If anything fails, no data changes." with the `motion-essential` spinner.
 
-**Apply errors** (409/422 from `POST /apply`; the import stays `VALIDATED` unless noted):
+**Apply errors** (409/422 from `POST /apply`; the import stays `VALIDATED` unless noted). After
+any 409 or 422 the page refetches the import and renders what the server now holds. Where the API
+sends a different code than this table's name, both are handled (API code in brackets):
 
 | Code | UI |
 |---|---|
 | `IMPORT_HAS_ERRORS` | Inline: "Strict mode can't apply a file with row errors. Choose Valid rows only, or fix the file." |
-| `IMPORT_SKIPPED_ROWS_NOT_CONFIRMED` | Inline: "The number of rows to skip changed. Review the issues and confirm again." The checkbox is cleared. |
-| `IMPORT_PREVIEW_EXPIRED` | The page refetches (status `DISCARDED`) and shows the expired state. |
-| `IMPORT_PREVIEW_STALE` | Danger: "Store data changed since the preview, so a different set of rows would be skipped. Nothing was applied." **Validate again** (when available) or **Upload again**. |
+| `IMPORT_SKIPPED_ROWS_NOT_CONFIRMED` (`SKIPPED_ROWS_NOT_CONFIRMED`, 422) | Inline: "The number of rows to skip changed. Review the issues and confirm again." The checkbox is cleared. |
+| `IMPORT_PREVIEW_EXPIRED` (`IMPORT_EXPIRED`) | The page refetches (status `DISCARDED`) and shows the expired state. |
+| `IMPORT_PREVIEW_STALE` (`IMPORT_DATA_CHANGED`) | The apply is recorded as `FAILED` (nothing applied), so the refetch shows the S-13 `FAILED` callout with `failure_reason` and **Validate again**, which re-checks the stored file against current data and restarts at the preview. |
 | `IDEMPOTENT_REQUEST_IN_PROGRESS` | Info: "This apply is already running." The page polls the import. |
 | `IMPORT_NOT_APPLICABLE` | The page refetches and renders the current status. |
 
@@ -1166,9 +1192,11 @@ Applying runs in one transaction. If anything fails, nothing changes.
   applied, 14 skipped with your confirmation."
 - Tiles from `summary.applied {mode, creates, updates, unchanged, skipped}`.
 - **Evaluation run** panel (`evaluation_run_id` → `GET /stores/{id}/evaluations/{rid}`):
-  `SUCCEEDED` → "3 new exceptions · 6 refreshed · 1 resolved · 0 reopened" with **View exceptions
-  to triage** (the inbox's triage view; a filter by evaluation run would be needed for "new" only,
-  IA Q-IA-6). Shown with `exceptions.read`, which reads evaluation runs. `SKIPPED` → info "Another analysis was running, so this import's
+  `SUCCEEDED` → "3 new exceptions · 6 refreshed · 1 resolved · 0 reopened" with **View new
+  exceptions** when the run created any: the inbox's All active view filtered by
+  `evaluation_run_id` (S-03), so it lists the new exceptions still active. Shown with
+  `exceptions.read`, which reads evaluation runs. Applied **inventory adjustment** imports also
+  offer **View ledger entries** (S-10 with `import_id`). `SKIPPED` → info "Another analysis was running, so this import's
   analysis was skipped. The next scheduled run, within 15 minutes, will evaluate the new data."
   `FAILED`, or `summary.evaluation_error` set → warning "The import is complete, but its analysis
   failed. No exceptions were changed by it, and the next scheduled run will catch up." A missing
@@ -1184,8 +1212,8 @@ Applying runs in one transaction. If anything fails, nothing changes.
 size_bytes, row_count, summary {rows_total, rows_valid, rows_with_errors, rows_with_warnings,
 creates, updates, unchanged, issue_counts_by_code, preview[], applied, evaluation_error},
 created_at, validated_at, applied_at, expires_at, created_by, applied_by, evaluation_run_id,
-failure_reason, file_issues[]`. Issues: `GET …/issues` → `{row_number, column, code, severity,
-message, raw_value}`.
+failure_reason, can_revalidate, file_issues[]`. Issues: `GET …/issues` → `{row_number, column,
+code, severity, message, raw_value}`.
 
 **Actions**
 
@@ -1202,15 +1230,15 @@ message, raw_value}`.
 | Initial loading | `/imports/{id}`: header skeleton + stepper + tiles skeleton. |
 | Empty | Step 1 has no data state. Preview with 0 issues: "No issues found. All 1,240 rows are valid." (success tone). |
 | Populated | As above. |
-| Search results / filtered | Issue table: filter by severity tabs, code (single, from `issue_counts_by_code`; the API takes one). Row-number search waits for an API filter (T-067). No match: "No issues match these filters". Expected-changes table: filter by action. |
+| Search results / filtered | Issue table: filter by severity tabs, code (single, from `issue_counts_by_code`; the API takes one), and a **Row number** box (digits only, 300 ms debounce, `row_number` exact match; file-level issues have no row and drop out). No match: "No issues match these filters". Expected-changes table: filter by action. |
 | Validation error (client) | No type: "Choose what you're importing." No file: "Choose a CSV file." Wrong extension: "Only .csv files can be imported." Too large: "This file is 7.2 MB. The limit is 5 MB. Split it into smaller files." |
 | Validation error (file-level, server) | `REJECTED`: a danger alert per `file_issues[]` item showing the code, the API `message` (for `MISSING_COLUMNS` it lists the missing headers and may say "this looks like an orders file") and the "How to fix" text from IMPORT_PIPELINE §6. **Upload a corrected file** → `/imports/new?type={type}`. |
 | API error with retry | Upload network failure: "Upload failed. Check your connection and try again." (the file stays selected). Apply 5xx: an inline error in step 3 with **Try again** (same Idempotency-Key). |
-| Apply failed | `FAILED`: danger "Apply failed and was rolled back. No data was changed." + `failure_reason` + `request_id` + **Validate again** (S-13). |
+| Apply failed | `FAILED`: danger "Apply failed and was rolled back. No data was changed." + `failure_reason` + **Validate again** while `can_revalidate` (S-13). |
 | Preview expired | `DISCARDED` by expiry: muted "This preview expired after 24 hours, because store data may have changed since validation. Upload the file again." + **Upload again**. |
 | Permission denied | `/imports/new` without `imports.run`: standard PermissionDenied. On a record, actions are disabled per the table. |
 | Success toast | Discard → "Import discarded". Apply completes → none (the summary step is the confirmation). |
-| Pending action | "Uploading and validating…" (indeterminate; a percentage needs an XHR upload, T-067), "Applying 1,226 rows…". |
+| Pending action | Upload: the request goes through `XMLHttpRequest` for upload progress. While the bytes are sent, the button reads "Uploading 42%…" and a determinate progress bar ("Upload progress", `aria-valuenow`) shows the percentage ("Uploading…" when the size is unknown); once sent, the same request validates the file, so the button reads "Validating…" and the bar turns indeterminate ("Validating the file"). Only the phase change is announced (`role="status"`), not every percent. Apply: "Applying 1,226 rows…". |
 | Confirmation dialog | Discard. Apply uses the inline step 3 confirmation. |
 | Disabled action | Per the step 3 reasons. |
 | Responsive | < 768: tiles in 2 columns. The stepper shows "Step 2 of 4 · Preview". The issue and expected-changes tables scroll horizontally with Row pinned. Step 3 buttons are full width and stacked. |
@@ -1240,7 +1268,7 @@ and what the import triggered. **Personas.** Manager, Staff, Analyst.
    - `COMPLETED`: none (the summary tiles suffice).
    - `COMPLETED_WITH_ERRORS`: warning "14 rows were skipped with your confirmation. They are listed below and in the issues CSV."
    - `REJECTED`: danger, one block per `file_issues[]` item (code, message, fix text) + **Upload a corrected file**.
-   - `FAILED`: danger "Apply failed and was rolled back. No data was changed." + `failure_reason` + **Validate again** (`POST …/revalidate`, API_CONVENTIONS, not implemented yet. Until it exists the button is not rendered and the copy says "Upload the file again"). After revalidation the stepper takes over.
+   - `FAILED`: danger "Apply failed and was rolled back. No data was changed." + `failure_reason`. While `can_revalidate` (the failed apply keeps the file bytes until the preview's original expiry): "Validate the same file again against the current store data. Nothing changes until you apply." + **Validate again** (`POST …/revalidate`, `imports.run`, pending "Validating…"). A `VALIDATED` result brings back the stepper at Preview with a new 24 h expiry; a `REJECTED` result shows the rejection callout. A 409 (bytes purged meanwhile, or the status changed) shows the API message and refetches. Once the bytes are gone: "The file is no longer stored. Upload it again to validate it from the start." + **Upload a corrected file**.
    - `DISCARDED`: muted "Discarded on {date}" (the API records no discarding user, so no name) or the expiry copy. The UI treats a record whose `updated_at` is at or after `expires_at` as expired.
 3. **Details** (DescriptionList): Type, Mode, Uploaded by / at, Validated at, Applied by / at, Size,
    Rows, SHA-256 (first 12 characters, mono, copy full).
@@ -1251,8 +1279,10 @@ and what the import triggered. **Personas.** Manager, Staff, Analyst.
 
 **Data.** As S-12.
 
-**Actions.** Upload a corrected file (`imports.run`), Validate again (`imports.run`, once the
-endpoint exists), Download issues CSV (`imports.read`), View new exceptions (`exceptions.read`).
+**Actions.** Upload a corrected file (`imports.run`), Validate again (`imports.run`, `FAILED` with
+`can_revalidate`; visible but `aria-disabled` with the permission copy for people without
+`imports.run`), Download issues CSV (`imports.read`), View new exceptions (`exceptions.read`),
+View ledger entries (`inventory.read`, applied inventory adjustment imports).
 
 | State | Behaviour |
 |---|---|
@@ -1262,7 +1292,7 @@ endpoint exists), Download issues CSV (`imports.read`), View new exceptions (`ex
 | Validation | N/A. |
 | API error | Standard. Issues CSV download failure → error toast with **Try again**. |
 | Not found / permission denied | Standard (`imports.read`). |
-| Success toast | Validate again → "Validation restarted" (the stepper takes over). |
+| Success toast | Validate again with a `VALIDATED` result → "Validated again. Review the preview before applying." (the stepper takes over). Validation runs inside the request, like the upload. |
 | Pending action | Validate again pending state. |
 | Confirmation dialog | N/A. |
 | Disabled action | Per permission (standard copy). |
@@ -1351,34 +1381,42 @@ column) to show metadata.
 
 | Column | Source | Align | Hide below |
 |---|---|---|---|
-| Time (ET) | `audit_log.occurred_at` | left | never |
-| Actor | `actor_user_id` → name (from `GET /stores/{id}/members`, no emails). "System" when null. "Former member" when the ID is unknown. | left | never |
+| Time (ET) | `audit_log.occurred_at`, with the row's disclosure button. Pinned while the table scrolls sideways | left | never |
+| Actor | `actor_name` from the audit response (no emails). "System" when `actor_user_id` is null. "Former member" when the API returns an ID without a name. | left | never |
 | Action | `action` → label + code in mono (e.g. "Resolved exception" `exception.resolve`) | left | never |
-| Target | `target_type` + `target_id` → link label when resolvable (exception reference `EXC-1042`, order number, import file, "Store settings", member name). Otherwise the type plus a short ID. | left | md |
+| Target | `target_type` + `target_id` → label, linked when the record belongs to this store and its page is open to the person: exception reference (`details.reference`, `EXC-1042`) → exception detail, import (`details.import_type`, "Orders import") → import detail, the store → "Store settings", a member → `details.full_name`. Otherwise the type plus a short ID. | left | md |
 | Request ID | `request_id` (mono, copy button) | left | lg |
-| Expanded row | `details` as a key–value list (mono values). Secrets are never present (server guarantee). `AuditLogOut` has no IP field, so no IP is shown (IA Q-IA-2). | | |
+| Expanded row | Action code, target and request ID (so narrow screens see the hidden columns), then `details` as a key–value list (mono values). A `before` / `after` pair (settings) is shown per key as "48 → 36". Secrets are never present (server guarantee). `AuditLogOut` has no IP field, so no IP is shown (IA Q-IA-2). | | |
 
-**Action labels** (prefix groups for the filter, from ROLE_AND_PERMISSION_WORKFLOW §11): Auth
-(`auth.login`, `auth.login_failed`, `auth.logout`, `auth.session_revoked`,
-`auth.demo_session_started`), Authorization (`authz.denied`), Users (`user.role_change`, and the
-other `user.*` actions if they appear), Settings (`settings.update`), Exceptions
-(`exception.acknowledge`, `.claim`, `.start`, `.resolve`, `.dismiss`, `.reopen`, `.assign`,
-`.unassign`, `.due_date_change`, `.note_add`), Imports (`import.apply`, `import.discard`),
-Evaluations (`evaluation.run`). Unknown actions fall back to the raw code.
+**Action labels** (prefix groups for the filter). The labels cover the actions the API records today:
+Sign-in and sessions (`auth.login`, `auth.demo_login`, `auth.logout`, `auth.login_failed`,
+`auth.session_revoked`), Users (`user.create`, `user.role_change`, `user.deactivate`,
+`user.reactivate`), Settings (`settings.update`), Exceptions (`exception.acknowledge`, `.start`,
+`.resolve`, `.dismiss`, `.reopen`, `.assign` (shown as "Claimed exception" when `details.claimed`,
+"Unassigned exception" when `details.to_assignee_id` is null), `.note`, `.due_date`), Imports
+(`import.applied`, `import.failed`, `import.discarded`), Analysis runs (`evaluation.run`). Unknown
+actions fall back to the raw code. `auth.login_failed` rows have no organization, so they never
+appear in a store's log. **Deviation (T-066):** the names follow the implemented API, not the
+proposal in ROLE_AND_PERMISSION_WORKFLOW §11 (`authz.denied` is not recorded, so it has no filter
+group). The labels live in `features/admin/audit-actions.ts`.
 
-**Filters / sort / search.** Date range (`from` / `to`; default last 7 days, presets 24 h / 7 d /
-30 d / custom). Action group (single select, sent as the `action` prefix, e.g. `exception.`). Actor
-(combobox, `actor_user_id`). No free-text search on this endpoint. Sort: newest first only
-(append-only log). **Pagination:** 50 (50/100).
+**Filters / sort / search.** Period (`period` in the URL: Last 24 hours / Last 7 days (default) /
+Last 30 days / Last 90 days / All time / Custom range). Presets count store-local calendar days
+including today; Last 24 hours is rolling. Custom range: From and To date inputs (`from`, `to` as
+`YYYY-MM-DD`) covering whole store-local days, either end optional; an inverted range shows "The
+start date must be on or before the end date." and is not applied. Action group (single select,
+sent as the `action` prefix, e.g. `exception.`). Actor (select of the store's active members from
+`GET /stores/{id}/members`, `actor_user_id`). No free-text search on this endpoint. Sort: newest
+first only (append-only log). **Pagination:** 50 (50/100).
 
 **Actions.** Expand row, copy request ID. No export (IA-5).
 
 | State | Behaviour |
 |---|---|
 | Initial loading | Standard. |
-| Empty | "No audit events in this period". Widen the date range. |
+| Empty | "No audit events in this period". "Nothing was recorded in the last 7 days. Widen the date range to see older events." **Show all time**. |
 | Populated / search / filtered | Standard. |
-| Validation | Date range as S-05. |
+| Validation | Custom range: "The start date must be on or before the end date." under the date inputs; the inverted range is not applied. Unknown values in a shared link are dropped with the standard toast. |
 | API error / permission denied | Standard (`audit.read`). STAFF never sees the nav item. A pasted URL shows PermissionDenied. |
 | Toast / pending / confirmation / disabled | N/A (read-only). |
 | Responsive | Table kept with Time pinned. The expanded metadata wraps. |
@@ -1435,36 +1473,62 @@ into the form and still requires Save.
 | Empty | N/A (settings always exist, with defaults). |
 | Populated | Form (editors) or definition list (readers). |
 | Search / filtered | N/A. |
-| Validation error | Field and form-level per DESIGN_SYSTEM §14. Server 422 details (`body.priority_weights…`) map to fields. The UI adds no cross-field rules that the backend does not enforce. |
+| Validation error | Field and form-level per DESIGN_SYSTEM §14. Messages: "Enter a whole number from 1 to 8,760." (and the other integer ranges), "Enter a number with at most 2 decimal places.", "Enter a value from 1.00 to 3.00.", "Enter an amount above 0.00 and at most 9,999,999,999.99.". Server 422 details (`loc` `body.priority_weights…`) map to fields. The UI adds no cross-field rules that the backend does not enforce. |
 | API error with retry | Load failure: standard. Save failure: alert in the save bar area with `request_id`. Values are kept. |
-| Conflict | 409 (settings changed by someone else): "Settings were changed by someone else. Reload to see the latest values. Your edits will be lost." **Reload**. |
+| Conflict | The API has no settings version, so there is no 409. **Implemented instead (T-066):** the form keeps the values it was opened with. **Save changes** refetches first, and a background refetch also compares: when the saved values differ (someone else saved), "Settings were changed by someone else. Reload to see the latest values. Your edits will be lost." (the last sentence only when there are edits) with **Reload**, and nothing is sent. The PATCH carries only the changed fields, so a race inside that window is last-write-wins per field. |
 | Permission denied | Standard (`settings.read`, which all roles hold). |
 | Success toast | "Settings saved. They apply from the next evaluation." |
-| Pending action | **Save changes** → "Saving…". |
-| Confirmation dialog | Save (above). Navigation guard: leaving with unsaved changes → "Discard unsaved changes?" with **Discard** / **Keep editing** (and `beforeunload` for tab close). |
+| Pending action | **Save changes** → "Checking…" (the refetch), then "Saving…" in the dialog. |
+| Confirmation dialog | Save (above). Navigation guard: `beforeunload` while there are unsaved changes. **Deferred (T-066):** an in-app "Discard unsaved changes?" dialog for sidebar links (the App Router has no route-change event to intercept). |
 | Disabled action | Readers see no form, so there are no disabled inputs. In demo orgs the read-only note reads "The public demo is read-only." |
 | Responsive | Single column at all widths. The save bar is full width with buttons stacked below 400 px. |
+
+Implementation notes (T-066): the store profile comes from the session's store context. The
+priority weights are grouped (Severity, Affected orders, Value at risk, Deadline, Time unresolved)
+with each group's helper text, and the confirm dialog names a weight as "Severity · Critical". Any
+weight change sends the whole `priority_weights` object, as the API requires. Integers are sent as
+JSON numbers, decimals as strings (BR-503). The defaults shown as hints mirror
+`DEFAULT_PRIORITY_WEIGHTS` and BUSINESS_RULES §7 in `features/admin/settings-fields.ts`; the API
+does not return them.
 
 ---
 
 ## S-17 Users & roles
 
-**Purpose.** See who has access to the organization and what each role can do. In P1, owners can
-change a member's role. **Personas.** Owner, Manager (read). v1 has **no invite, add-member,
-deactivation or password-reset UI** (ROLE_AND_PERMISSION_WORKFLOW §8; orchestrator decision).
+**Purpose.** See who has access to the organization and what each role can do. Owners add
+members, change roles, and deactivate or reactivate members. **Personas.** Owner, Manager (read).
+**Changed in T-066 (orchestrator decision):** add member, deactivation and reactivation are in the
+UI, using the simplest variant of ROLE_AND_PERMISSION_WORKFLOW §8: the owner creates the account
+and hands over a temporary password shown once. There is still no invite email and no
+password-reset or own-password UI.
 
-**Layout.** PageHeader "Users & roles". Subtitle "Kestrel Commerce · organization-wide". Tabs
-(Radix): **Members** · **Roles and permissions**.
+**Layout.** PageHeader "Users & roles" with **Add member** (`users.manage`). Subtitle
+"Kestrel Commerce · organization-wide". Tabs (Radix): **Members** · **Roles and permissions**
+(tab state is local, not in the URL).
 
-**Members tab** (P0, `GET /organizations/{org_id}/members`, `users.read`, per API_CONVENTIONS
-§12.1; not implemented yet). DataTable (comfortable): Name (avatar initials) · Email · Role (plain
-text) · Status (Active / Deactivated, display only, with neutral and muted tags) · row menu (P1,
-`users.manage`): **Change role…**. A "You" tag appears next to the current user. Until the
-organization endpoint exists, the tab renders the store members from `GET /stores/{id}/members`
-(name and role only, no email) with the caption "Showing members of this store's organization."
-Last sign-in is shown only if the endpoint returns it.
+**Members tab** (`GET /organizations/{org_id}/members`, `users.read`). DataTable (comfortable):
+Name (avatar initials) · Email · Role (plain text) · Status (Active / Deactivated, neutral and
+muted tags) · Last sign-in ("Never" when null, hidden below lg) · row menu (`users.manage`):
+**Change role…**, **Deactivate…** or **Reactivate…**. A "You" tag appears next to the current user.
 
-**Change role dialog (P1).** A select of the 5 roles, each with a one-line description: Owner ("Full
+**Add member dialog.** Full name, Email, Role (the five roles with their descriptions, no
+default). Validation mirrors `MemberCreate`: "Enter the member's full name.", "Enter an email
+address.", "Enter an email address such as name@example.com.", "Choose a role.". An info alert
+says RetailOps doesn't send email. `409 MEMBER_EXISTS` / `EMAIL_IN_USE` show the API message on the
+email field (an existing account is never attached, open question O-35). Success: toast "Member
+added: Jordan Lee", then the **Member added** dialog with the sign-in email and the temporary
+password (mono, copy button), "It is shown only once and can't be recovered later." It does not
+close on an outside click; **Done** closes it.
+
+**Deactivate / Reactivate dialog.** Confirmation. Deactivate: "They are signed out everywhere at
+once and can't sign in until reactivated. Their notes, history and audit entries keep their name.
+Exceptions assigned to them stay assigned until a manager reassigns them." (O-27 proposal to
+unassign is not implemented.) **Deactivate member** (destructive), toast "Sam Ortiz deactivated.
+Their sessions were ended." Reactivate: "They can sign in again with their existing password",
+**Reactivate member**, toast "Sam Ortiz reactivated". `409 LAST_OWNER`,
+`409 MEMBER_IN_OTHER_ORGANIZATION` and `403 OWN_MEMBERSHIP` show as an alert in the dialog.
+
+**Change role dialog.** A radio group of the 5 roles (current role preselected), each with a one-line description: Owner ("Full
 access, including users"), Manager ("Runs operations. Everything except managing users"), Staff
 ("Works on exceptions. Reads operational data"), Analyst ("Read-only, plus copilot and audit
 log"), Viewer ("Read-only demo access"). Below the select, a "What changes" list compares the
@@ -1473,7 +1537,8 @@ Submit **Change role**. Confirmation is the dialog itself.
 
 **Roles and permissions tab** (P0). A read-only matrix table from `GET /api/v1/roles`
 (`[{role, permissions[]}]`, any authenticated user). Rows are the 18 permissions (label and
-one-line description from `status-maps.ts`, code in mono). Columns are OWNER, MANAGER, STAFF,
+one-line description from `permissionLabels` / `permissionDescriptions` in `lib/permissions.ts`,
+code in mono). Columns are OWNER, MANAGER, STAFF,
 ANALYST, VIEWER. Cells
 show a check icon with the visually hidden text "Granted", or "—" with "Not granted". Caption:
 "Roles are defined in code (ADR-0007) and can't be edited here."
@@ -1482,26 +1547,32 @@ show a check icon with the visually hidden text "Granted", or "—" with "Not gr
 
 | Action | Permission | Disabled reason |
 |---|---|---|
-| Change role (P1) | `users.manage` (OWNER only) | Own row: "You can't change your own role." Last owner: "At least one owner is required." The UI pre-checks the owner count, and the server enforces it with `409 LAST_OWNER`. |
+| Add member | `users.manage` (OWNER only) | Managers: "Only owners can add members, change roles or deactivate members." Demo: "The public demo is read-only." |
+| Change role | `users.manage` (OWNER only) | Own row: "You can't change your own role." Last active owner: "At least one owner is required." The UI pre-checks the active owner count, and the server enforces it with `409 LAST_OWNER`. |
+| Deactivate / Reactivate | `users.manage` (OWNER only) | Own row: "You can't deactivate your own account." Last active owner: "At least one owner is required." |
 
-**Filters / sort / search.** Client-side over the member list (organizations are small): name or
-email contains, role filter, sort by name. No pagination.
+Disabled menu items show their reason under the label (as in the exception "More" menu).
+
+**Filters / sort / search.** Client-side over the member list (organizations are small), kept in
+the URL (`q`, `role`, `status`): name or email contains, role filter, status filter, sorted by
+name. No pagination.
 
 | State | Behaviour |
 |---|---|
-| Initial loading | Standard. |
+| Initial loading | Standard. Roles tab: row skeletons. |
 | Empty | Not reachable (the current user is a member). Search with no match: standard no-results. |
 | Populated / search / filtered | Standard. |
-| Validation error | Same role selected: "Choose a different role." |
-| API error / conflict | Standard. `409 LAST_OWNER` shows "At least one owner is required. Make another member an owner first." in the dialog. |
+| Validation error | Same role selected: "Choose a different role." Add member: field messages above. |
+| API error / conflict | Standard, with the request ID in dialog alerts. `409 LAST_OWNER` shows "At least one owner is required. Make another member an owner first." in the dialog and refreshes the list. |
 | Permission denied | Standard (`users.read`). Hidden from STAFF, ANALYST and VIEWER navigation. |
-| Success toast | "Role changed: Sam Ortiz is now Manager." |
-| Pending action | "Changing role…". |
-| Confirmation dialog | The Change role dialog (with the "What changes" list). |
-| Disabled action | Per the table. Managers see the matrix and list without the row menu. Before P1 ships, there is no row menu for anyone (IA-5). |
-| Responsive | < 768: stacked rows (name, email, role · last sign-in). The matrix scrolls horizontally with the permission column pinned. |
+| Success toast | "Role changed: Sam Ortiz is now Manager." "Member added: Jordan Lee". "Sam Ortiz deactivated. Their sessions were ended." "Sam Ortiz reactivated". |
+| Pending action | "Changing role…", "Adding…", "Deactivating…", "Reactivating…". |
+| Confirmation dialog | The Change role dialog (with the "What changes" list) and the Deactivate / Reactivate dialog. |
+| Disabled action | Per the table. Managers see the matrix and list without the row menu, and **Add member** disabled with its reason. |
+| Responsive | < 768: stacked rows (name, email, role · status · last sign-in, row menu). The matrix scrolls horizontally with the permission column pinned. |
 
-User provisioning, deactivation and password resets are not in the v1 UI (IA Q-IA-4, Q-IA-5).
+Password resets, own-password change and forcing a new password at first sign-in are not in v1
+(open question O-28). Existing accounts cannot be added to a second organization (O-35).
 
 ---
 

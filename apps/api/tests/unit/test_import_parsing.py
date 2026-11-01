@@ -104,6 +104,19 @@ def test_repeated_header_is_rejected() -> None:
     assert issue.code == "DUPLICATE_COLUMN"
 
 
+def test_a_header_wider_than_the_column_cap_is_rejected_quickly() -> None:
+    """A crafted 5 MB header of ~700,000 distinct names must not cost quadratic time or produce
+    one warning row per cell."""
+    wide = ",".join(f"c{i}" for i in range(700_000))
+    issue = _parse(csv_bytes(PRODUCT_HEADER + "," + wide, product_row("KHK-1")))
+    assert isinstance(issue, parsing.FileIssue)
+    assert issue.code == "TOO_MANY_COLUMNS"
+
+    extra = ",".join(f"c{i}" for i in range(parsing.MAX_COLUMNS - PRODUCT_HEADER.count(",") - 1))
+    at_cap = _parse(csv_bytes(PRODUCT_HEADER + "," + extra, product_row("KHK-1")))
+    assert isinstance(at_cap, parsing.ParsedFile)
+
+
 def test_br603_unknown_columns_are_warnings_and_ignored() -> None:
     parsed = _parse(csv_bytes(PRODUCT_HEADER + ",barcode", product_row("KHK-1") + ",4006381333931"))
     assert isinstance(parsed, parsing.ParsedFile)

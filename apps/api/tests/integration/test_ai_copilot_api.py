@@ -15,7 +15,7 @@ from app.domains.ai.models import AIConversation, AIMessage, AIToolCall
 from app.domains.audit.models import AuditLog
 from app.domains.exceptions.models import ExceptionEvent, ExceptionNote, NoteSource
 from app.domains.identity.permissions import Permission, Role
-from tests.factories import create_tenant, create_user
+from tests.factories import create_tenant, create_user, pre_session_csrf
 from tests.factories_ai import NOW, AIStore, build_store, install_runtime, sign_in
 from tests.factories_commerce import strip_permission
 
@@ -151,8 +151,12 @@ def test_demo_viewer_conversations_and_rate_limits_are_per_session(
     path = f"/api/v1/stores/{tenant.store.id}/copilot/conversations"
 
     with TestClient(app) as first, TestClient(app) as second:
-        csrf_1 = {"X-CSRF-Token": first.post("/api/v1/auth/demo").json()["csrf_token"]}
-        csrf_2 = {"X-CSRF-Token": second.post("/api/v1/auth/demo").json()["csrf_token"]}
+
+        def demo_sign_in(client: TestClient) -> dict[str, str]:
+            body = client.post("/api/v1/auth/demo", headers=pre_session_csrf(client)).json()
+            return {"X-CSRF-Token": body["csrf_token"]}
+
+        csrf_1, csrf_2 = demo_sign_in(first), demo_sign_in(second)
         conversation = first.post(path, json={}, headers=csrf_1).json()["id"]
 
         assert second.get(path).json()["total"] == 0

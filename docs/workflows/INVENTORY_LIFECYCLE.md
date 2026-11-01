@@ -236,8 +236,9 @@ an older and a newer count applies both instead of rejecting the older one as st
 
 ## 7. Stock health classification
 
-The table is in `BUSINESS_RULES.md §2.5`: `ACTIVE` products only, evaluated top-down, first match wins,
-computed on read (BR-141).
+The table is in `BUSINESS_RULES.md §2.5`: evaluated top-down, first match wins, computed on read
+(BR-141). `DATA_ISSUE` (`on_hand < 0`) comes first and applies to any product status; the availability
+classes apply to `ACTIVE` products only.
 
 For `reorder_point` 10 and the default factor 1.25 (approaching threshold ceil(12.5) = 13):
 
@@ -262,8 +263,8 @@ includes oversell risk, which is not a health state; negative on-hand suppresses
 | 12 | 12 | 3 | 0 | `OUT_OF_STOCK` | `INVENTORY_OVERSELL_RISK` (pending 3 > available 0 takes precedence over out of stock) |
 | 30 | 10 | 25 | 20 | `HEALTHY` | `INVENTORY_OVERSELL_RISK`, potential shortage 5 |
 | 11 | 0 | 0 | 11 | `APPROACHING_REORDER_POINT` | none |
-| −3 | 0 | 0 | −3 | `OVERSOLD` | `DATA_NEGATIVE_ON_HAND` **only**. The stock figure is invalid, so inventory rules are suppressed until on-hand is corrected (BR-402a) |
-| −3 (product `ARCHIVED`) | 0 | 0 | −3 | not classified (inactive) | `DATA_NEGATIVE_ON_HAND` only |
+| −3 | 0 | 0 | −3 | `DATA_ISSUE` (not `OVERSOLD`) | `DATA_NEGATIVE_ON_HAND` **only**. The stock figure is invalid, so inventory rules are suppressed until on-hand is corrected (BR-402a) |
+| −3 (product `ARCHIVED`) | 0 | 0 | −3 | `DATA_ISSUE` (any status, like the exception) | `DATA_NEGATIVE_ON_HAND` only |
 
 ## 8. Sales velocity and days of cover (estimates)
 

@@ -177,7 +177,7 @@ it.
 | 7b | S-13 | *Yes* → **D3** Fix first, or apply the valid rows now? | Strict mode: Apply is `aria-disabled` with "Strict mode blocks apply while 14 rows have errors." |
 | 7b-i | S-13 | *Fix first* → **Download issues CSV** → corrects the export in the source system → **Discard import** → new upload (step 3). | The issues CSV is formula-injection safe. Discarded imports keep their issue list for reference. |
 | 7b-ii | S-13 | *Apply valid rows* → selects **Valid rows only** → ticks "I understand 14 rows will be skipped and kept as import errors." → **Apply 1,226 rows, skip 14**. | `APPLYING` → `COMPLETED_WITH_ERRORS`. |
-| 8 | S-13 | **D4** Did apply succeed? | `FAILED` → "No data was changed. The transaction was rolled back." with **Validate again** (`FAILED → VALIDATING` from the stored file, once that endpoint exists; otherwise upload again). `IMPORT_PREVIEW_STALE` (data changed since the preview) → nothing applied, validate or upload again. |
+| 8 | S-13 | **D4** Did apply succeed? | `FAILED` → "No data was changed. The transaction was rolled back." with **Validate again** (`FAILED → VALIDATING` from the stored file, kept until the preview's expiry; otherwise upload again). `IMPORT_PREVIEW_STALE` (data changed since the preview) → nothing applied, validate or upload again. |
 | 9 | S-13 Summary | Reads the summary: rows applied, rows skipped, and the evaluation run triggered by the import ("Evaluation run: 3 new exceptions, 1 resolved"). | **View 3 new exceptions** → S-03 filtered by `evaluation_run_id`. |
 | 10 | S-12 | Later: fixes the 14 skipped rows and imports a file containing only those rows. | Upserts by natural key make a partial corrective file safe (BR-608). |
 

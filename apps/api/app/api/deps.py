@@ -39,6 +39,18 @@ def login_limiter(request: Request) -> SlidingWindowRateLimiter:
     return limiter
 
 
+def require_pre_session_csrf(request: Request) -> None:
+    """Double-submit check for the sign-in endpoints, which run before a session exists.
+
+    The ``X-CSRF-Token`` header must equal the ``ro_csrf`` cookie issued by ``GET /auth/csrf``
+    (ADR-0004). A cross-site page can neither read that cookie nor send a custom header without
+    a CORS preflight, which the API never grants, so login CSRF is blocked.
+    """
+    cookie = request.cookies.get(CSRF_COOKIE)
+    if not cookie or not csrf_matches(cookie, request.headers.get(CSRF_HEADER)):
+        raise PermissionDeniedError("Missing or invalid CSRF token.", code="CSRF_FAILED")
+
+
 def get_principal(
     request: Request,
     db: Session = Depends(get_db),
@@ -73,6 +85,30 @@ def require_permission(*required: Permission) -> Callable[..., identity.StoreCon
         db: Session = Depends(get_db),
     ) -> identity.StoreContext:
         ctx = identity.store_context(db, principal.user, store_id)
+        missing = [p.value for p in required if p not in ctx.permissions]
+        if missing:
+            raise PermissionDeniedError(
+                "Your role does not allow this action.",
+                details=[{"missing_permission": p} for p in missing],
+            )
+        return ctx
+
+    return dependency
+
+
+def require_org_permission(*required: Permission) -> Callable[..., identity.OrganizationContext]:
+    """Dependency factory for organization-scoped routes (path parameter ``organization_id``).
+
+    404 when the caller has no membership in the organization (its existence is not revealed),
+    403 when the membership role lacks a required permission.
+    """
+
+    def dependency(
+        organization_id: uuid.UUID,
+        principal: Principal = Depends(get_principal),
+        db: Session = Depends(get_db),
+    ) -> identity.OrganizationContext:
+        ctx = identity.organization_context(db, principal.user, organization_id)
         missing = [p.value for p in required if p not in ctx.permissions]
         if missing:
             raise PermissionDeniedError(

@@ -83,7 +83,7 @@ def list_products(
         stmt = stmt.where(Product.supplier_id == supplier_id)
     if health:
         health_col = inventory_queries.health_sql(
-            available, Product.reorder_point, Product.status, factor
+            on_hand, available, Product.reorder_point, Product.status, factor
         )
         stmt = stmt.where(health_col.in_([h.value for h in health]))
 
@@ -118,7 +118,7 @@ def list_products(
             reserved=rsv,
             available=oh - rsv,
             health=inventory_queries.product_health(
-                product.status, oh - rsv, product.reorder_point, factor
+                product.status, oh, oh - rsv, product.reorder_point, factor
             ),
             updated_at=product.updated_at,
         )
@@ -197,7 +197,7 @@ def get_product(
         ),
         stock=stock,
         health=inventory_queries.product_health(
-            product.status, stock.available, product.reorder_point, factor
+            product.status, stock.on_hand, stock.available, product.reorder_point, factor
         ),
         approaching_threshold=(
             approaching_threshold(product.reorder_point, factor)

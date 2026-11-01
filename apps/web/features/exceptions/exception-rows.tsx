@@ -6,8 +6,11 @@ import type { Column } from "@/components/data/data-table";
 import { DateTime, DueLabel, Money, NoValue } from "@/components/data/values";
 import { ExceptionStatusPill, PriorityIndicator, SeverityBadge } from "@/components/status/status-pill";
 import type { ExceptionListItem } from "@/lib/api/exceptions-api";
+import { formatDateTime, formatRelative } from "@/lib/format/datetime";
 import { formatCount } from "@/lib/format/number";
+import { useNow } from "@/lib/hooks/use-now";
 import { dismissalReasonLabels, exceptionTypeLabels, resolutionCodeLabels } from "@/lib/status-maps";
+import { useStore } from "@/lib/store/store-context";
 
 /** The muted second line: reference · type · entity · orders (S-03 "Exception" column). */
 export function ExceptionMeta({ item }: { item: ExceptionListItem }) {
@@ -41,7 +44,25 @@ export function rowLabel(item: ExceptionListItem): string {
   return `${item.reference}, ${item.title}`;
 }
 
-export function exceptionColumns(hrefFor: (item: ExceptionListItem) => string, closedView: boolean): Column<ExceptionListItem>[] {
+/** "Last detected": relative time, the full date in the tooltip (S-03, optional column). */
+function LastDetected({ item }: { item: ExceptionListItem }) {
+  const { timezone } = useStore();
+  const now = useNow();
+  return (
+    <time dateTime={item.last_detected_at} title={formatDateTime(item.last_detected_at, timezone, now)} className="whitespace-nowrap text-sm">
+      {formatRelative(item.last_detected_at, timezone, now)}
+    </time>
+  );
+}
+
+export function exceptionColumns(
+  hrefFor: (item: ExceptionListItem) => string,
+  closedView: boolean,
+  options: { lastDetected?: boolean } = {},
+): Column<ExceptionListItem>[] {
+  const lastDetected: Column<ExceptionListItem>[] = options.lastDetected
+    ? [{ id: "last_detected", header: "Last detected", hideBelow: "xl", cell: (item) => <LastDetected item={item} /> }]
+    : [];
   return [
     {
       id: "priority",
@@ -87,6 +108,7 @@ export function exceptionColumns(hrefFor: (item: ExceptionListItem) => string, c
           header: "Due",
           cell: (item) => <DueLabel dueAt={item.due_at} className="text-sm" />,
         },
+    ...lastDetected,
   ];
 }
 

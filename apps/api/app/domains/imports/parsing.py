@@ -8,6 +8,7 @@ import csv
 import hashlib
 import io
 import re
+from collections import Counter
 from dataclasses import dataclass, field
 from typing import BinaryIO
 
@@ -16,6 +17,9 @@ from app.domains.imports.templates import ImportContract
 
 MAX_FILE_BYTES = 5 * 1024 * 1024
 MAX_DATA_ROWS = 20_000
+# The widest contract has 20 columns. The cap keeps header checks linear and stops a crafted
+# header from producing one UNKNOWN_COLUMN warning row per cell (hundreds of thousands).
+MAX_COLUMNS = 100
 MAX_FILENAME_LENGTH = 255
 _READ_CHUNK_BYTES = 64 * 1024
 _WHITESPACE = re.compile(r"\s+")
@@ -131,6 +135,12 @@ def parse_csv(text: str, contract: ImportContract) -> ParsedFile | FileIssue:
     reader = csv.reader(io.StringIO(text, newline=""))
     try:
         header = next(reader, [])
+        if len(header) > MAX_COLUMNS:
+            return FileIssue(
+                "TOO_MANY_COLUMNS",
+                f"The header has {len(header):,} columns; at most {MAX_COLUMNS} are supported. "
+                "Start from the downloadable template for this import type.",
+            )
         names = [normalize_header(cell) for cell in header]
         issue = _check_header(names, contract)
         if issue is not None:
@@ -175,7 +185,7 @@ def parse_csv(text: str, contract: ImportContract) -> ParsedFile | FileIssue:
 
 def _check_header(names: list[str], contract: ImportContract) -> FileIssue | None:
     present = [name for name in names if name]
-    duplicates = sorted({name for name in present if present.count(name) > 1})
+    duplicates = sorted(name for name, count in Counter(present).items() if count > 1)
     if duplicates:
         return FileIssue(
             "DUPLICATE_COLUMN",

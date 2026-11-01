@@ -9,6 +9,9 @@ from app.domains.inventory.models import MovementType
 
 
 class StockHealth(StrEnum):
+    """§2.5 classes in evaluation order. DATA_ISSUE is not an availability class (BR-402a)."""
+
+    DATA_ISSUE = "DATA_ISSUE"
     OVERSOLD = "OVERSOLD"
     OUT_OF_STOCK = "OUT_OF_STOCK"
     BELOW_REORDER_POINT = "BELOW_REORDER_POINT"
@@ -25,8 +28,17 @@ def approaching_threshold(reorder_point: int, factor: Decimal) -> int:
     return math.ceil(Decimal(reorder_point) * factor)
 
 
-def classify_health(available_qty: int, reorder_point: int, factor: Decimal) -> StockHealth:
-    """§2.5, evaluated top-down. BR-140: reorder_point 0 never yields reorder-based health."""
+def classify_health(
+    on_hand: int, available_qty: int, reorder_point: int, factor: Decimal
+) -> StockHealth:
+    """§2.5, evaluated top-down. BR-140: reorder_point 0 never yields reorder-based health.
+
+    BR-402a: a negative on_hand is invalid input, so the product is a DATA_ISSUE and never one of
+    the availability classes, whatever ``available`` says. OVERSOLD therefore always has
+    ``on_hand ≥ 0``, like the INVENTORY_OVERSOLD exception.
+    """
+    if on_hand < 0:
+        return StockHealth.DATA_ISSUE
     if available_qty < 0:
         return StockHealth.OVERSOLD
     if available_qty == 0:

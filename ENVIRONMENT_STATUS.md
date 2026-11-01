@@ -6,7 +6,7 @@
 
 | Tool | Version verified | Notes |
 |---|---|---|
-| Docker Desktop / Engine | 29.1.3 (Compose v5.0.1) | Runs PostgreSQL and the full stack |
+| Docker Desktop / Engine | 29.1.3 (Compose v5.0.1) | Runs PostgreSQL and the full stack (`docker compose up --build`, verified 2026-11-01; see `docs/operations/RUNBOOK.md`) |
 | Python | 3.12 (via `uv`) | Backend. The system Python 3.9 is too old and is not used |
 | uv | 0.13.6 | Python env and dependency manager for `apps/api` |
 | Node.js | 24.14.1 | Frontend |
@@ -19,12 +19,12 @@
 |---|---|---|---|
 | `APP_ENV` | api, worker | yes | `local` \| `test` \| `production` |
 | `DATABASE_URL` | api, worker | yes | PostgreSQL connection string (psycopg 3 driver) |
-| `SESSION_SECRET` | api | yes (prod) | HMAC key for CSRF token derivation |
+| `SESSION_SECRET` | api | yes (prod) | HMAC key for CSRF token derivation. `APP_ENV=production` requires at least 32 characters |
 | `COOKIE_SECURE` | api | no | `true` in production (HTTPS) |
-| `TRUST_PROXY_HEADERS` | api | no | `true` when the API sits behind a trusted proxy (the Next.js server or a load balancer), so rate limits and audit use the forwarded client IP. Default `false` |
+| `TRUST_PROXY_HEADERS` | api | no | Default `false`. `true` makes the API take the client address (rate limits, audit) from the right-most `X-Forwarded-For` entry. Only safe behind an edge proxy that appends the client address, with the API unreachable from outside: the Next.js proxy alone forwards whatever the browser sends (`SECURITY.md` §5) |
 | `LOG_LEVEL` | api, worker | no | default `INFO` |
 | `DEMO_MODE_ENABLED` | api | no | Enables the "Explore the demo" read-only sign-in |
-| `DEMO_STAFF_PASSWORD` | `make seed` | no | Password for the seeded staff accounts (`owner@`, `manager@`, `staff@`, `sofia@`, `analyst@kestrel.example`). Unset means a random password, so those accounts cannot sign in. Local and test use only |
+| `DEMO_STAFF_PASSWORD` | `python -m app.demo` (`make seed`, compose `demo-seed`) | no | Password for the seeded staff accounts (`owner@`, `manager@`, `staff@`, `sofia@`, `analyst@kestrel.example`). Unset means a random password, so those accounts cannot sign in. Local and test use only: refused when `APP_ENV=production` |
 | `LLM_PROVIDER` | api | no | `deterministic` \| `gemini` \| `openai_compatible`. Empty: `gemini` when `GEMINI_API_KEY` is set, otherwise `deterministic`. Free-tier providers only (ADR-0010) |
 | `GEMINI_API_KEY` | api | no | Free key from Google AI Studio. Server-side only, never exposed to the frontend |
 | `LLM_MODEL` | api | no | Model identifier (gemini default: a Flash-class model; required for `openai_compatible`) |
@@ -34,8 +34,10 @@
 | `LLM_BUDGET_REQUESTS_PER_MINUTE` / `LLM_BUDGET_REQUESTS_PER_DAY` / `LLM_BUDGET_TOKENS_PER_DAY` | api | no | Per-instance live LLM budget below the free-tier quota (defaults 10 / 500 / 1000000); when spent, answers come from the deterministic provider |
 | `AI_TURN_DEADLINE_SECONDS`, `AI_MAX_TOOL_ITERATIONS`, `AI_MAX_TOOL_CALLS_PER_TURN`, `AI_TOOL_TIMEOUT_SECONDS`, `AI_TOOL_MAX_ROWS`, `AI_TOOL_MAX_RESULT_BYTES`, `AI_MAX_INPUT_TOKENS_PER_TURN`, `AI_MAX_OUTPUT_TOKENS`, `AI_HISTORY_TURNS`, `AI_MAX_MESSAGES_PER_CONVERSATION`, `AI_SUMMARY_CACHE_TTL_HOURS`, `AI_CIRCUIT_FAILURE_THRESHOLD`, `AI_CIRCUIT_OPEN_SECONDS` | api | no | Copilot limits; defaults in `docs/ai/AI_ARCHITECTURE.md` §10 |
 | `EVAL_DATABASE_URL` | `make ai-eval` | no | Evaluation database (default `retailops_eval` on the local container; created if missing and rebuilt on every run). Local/CI only |
-| `API_INTERNAL_URL` | web (build) | yes (deploy) | Where the Next.js server proxies `/api/*` (e.g. `http://api:8000`). Read when the web app is built, because rewrites are compiled. Defaults to `http://localhost:8000` for local development |
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | db (compose) | yes (local) | Local database container only |
+| `API_INTERNAL_URL` | web (build) | yes (deploy) | Where the Next.js server proxies `/api/*` (e.g. `http://api:8000`). Read when the web app is built, because rewrites are compiled: a build argument of `infra/docker/web.Dockerfile` (compose passes `http://api:8000`). Defaults to `http://localhost:8000` for local development |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | db (compose) | yes (local) | Local database container only. Compose builds the containers' `DATABASE_URL` from them |
+| `POSTGRES_HOST_PORT` | compose | no | Host port of `db` (default 54329) |
+| `API_HOST_PORT` / `WEB_HOST_PORT` | compose | no | Host ports of `api` and `web` (defaults 8000 and 3000, bound to 127.0.0.1) |
 
 ## External dependencies and connected services
 

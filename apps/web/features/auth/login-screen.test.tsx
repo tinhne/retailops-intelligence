@@ -30,6 +30,17 @@ const me = {
   csrf_token: "t",
 };
 
+/** `GET /auth/csrf`: every sign-in attempt fetches a pre-session CSRF token first (ADR-0004). */
+const csrf = () => jsonResponse({ csrf_token: "pre-session-token" });
+
+function expectSignInRequest(fetchMock: ReturnType<typeof mockFetch>, path: string) {
+  expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/auth/csrf");
+  const [url, init] = fetchMock.mock.calls[1];
+  expect(url).toBe(path);
+  expect(init?.method).toBe("POST");
+  expect((init?.headers as Record<string, string>)["X-CSRF-Token"]).toBe("pre-session-token");
+}
+
 async function fillAndSubmit(email: string, password: string) {
   const user = userEvent.setup();
   await user.type(await screen.findByLabelText("Email"), email);
@@ -65,12 +76,13 @@ describe("LoginScreen (S-01)", () => {
   });
 
   it("shows the generic credentials message on 401, keeps the email and clears the password", async () => {
-    mockFetch(errorResponse(401, "INVALID_CREDENTIALS", "Invalid email or password."));
+    const fetchMock = mockFetch(csrf(), errorResponse(401, "INVALID_CREDENTIALS", "Invalid email or password."));
     renderWithProviders(<LoginScreen />);
 
     await fillAndSubmit("staff@kestrel.example", "wrong");
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Email or password is incorrect.");
+    expectSignInRequest(fetchMock, "/api/v1/auth/login");
     expect(screen.getByLabelText("Email")).toHaveValue("staff@kestrel.example");
     expect(screen.getByLabelText("Password")).toHaveValue("");
     expect(replace).not.toHaveBeenCalled();
@@ -78,6 +90,7 @@ describe("LoginScreen (S-01)", () => {
 
   it("counts down after a 429 and keeps the button focusable but inert", async () => {
     const fetchMock = mockFetch(
+      csrf(),
       errorResponse(429, "RATE_LIMITED", "Too many attempts.", { headers: { "retry-after": "60" } }),
     );
     renderWithProviders(<LoginScreen />);
@@ -90,11 +103,11 @@ describe("LoginScreen (S-01)", () => {
 
     await user.type(screen.getByLabelText("Password"), "again");
     await user.click(button);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2); // the token and the refused attempt; no retry
   });
 
   it("shows the request ID when sign-in is unavailable", async () => {
-    mockFetch(errorResponse(503, "UNAVAILABLE", "Down.", { requestId: "req-503" }));
+    mockFetch(csrf(), errorResponse(503, "UNAVAILABLE", "Down.", { requestId: "req-503" }));
     renderWithProviders(<LoginScreen />);
     await fillAndSubmit("staff@kestrel.example", "secret");
     const alert = await screen.findByRole("alert");
@@ -104,36 +117,44 @@ describe("LoginScreen (S-01)", () => {
 
   it("redirects to a same-origin next path after signing in", async () => {
     search = new URLSearchParams({ next: "/s/store-1/overview" });
-    const fetchMock = mockFetch(jsonResponse(me));
+    const fetchMock = mockFetch(csrf(), jsonResponse(me));
     renderWithProviders(<LoginScreen />);
 
     await fillAndSubmit("staff@kestrel.example", "secret");
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/s/store-1/overview"));
-    expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/auth/login");
+    expectSignInRequest(fetchMock, "/api/v1/auth/login");
+  });
+
+  it("explains a failed CSRF token request like any unavailable sign-in", async () => {
+    const fetchMock = mockFetch(errorResponse(503, "UNAVAILABLE", "Down.", { requestId: "req-csrf" }));
+    renderWithProviders(<LoginScreen />);
+    await fillAndSubmit("staff@kestrel.example", "secret");
+    expect(await screen.findByRole("alert")).toHaveTextContent("req-csrf");
+    expect(fetchMock).toHaveBeenCalledTimes(1); // no sign-in attempt without a token
   });
 
   it("ignores an off-site next path", async () => {
     search = new URLSearchParams({ next: "https://evil.example" });
-    mockFetch(jsonResponse(me));
+    mockFetch(csrf(), jsonResponse(me));
     renderWithProviders(<LoginScreen />);
     await fillAndSubmit("staff@kestrel.example", "secret");
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/"));
   });
 
   it("starts the demo and opens the demo store's overview", async () => {
-    const fetchMock = mockFetch(jsonResponse(me));
+    const fetchMock = mockFetch(csrf(), jsonResponse(me));
     const user = userEvent.setup();
     renderWithProviders(<LoginScreen />);
 
     await user.click(await screen.findByRole("button", { name: "Explore the demo" }));
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/s/store-1/overview"));
-    expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/auth/demo");
+    expectSignInRequest(fetchMock, "/api/v1/auth/demo");
   });
 
   it("explains an unavailable demo inside the demo card", async () => {
-    mockFetch(errorResponse(404, "DEMO_UNAVAILABLE", "The demo is not available right now."));
+    mockFetch(csrf(), errorResponse(404, "DEMO_UNAVAILABLE", "The demo is not available right now."));
     const user = userEvent.setup();
     renderWithProviders(<LoginScreen />);
     await user.click(await screen.findByRole("button", { name: "Explore the demo" }));
