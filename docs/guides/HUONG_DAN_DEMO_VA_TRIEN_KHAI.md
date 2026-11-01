@@ -650,7 +650,7 @@ Chi tiết vận hành: [`docs/operations/RUNBOOK.md`](../operations/RUNBOOK.md)
 | Hạng mục | Tình trạng |
 |---|---|
 | Triển khai lên Internet và demo công khai | **Chưa làm.** Cần chọn hosting; mọi thứ khác đã sẵn sàng |
-| AI với key thật (Gemini) | Đã cấu hình key gói miễn phí ở máy local; kết quả đánh giá thật ghi trong `apps/api/evals/reports` |
+| AI với key thật (Gemini) | **Chưa xác nhận.** Key thử ngày 01/11/2026 liệt kê được model nhưng không sinh được câu trả lời; engine quy tắc tự thay thế ở mọi câu hỏi. Cần một key AI Studio chuẩn (bắt đầu bằng `AIza`) |
 | Quên mật khẩu, buộc đổi mật khẩu tạm | **Chưa có.** Owner có thể khoá tài khoản cũ và tạo lại |
 | Kết nối trực tiếp Shopee, Lazada, Haravan… | **Chưa có.** v1 chỉ nhận CSV |
 | Nhiều kho, giao tách đơn, thanh toán nhiều lần | Ngoài phạm vi v1 |
