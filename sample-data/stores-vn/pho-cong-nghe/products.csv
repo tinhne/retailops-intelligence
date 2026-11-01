@@ -1,0 +1,19 @@
+sku,name,category,status,unit_price,unit_cost,reorder_point,reorder_quantity,supplier_name,supplier_lead_time_days
+PCN-OP-01,Ốp lưng silicon Đen,Ốp lưng,ACTIVE,171000.00,82000.00,15,45,Kho phụ kiện Bình Tây,9
+PCN-OP-02,Ốp lưng silicon Trong suốt,Ốp lưng,ACTIVE,114000.00,69000.00,8,24,Kho phụ kiện Bình Tây,9
+PCN-OP-03,Ốp lưng silicon Xanh navy,Ốp lưng,ACTIVE,99000.00,57000.00,8,24,Kho phụ kiện Bình Tây,9
+PCN-OP-04,Ốp chống sốc Đen,Ốp lưng,ACTIVE,113000.00,51000.00,10,30,Kho phụ kiện Bình Tây,9
+PCN-OP-05,Ốp chống sốc Trong suốt,Ốp lưng,ACTIVE,131000.00,71000.00,12,36,Kho phụ kiện Bình Tây,9
+PCN-OP-06,Ốp chống sốc Xanh navy,Ốp lưng,ACTIVE,165000.00,80000.00,8,24,Kho phụ kiện Bình Tây,9
+PCN-CAP-01,Cáp sạc nhanh USB-C 1m,Cáp sạc,ACTIVE,76000.00,33000.00,8,24,Linh kiện Hưng Phát,5
+PCN-CAP-02,Cáp sạc nhanh USB-C 2m,Cáp sạc,ACTIVE,141000.00,64000.00,12,36,Linh kiện Hưng Phát,5
+PCN-CAP-03,Cáp bện dù 1m,Cáp sạc,ACTIVE,178000.00,110000.00,8,24,Linh kiện Hưng Phát,5
+PCN-CAP-04,Cáp bện dù 2m,Cáp sạc,ACTIVE,131000.00,61000.00,10,30,Linh kiện Hưng Phát,5
+PCN-SAC-01,Củ sạc 20W Trắng,Củ sạc,ACTIVE,428000.00,263000.00,5,15,Linh kiện Hưng Phát,5
+PCN-SAC-02,Củ sạc 20W Đen,Củ sạc,ACTIVE,254000.00,127000.00,12,36,Linh kiện Hưng Phát,5
+PCN-SAC-03,Củ sạc 65W GaN Trắng,Củ sạc,ACTIVE,190000.00,115000.00,15,45,Linh kiện Hưng Phát,5
+PCN-SAC-04,Củ sạc 65W GaN Đen,Củ sạc,ACTIVE,425000.00,223000.00,12,36,Linh kiện Hưng Phát,5
+PCN-TN-01,Tai nghe không dây Trắng,Tai nghe,ACTIVE,383000.00,176000.00,5,15,Linh kiện Hưng Phát,5
+PCN-TN-02,Tai nghe không dây Đen,Tai nghe,ACTIVE,583000.00,289000.00,8,24,Linh kiện Hưng Phát,5
+PCN-TN-03,Tai nghe có dây Trắng,Tai nghe,ACTIVE,879000.00,485000.00,8,24,Linh kiện Hưng Phát,5
+PCN-TN-04,Tai nghe có dây Đen,Tai nghe,DRAFT,331000.00,164000.00,5,15,Linh kiện Hưng Phát,5

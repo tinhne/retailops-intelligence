@@ -105,7 +105,20 @@ make seed                    # khi chạy bằng môi trường phát triển (m
 
 Dữ liệu được sinh **tương đối theo thời điểm hiện tại**, nên lúc nào cũng trông "mới".
 
-### 2.4 Môi trường phát triển (cho lập trình viên)
+### 2.4 Mười cửa hàng mẫu tiếng Việt (demo theo ngành)
+
+Ngoài Kestrel (tiếng Anh, USD) còn có 10 shop hư cấu bằng tiếng Việt, mỗi ngành một shop, tiền VND,
+giờ Việt Nam. Mỗi shop có sẵn 10 sự cố để demo:
+
+```bash
+SAMPLE_OWNER_PASSWORD='mat-khau-tuy-chon' make stack-load-sample-stores   # trong Docker
+```
+
+Đăng nhập bằng `owner@<tên-shop>.example`, ví dụ `owner@pet-vui.example`. Danh sách shop:
+[`sample-data/stores-vn`](../../sample-data/stores-vn/README.md). Quy trình chào bán và onboarding một
+shop thật: [`QUY_TRINH_BAN_VA_ONBOARDING.md`](QUY_TRINH_BAN_VA_ONBOARDING.md).
+
+### 2.5 Môi trường phát triển (cho lập trình viên)
 
 ```bash
 make setup                    # cài thư viện backend (Python 3.12 qua uv)
@@ -637,7 +650,7 @@ Chi tiết vận hành: [`docs/operations/RUNBOOK.md`](../operations/RUNBOOK.md)
 | Hạng mục | Tình trạng |
 |---|---|
 | Triển khai lên Internet và demo công khai | **Chưa làm.** Cần chọn hosting; mọi thứ khác đã sẵn sàng |
-| AI với key thật (Gemini) | Đã kiểm thử với API giả lập; **chưa chạy với key thật** |
+| AI với key thật (Gemini) | Đã cấu hình key gói miễn phí ở máy local; kết quả đánh giá thật ghi trong `apps/api/evals/reports` |
 | Quên mật khẩu, buộc đổi mật khẩu tạm | **Chưa có.** Owner có thể khoá tài khoản cũ và tạo lại |
 | Kết nối trực tiếp Shopee, Lazada, Haravan… | **Chưa có.** v1 chỉ nhận CSV |
 | Nhiều kho, giao tách đơn, thanh toán nhiều lần | Ngoài phạm vi v1 |

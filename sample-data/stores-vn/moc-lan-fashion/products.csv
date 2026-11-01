@@ -1,0 +1,28 @@
+sku,name,category,status,unit_price,unit_cost,reorder_point,reorder_quantity,supplier_name,supplier_lead_time_days
+MLF-VAY-01,Váy midi Đen,Váy,ACTIVE,503000.00,276000.00,8,24,Xưởng may Tân Phú,10
+MLF-VAY-02,Váy midi Be,Váy,ACTIVE,347000.00,193000.00,12,36,Xưởng may Tân Phú,10
+MLF-VAY-03,Váy midi Xanh,Váy,ACTIVE,535000.00,283000.00,5,15,Xưởng may Tân Phú,10
+MLF-VAY-04,Váy suông Đen,Váy,ACTIVE,345000.00,172000.00,5,15,Xưởng may Tân Phú,10
+MLF-VAY-05,Váy suông Be,Váy,ACTIVE,505000.00,234000.00,10,30,Xưởng may Tân Phú,10
+MLF-VAY-06,Váy suông Xanh,Váy,ACTIVE,498000.00,283000.00,15,45,Xưởng may Tân Phú,10
+MLF-VAY-07,Váy hoa nhí Đen,Váy,ACTIVE,352000.00,191000.00,12,36,Xưởng may Tân Phú,10
+MLF-VAY-08,Váy hoa nhí Be,Váy,ACTIVE,396000.00,219000.00,5,15,Xưởng may Tân Phú,10
+MLF-VAY-09,Váy hoa nhí Xanh,Váy,ACTIVE,355000.00,186000.00,15,45,Xưởng may Tân Phú,10
+MLF-AO-01,Áo sơ mi lụa Trắng,Áo,ACTIVE,249000.00,134000.00,5,15,Xưởng may Tân Phú,10
+MLF-AO-02,Áo sơ mi lụa Hồng,Áo,ACTIVE,355000.00,163000.00,5,15,Xưởng may Tân Phú,10
+MLF-AO-03,Áo sơ mi lụa Đen,Áo,ACTIVE,284000.00,146000.00,5,15,Xưởng may Tân Phú,10
+MLF-AO-04,Áo thun basic Trắng,Áo,ACTIVE,328000.00,196000.00,5,15,Xưởng may Tân Phú,10
+MLF-AO-05,Áo thun basic Hồng,Áo,ACTIVE,255000.00,157000.00,12,36,Xưởng may Tân Phú,10
+MLF-AO-06,Áo thun basic Đen,Áo,ACTIVE,226000.00,121000.00,5,15,Xưởng may Tân Phú,10
+MLF-AO-07,Áo kiểu cổ vuông Trắng,Áo,ACTIVE,286000.00,175000.00,12,36,Xưởng may Tân Phú,10
+MLF-AO-08,Áo kiểu cổ vuông Hồng,Áo,ACTIVE,223000.00,102000.00,10,30,Xưởng may Tân Phú,10
+MLF-AO-09,Áo kiểu cổ vuông Đen,Áo,ACTIVE,196000.00,94000.00,10,30,Xưởng may Tân Phú,10
+MLF-QUAN-01,Quần ống rộng Size S,Quần,ACTIVE,370000.00,174000.00,15,45,Vải Sợi Phương Nam,14
+MLF-QUAN-02,Quần ống rộng Size M,Quần,ACTIVE,310000.00,190000.00,8,24,Vải Sợi Phương Nam,14
+MLF-QUAN-03,Quần ống rộng Size L,Quần,ACTIVE,288000.00,155000.00,5,15,Vải Sợi Phương Nam,14
+MLF-QUAN-04,Quần jean Size S,Quần,ACTIVE,427000.00,183000.00,15,45,Vải Sợi Phương Nam,14
+MLF-QUAN-05,Quần jean Size M,Quần,ACTIVE,361000.00,177000.00,10,30,Vải Sợi Phương Nam,14
+MLF-QUAN-06,Quần jean Size L,Quần,ACTIVE,441000.00,235000.00,8,24,Vải Sợi Phương Nam,14
+MLF-QUAN-07,Chân váy chữ A Size S,Quần,ACTIVE,406000.00,234000.00,5,15,Vải Sợi Phương Nam,14
+MLF-QUAN-08,Chân váy chữ A Size M,Quần,ACTIVE,297000.00,183000.00,12,36,Vải Sợi Phương Nam,14
+MLF-QUAN-09,Chân váy chữ A Size L,Quần,DRAFT,456000.00,228000.00,12,36,Vải Sợi Phương Nam,14

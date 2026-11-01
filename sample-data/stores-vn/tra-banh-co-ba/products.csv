@@ -1,0 +1,17 @@
+sku,name,category,status,unit_price,unit_cost,reorder_point,reorder_quantity,supplier_name,supplier_lead_time_days
+TCB-TRA-01,Trà xanh thượng hạng 100g,Trà,ACTIVE,200000.00,120000.00,12,36,Hợp tác xã chè Đồi Mây,8
+TCB-TRA-02,Trà xanh thượng hạng 250g,Trà,ACTIVE,329000.00,186000.00,5,15,Hợp tác xã chè Đồi Mây,8
+TCB-TRA-03,Trà ô long 100g,Trà,ACTIVE,384000.00,183000.00,10,30,Hợp tác xã chè Đồi Mây,8
+TCB-TRA-04,Trà ô long 250g,Trà,ACTIVE,148000.00,86000.00,15,45,Hợp tác xã chè Đồi Mây,8
+TCB-TRA-05,Trà sen 100g,Trà,ACTIVE,237000.00,102000.00,12,36,Hợp tác xã chè Đồi Mây,8
+TCB-TRA-06,Trà sen 250g,Trà,ACTIVE,178000.00,85000.00,15,45,Hợp tác xã chè Đồi Mây,8
+TCB-BANH-01,Bánh pía sầu riêng Hộp nhỏ,Bánh kẹo,ACTIVE,159000.00,81000.00,12,36,Cơ sở bánh Hương Quê,4
+TCB-BANH-02,Bánh pía sầu riêng Hộp lớn,Bánh kẹo,ACTIVE,104000.00,50000.00,8,24,Cơ sở bánh Hương Quê,4
+TCB-BANH-03,Kẹo dừa Hộp nhỏ,Bánh kẹo,ACTIVE,109000.00,51000.00,5,15,Cơ sở bánh Hương Quê,4
+TCB-BANH-04,Kẹo dừa Hộp lớn,Bánh kẹo,ACTIVE,102000.00,51000.00,5,15,Cơ sở bánh Hương Quê,4
+TCB-BANH-05,Bánh đậu xanh Hộp nhỏ,Bánh kẹo,ACTIVE,102000.00,47000.00,8,24,Cơ sở bánh Hương Quê,4
+TCB-BANH-06,Bánh đậu xanh Hộp lớn,Bánh kẹo,ACTIVE,152000.00,71000.00,10,30,Cơ sở bánh Hương Quê,4
+TCB-HAT-01,Hạt điều rang muối 250g,Hạt dinh dưỡng,ACTIVE,282000.00,147000.00,5,15,Cơ sở bánh Hương Quê,4
+TCB-HAT-02,Hạt điều rang muối 500g,Hạt dinh dưỡng,ACTIVE,101000.00,56000.00,12,36,Cơ sở bánh Hương Quê,4
+TCB-HAT-03,Mix hạt 250g,Hạt dinh dưỡng,ACTIVE,258000.00,154000.00,8,24,Cơ sở bánh Hương Quê,4
+TCB-HAT-04,Mix hạt 500g,Hạt dinh dưỡng,DRAFT,154000.00,75000.00,8,24,Cơ sở bánh Hương Quê,4

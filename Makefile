@@ -3,7 +3,7 @@ API_DIR := apps/api
 UV := uv --directory $(API_DIR)
 
 .DEFAULT_GOAL := help
-.PHONY: stack-up-customer provision stack-provision help setup db-up db-down migrate seed api-dev api-test api-lint api-typecheck ai-eval check test stack-up stack-demo-reset down reset
+.PHONY: sample-stores-csv load-sample-stores stack-load-sample-stores stack-up-customer provision stack-provision help setup db-up db-down migrate seed api-dev api-test api-lint api-typecheck ai-eval check test stack-up stack-demo-reset down reset
 
 # Copilot evaluation (docs/ai/EVALUATION_STRATEGY.md §5). PROVIDER: deterministic (no key),
 # gemini, openai_compatible, or all. REPEATS=0 means 1 for deterministic and 3 for live providers.
@@ -60,6 +60,15 @@ provision: ## Create a customer organization, store and owner: make provision AR
 
 stack-provision: ## The same inside the running compose stack: make stack-provision ARGS='...'
 	docker compose run --rm --no-deps api python -m app.provision $(ARGS)
+
+sample-stores-csv: ## Write the 10 fictional Vietnamese shop templates as CSV to sample-data/stores-vn
+	$(UV) run python -m app.demo.sample_stores generate --out ../../sample-data/stores-vn
+
+load-sample-stores: migrate ## Onboard the 10 sample shops (provision + CSV imports); ARGS='--replace'
+	$(UV) run python -m app.demo.sample_stores load $(ARGS)
+
+stack-load-sample-stores: ## The same inside the running compose stack
+	docker compose run --rm --no-deps -e SAMPLE_OWNER_PASSWORD api python -m app.demo.sample_stores load $(ARGS)
 
 stack-demo-reset: ## Reset the demo organization inside the running compose stack
 	docker compose run --rm --no-deps demo-seed python -m app.demo

@@ -215,7 +215,9 @@ For a customer installation without the demo store, `make stack-up-customer` the
 `make stack-provision ARGS="..."` creates the organization, store and owner
 ([RUNBOOK §2a](docs/operations/RUNBOOK.md#2a-customer-installation-no-demo-organization)). A Vietnamese
 walkthrough of every screen, the demo script and the customer setup is in
-[`docs/guides/HUONG_DAN_DEMO_VA_TRIEN_KHAI.md`](docs/guides/HUONG_DAN_DEMO_VA_TRIEN_KHAI.md).
+[`docs/guides/HUONG_DAN_DEMO_VA_TRIEN_KHAI.md`](docs/guides/HUONG_DAN_DEMO_VA_TRIEN_KHAI.md). Ten fictional
+Vietnamese shops (VND, one per retail vertical) load with `make load-sample-stores`
+([`sample-data/stores-vn`](sample-data/stores-vn/README.md)).
 
 ## 15. Development workflow
 

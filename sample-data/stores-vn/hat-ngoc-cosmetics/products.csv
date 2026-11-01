@@ -1,0 +1,21 @@
+sku,name,category,status,unit_price,unit_cost,reorder_point,reorder_quantity,supplier_name,supplier_lead_time_days
+HNC-SRM-01,Sữa rửa mặt dịu nhẹ 100ml,Sữa rửa mặt,ACTIVE,211000.00,98000.00,8,24,Phân phối Mỹ phẩm Sao Mai,7
+HNC-SRM-02,Sữa rửa mặt dịu nhẹ 200ml,Sữa rửa mặt,ACTIVE,267000.00,162000.00,15,45,Phân phối Mỹ phẩm Sao Mai,7
+HNC-SRM-03,Gel rửa mặt trà xanh 100ml,Sữa rửa mặt,ACTIVE,268000.00,162000.00,5,15,Phân phối Mỹ phẩm Sao Mai,7
+HNC-SRM-04,Gel rửa mặt trà xanh 200ml,Sữa rửa mặt,ACTIVE,193000.00,90000.00,15,45,Phân phối Mỹ phẩm Sao Mai,7
+HNC-SRM2-01,Serum vitamin C 15ml,Serum,ACTIVE,500000.00,255000.00,10,30,Nhà nhập khẩu Đông Á,21
+HNC-SRM2-02,Serum vitamin C 30ml,Serum,ACTIVE,498000.00,271000.00,12,36,Nhà nhập khẩu Đông Á,21
+HNC-SRM2-03,Serum B5 phục hồi 15ml,Serum,ACTIVE,676000.00,361000.00,10,30,Nhà nhập khẩu Đông Á,21
+HNC-SRM2-04,Serum B5 phục hồi 30ml,Serum,ACTIVE,502000.00,307000.00,5,15,Nhà nhập khẩu Đông Á,21
+HNC-SRM2-05,Serum niacinamide 15ml,Serum,ACTIVE,673000.00,358000.00,10,30,Nhà nhập khẩu Đông Á,21
+HNC-SRM2-06,Serum niacinamide 30ml,Serum,ACTIVE,434000.00,261000.00,8,24,Nhà nhập khẩu Đông Á,21
+HNC-KCN-01,Kem chống nắng SPF50 50ml,Kem chống nắng,ACTIVE,354000.00,200000.00,12,36,Nhà nhập khẩu Đông Á,21
+HNC-KCN-02,Kem chống nắng SPF50 100ml,Kem chống nắng,ACTIVE,395000.00,172000.00,10,30,Nhà nhập khẩu Đông Á,21
+HNC-KCN-03,Xịt chống nắng 50ml,Kem chống nắng,ACTIVE,220000.00,129000.00,15,45,Nhà nhập khẩu Đông Á,21
+HNC-KCN-04,Xịt chống nắng 100ml,Kem chống nắng,ACTIVE,290000.00,131000.00,5,15,Nhà nhập khẩu Đông Á,21
+HNC-SON-01,Son kem lì Đỏ gạch,Son môi,ACTIVE,248000.00,145000.00,8,24,Phân phối Mỹ phẩm Sao Mai,7
+HNC-SON-02,Son kem lì Hồng đất,Son môi,ACTIVE,234000.00,119000.00,10,30,Phân phối Mỹ phẩm Sao Mai,7
+HNC-SON-03,Son kem lì Cam cháy,Son môi,ACTIVE,158000.00,68000.00,15,45,Phân phối Mỹ phẩm Sao Mai,7
+HNC-SON-04,Son dưỡng có màu Đỏ gạch,Son môi,ACTIVE,319000.00,157000.00,15,45,Phân phối Mỹ phẩm Sao Mai,7
+HNC-SON-05,Son dưỡng có màu Hồng đất,Son môi,ACTIVE,218000.00,120000.00,15,45,Phân phối Mỹ phẩm Sao Mai,7
+HNC-SON-06,Son dưỡng có màu Cam cháy,Son môi,DRAFT,185000.00,81000.00,10,30,Phân phối Mỹ phẩm Sao Mai,7

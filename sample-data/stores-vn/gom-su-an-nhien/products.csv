@@ -1,0 +1,17 @@
+sku,name,category,status,unit_price,unit_cost,reorder_point,reorder_quantity,supplier_name,supplier_lead_time_days
+GSA-BAT-01,Bát cơm men lam Trắng ngà,Bát đĩa,ACTIVE,120000.00,60000.00,10,30,Lò gốm Hồng Phúc,18
+GSA-BAT-02,Bát cơm men lam Xanh lam,Bát đĩa,ACTIVE,129000.00,58000.00,12,36,Lò gốm Hồng Phúc,18
+GSA-BAT-03,Đĩa tròn men rạn Trắng ngà,Bát đĩa,ACTIVE,106000.00,47000.00,12,36,Lò gốm Hồng Phúc,18
+GSA-BAT-04,Đĩa tròn men rạn Xanh lam,Bát đĩa,ACTIVE,180000.00,91000.00,12,36,Lò gốm Hồng Phúc,18
+GSA-BAT-05,Bát canh Trắng ngà,Bát đĩa,ACTIVE,114000.00,56000.00,12,36,Lò gốm Hồng Phúc,18
+GSA-BAT-06,Bát canh Xanh lam,Bát đĩa,ACTIVE,137000.00,65000.00,5,15,Lò gốm Hồng Phúc,18
+GSA-COC-01,Cốc sứ quai tròn Nâu đất,Cốc chén,ACTIVE,205000.00,107000.00,5,15,Lò gốm Hồng Phúc,18
+GSA-COC-02,Cốc sứ quai tròn Trắng sữa,Cốc chén,ACTIVE,159000.00,79000.00,5,15,Lò gốm Hồng Phúc,18
+GSA-COC-03,Bộ ấm chén Nâu đất,Cốc chén,ACTIVE,69000.00,42000.00,10,30,Lò gốm Hồng Phúc,18
+GSA-COC-04,Bộ ấm chén Trắng sữa,Cốc chén,ACTIVE,246000.00,105000.00,8,24,Lò gốm Hồng Phúc,18
+GSA-GIO-01,Giỏ mây đựng đồ Nhỏ,Đồ mây tre,ACTIVE,281000.00,174000.00,15,45,Xưởng mây tre Thanh Hà,12
+GSA-GIO-02,Giỏ mây đựng đồ Lớn,Đồ mây tre,ACTIVE,307000.00,136000.00,8,24,Xưởng mây tre Thanh Hà,12
+GSA-GIO-03,Khay tre Nhỏ,Đồ mây tre,ACTIVE,312000.00,160000.00,15,45,Xưởng mây tre Thanh Hà,12
+GSA-GIO-04,Khay tre Lớn,Đồ mây tre,ACTIVE,108000.00,57000.00,15,45,Xưởng mây tre Thanh Hà,12
+GSA-GIO-05,Lót nồi cói Nhỏ,Đồ mây tre,ACTIVE,280000.00,151000.00,15,45,Xưởng mây tre Thanh Hà,12
+GSA-GIO-06,Lót nồi cói Lớn,Đồ mây tre,DRAFT,174000.00,105000.00,8,24,Xưởng mây tre Thanh Hà,12
