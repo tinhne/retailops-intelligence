@@ -21,26 +21,36 @@ const TARGETS: Partial<Record<CopilotReference["type"], { segment: string; permi
   import: { segment: "imports", permission: "imports.read" },
 };
 
+/** "EXC-1042 · Oversold: …" → "EXC-1042": chips show the record's code, the full label is its title. */
+export const chipLabel = (label: string) => label.split(" · ")[0];
+
 /** A record the answer cites (C-81): a link when the person may open it, plain text otherwise. */
 export function ReferenceChip({ reference }: { reference: CopilotReference }) {
   const store = useStore();
   const target = TARGETS[reference.type];
-  const className = "inline-flex items-center rounded-sm border bg-surface-subtle px-1.5 py-0.5 font-mono text-xs whitespace-nowrap";
+  // Truncated so a long label can never widen a narrow column.
+  const className = "inline-block max-w-full truncate rounded-sm border bg-surface-subtle px-1.5 py-0.5 align-middle font-mono text-xs";
+  const text = chipLabel(reference.label);
+  const title = text === reference.label ? undefined : reference.label;
   if (target && store.permissions.has(target.permission)) {
     return (
-      <Link href={`/s/${store.id}/${target.segment}/${reference.id}`} className={cn(className, "text-link hover:underline")}>
-        {reference.label}
+      <Link href={`/s/${store.id}/${target.segment}/${reference.id}`} title={title} className={cn(className, "text-link hover:underline")}>
+        {text}
       </Link>
     );
   }
-  return <span className={cn(className, "text-muted-foreground")}>{reference.label}</span>;
+  return (
+    <span title={title} className={cn(className, "text-muted-foreground")}>
+      {text}
+    </span>
+  );
 }
 
 function Refs({ refs, byKey }: { refs: string[]; byKey: Map<string, CopilotReference> }) {
   const chips = refs.map((ref) => byKey.get(ref)).filter((ref): ref is CopilotReference => ref !== undefined && ref.type !== "aggregate");
   if (chips.length === 0) return null;
   return (
-    <span className="ml-1 inline-flex flex-wrap gap-1 align-middle">
+    <span className="ml-1 inline-flex max-w-full flex-wrap gap-1 align-middle">
       {chips.map((ref) => (
         <ReferenceChip key={`${ref.type}:${ref.id}`} reference={ref} />
       ))}
