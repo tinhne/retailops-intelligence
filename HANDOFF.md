@@ -24,8 +24,10 @@ vitest 265 passed. See `PROJECT_STATE.md` and `PROGRESS.md` (latest entry) for d
 WCAG 2.1 A/AA clean on 11 views, README with real screenshots. `main` is ahead of `origin/main` and
 not pushed (the owner approves pushes).
 
-**Pushed** at ea205ec with the owner's approval; GitHub Actions run 41277118318 is green on all five
-jobs, including the first `e2e` run against the Compose stack.
+**Pushed** at 08539f7 with the owner's approval; GitHub Actions run 41294651337 is green on all five
+jobs. Since ea205ec: customer onboarding (`make stack-up-customer`, `make stack-provision`), the demo
+offered only where it exists (`GET /api/v1/auth/options`), and the Vietnamese demo and setup guide
+`docs/guides/HUONG_DAN_DEMO_VA_TRIEN_KHAI.md`.
 
 **Exact next step:** deployment (T-093/T-094) once the owner picks a free host; meanwhile the open
 items in `SECURITY.md` §6.

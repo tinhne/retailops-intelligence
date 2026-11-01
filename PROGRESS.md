@@ -379,3 +379,9 @@ add a correction entry instead.
 - **Docs:** `docs/guides/HUONG_DAN_DEMO_VA_TRIEN_KHAI.md` (Vietnamese: demo script, every screen, flows,
   customer setup, CSV preparation, operations, limitations, troubleshooting); RUNBOOK §2a; README;
   API_CONVENTIONS public routes.
+
+## 2026-11-01 (UTC+7): Orchestrator: push and CI (customer onboarding)
+
+- Pushed `main` at 08539f7 (owner approved). GitHub Actions run 41294651337: **success** on all five
+  jobs (API, web, dependency audit, Docker images, E2E against the Compose stack, where the demo still
+  appears because demo mode is on and the demo is seeded).

@@ -9,7 +9,7 @@
 | Current milestone | **M8 quality and M10 release docs done locally (T-081, T-083, T-100).** Remaining: deployment and the public demo (T-093/T-094), which wait on the owner's hosting choice |
 | Current phase | v1.0 feature-complete and verified locally, end to end; deployment remains |
 | Overall completion | All P0/P1 product tasks are implemented and tested except T-093/T-094 deployment (blocked on hosting choice). T-095 (P2) not started |
-| Last verified commit | `ea205ec` (pushed 2026-11-01): GitHub Actions run 41277118318 green on all 5 jobs incl. the first E2E job; locally backend 865, web 265, Playwright 19/19, copilot eval 65/65 |
+| Last verified commit | `08539f7` (pushed 2026-11-01): GitHub Actions run 41294651337 green on all 5 jobs; locally backend 876, web 268, Playwright 19/19, copilot eval 65/65 |
 | Remote | https://github.com/tinhne/retailops-intelligence (public). The first CI run passed |
 | Architecture version | v1 (modular monolith; `docs/domain/*`, ADR-0001..0013) |
 | Last update | 2026-11-01 (UTC+7) |
@@ -115,6 +115,8 @@
 
 ## Latest test results
 
+- GitHub Actions run 41294651337 on 08539f7 (customer onboarding, `GET /auth/options`, Vietnamese guide): **success** on all 5 jobs.
+- Backend `make check` (2026-11-01, after customer onboarding): **876 passed**; web vitest **268 passed**.
 - GitHub Actions run 41277118318 on ea205ec: **success** on all 5 jobs (API, web, dependency audit, Docker images, E2E Playwright against the Compose stack; the Playwright step ran 43 s).
 - Resume baseline (2026-11-01, `main` at 44cd6b0): `make check` **865 passed**; web lint, typecheck, vitest **265 passed**.
 - Playwright (2026-11-01, `pnpm --filter @retailops/web e2e` against an isolated Compose stack): **19 passed**
@@ -135,6 +137,13 @@
   duplicate-file warning, discard, rejected file; as the demo viewer; 1440 and 375 px.
 - GitHub Actions run 41271652506 (all merged work, the copilot UI and the test pass, on 9a1e033):
   success. API, web, dependency audit and Docker image jobs all passed.
+
+## Customer onboarding (2026-11-01)
+
+`make stack-up-customer` (stack without the demo organization) and `make stack-provision ARGS="..."`
+(organization, store, settings, owner with a one-time temporary password). The sign-in and `/demo`
+pages offer the demo only when `GET /api/v1/auth/options` reports it. Verified on an isolated customer
+stack. Owner-facing walkthrough in Vietnamese: `docs/guides/HUONG_DAN_DEMO_VA_TRIEN_KHAI.md`.
 
 ## Owner decisions log
 
