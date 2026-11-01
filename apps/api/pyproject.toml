@@ -42,10 +42,10 @@ known-first-party = ["app", "tests"]
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
-files = ["app"]
+files = ["app", "evals"]
 
 [[tool.mypy.overrides]]
-module = ["argon2.*"]
+module = ["argon2.*", "yaml"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
