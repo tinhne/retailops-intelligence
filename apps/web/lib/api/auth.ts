@@ -9,6 +9,7 @@ export type LoginRequest = Schema<"LoginRequest">;
 export type Permission = Schema<"Permission">;
 export type Role = Schema<"Role">;
 type CsrfToken = Schema<"CsrfTokenOut">;
+export type AuthOptions = Schema<"AuthOptionsOut">;
 
 /**
  * Sign-in runs before a session exists, so it uses a pre-session CSRF token: `GET /auth/csrf`
@@ -22,6 +23,7 @@ async function signInHeaders(): Promise<Record<string, string>> {
 
 export const authApi = {
   me: (signal?: AbortSignal) => apiFetch<MeResponse>("/auth/me", { signal }),
+  options: (signal?: AbortSignal) => apiFetch<AuthOptions>("/auth/options", { signal }),
   login: async (body: LoginRequest) =>
     apiFetch<MeResponse>("/auth/login", { method: "POST", body, headers: await signInHeaders() }),
   demo: async () => apiFetch<MeResponse>("/auth/demo", { method: "POST", headers: await signInHeaders() }),

@@ -364,3 +364,18 @@ add a correction entry instead.
   jobs: API (ruff, mypy, 865 tests, migration check), web (lint, typecheck, 265 tests, build),
   dependency audit, Docker images, and the first `e2e` run (Compose stack up in 1 m 32 s, Playwright
   step 43 s, report and logs not needed).
+
+## 2026-11-01 (UTC+7): Orchestrator: customer onboarding and the Vietnamese guide
+
+- **Gap found:** no way to onboard a real customer (only the demo seed created organizations), and
+  "Explore the demo" was shown even when demo mode was off (a dead control on customer installs).
+- **Added:** `python -m app.provision` / `make provision` / `make stack-provision` (organization, store,
+  settings, owner with a one-time temporary password, audit `organization.provision`), `make
+  stack-up-customer` (stack without `demo-seed`), `GET /api/v1/auth/options` (`demo_available`), and
+  the sign-in and `/demo` pages offer the demo only when it exists.
+- **Verified:** backend `make check` 876 passed; web lint, typecheck, vitest 268 passed; on an isolated
+  customer stack: no demo organization, owner sign-in in VND / Asia/Ho_Chi_Minh, empty-state guidance,
+  no demo button, `/demo` explains. The test tenant and stacks were removed.
+- **Docs:** `docs/guides/HUONG_DAN_DEMO_VA_TRIEN_KHAI.md` (Vietnamese: demo script, every screen, flows,
+  customer setup, CSV preparation, operations, limitations, troubleshooting); RUNBOOK §2a; README;
+  API_CONVENTIONS public routes.

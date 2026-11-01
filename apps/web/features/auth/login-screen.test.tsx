@@ -163,6 +163,14 @@ describe("LoginScreen (S-01)", () => {
     );
   });
 
+  it("offers no demo on an installation without it (no dead control)", async () => {
+    mockFetch();
+    renderWithProviders(<LoginScreen />, { demoAvailable: false });
+    expect(await screen.findByRole("button", { name: "Sign in" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Explore the demo" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Explore the demo")).not.toBeInTheDocument();
+  });
+
   it("shows the session-expired notice", async () => {
     search = new URLSearchParams({ reason: "expired" });
     mockFetch();

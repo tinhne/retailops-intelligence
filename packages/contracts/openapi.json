@@ -462,6 +462,20 @@
         "title": "AuditLogOut",
         "type": "object"
       },
+      "AuthOptionsOut": {
+        "description": "What this installation's sign-in page may offer.",
+        "properties": {
+          "demo_available": {
+            "title": "Demo Available",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "demo_available"
+        ],
+        "title": "AuthOptionsOut",
+        "type": "object"
+      },
       "BlockedActionOut": {
         "properties": {
           "action": {
@@ -6989,6 +7003,28 @@
           }
         },
         "summary": "Me",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/options": {
+      "get": {
+        "description": "Public sign-in options, so the sign-in page never offers a demo this installation lacks.\n\nThe demo is available when demo mode is on and the demo viewer account exists (a customer\ninstallation started without the demo seed has none).",
+        "operationId": "auth_options_api_v1_auth_options_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthOptionsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Auth Options",
         "tags": [
           "auth"
         ]

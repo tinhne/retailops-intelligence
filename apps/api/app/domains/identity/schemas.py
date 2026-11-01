@@ -52,6 +52,12 @@ class MeResponse(BaseModel):
     csrf_token: str
 
 
+class AuthOptionsOut(BaseModel):
+    """What this installation's sign-in page may offer."""
+
+    demo_available: bool
+
+
 class CsrfTokenOut(BaseModel):
     """The value to send as ``X-CSRF-Token``; the same value is set in the ``ro_csrf`` cookie."""
 

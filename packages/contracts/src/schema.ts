@@ -97,6 +97,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Auth Options
+         * @description Public sign-in options, so the sign-in page never offers a demo this installation lacks.
+         *
+         *     The demo is available when demo mode is on and the demo viewer account exists (a customer
+         *     installation started without the demo seed has none).
+         */
+        get: operations["auth_options_api_v1_auth_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health/live": {
         parameters: {
             query?: never;
@@ -1144,6 +1167,14 @@ export interface components {
             target_id: string | null;
             /** Target Type */
             target_type: string | null;
+        };
+        /**
+         * AuthOptionsOut
+         * @description What this installation's sign-in page may offer.
+         */
+        AuthOptionsOut: {
+            /** Demo Available */
+            demo_available: boolean;
         };
         /** BlockedActionOut */
         BlockedActionOut: {
@@ -3736,6 +3767,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeResponse"];
+                };
+            };
+        };
+    };
+    auth_options_api_v1_auth_options_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthOptionsOut"];
                 };
             };
         };
