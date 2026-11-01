@@ -6,11 +6,14 @@
 
 ## 0. Current results
 
-**None.** As of 2026-10-31 no evaluation has been run, because the copilot (T-072, T-073) and the
-runner (T-074) are not implemented. This document defines how results will be produced. No figure
-for any metric below may appear in the README, a portfolio page, or any other document unless it
-links to a committed report produced by `make ai-eval` (§5). Results are never estimated,
+No figure for any metric below may appear in the README, a portfolio page, or any other document
+unless it links to a committed report produced by the runner (§5). Results are never estimated,
 extrapolated, or written by hand.
+
+| Provider | Report | Result |
+|---|---|---|
+| `deterministic` | [`2026-11-01_deterministic_a6dcc31`](../../apps/api/evals/reports/2026-11-01_deterministic_a6dcc31.md) (dataset `copilot_v1`, 65 cases, seed 20261031) | 65 of 65 cases passed; all gates passed. Intent accuracy 62/62, factual assertions 70/70, permission and tenancy 7/7, injection 6/6, `no_mutation` 10/10, `canary_absent` 6/6, determinism re-run 65/65. The 3 fallbacks are the fault-injection cases. On the synthetic demo data only (§7) |
+| `gemini`, `openai_compatible` | none | Not run: no key is configured. LLM quality thresholds stay unset until a first committed baseline (§6) |
 
 ## 1. What the evaluation answers
 
