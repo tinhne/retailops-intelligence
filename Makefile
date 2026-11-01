@@ -3,7 +3,12 @@ API_DIR := apps/api
 UV := uv --directory $(API_DIR)
 
 .DEFAULT_GOAL := help
-.PHONY: help setup db-up db-down migrate seed api-dev api-test api-lint api-typecheck check test stack-up stack-demo-reset down reset
+.PHONY: help setup db-up db-down migrate seed api-dev api-test api-lint api-typecheck ai-eval check test stack-up stack-demo-reset down reset
+
+# Copilot evaluation (docs/ai/EVALUATION_STRATEGY.md §5). PROVIDER: deterministic (no key),
+# gemini, openai_compatible, or all. REPEATS=0 means 1 for deterministic and 3 for live providers.
+PROVIDER ?= deterministic
+REPEATS ?= 0
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -35,6 +40,9 @@ api-typecheck: ## Static type check (mypy --strict)
 
 api-test: db-up ## Run backend unit + integration tests
 	$(UV) run pytest
+
+ai-eval: db-up ## Copilot evaluation into retailops_eval (PROVIDER=deterministic|gemini|openai_compatible|all)
+	$(UV) run python -m evals.run --provider $(PROVIDER) --dataset copilot_v1 --repeats $(REPEATS)
 
 check: api-lint api-typecheck api-test ## All backend quality gates
 

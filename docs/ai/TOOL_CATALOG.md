@@ -1,6 +1,7 @@
 # AI Tool Catalog
 
-> **Status:** Design (v1), task T-070. Implemented in `apps/api/app/domains/ai/tools/` (T-071).
+> **Status:** v1, implemented in `apps/api/app/domains/ai/tools/` (T-071). Differences between this
+> design and the implementation are listed in §4.
 > Every tool here is read-only. The list is a closed allowlist: a tool name not in this document
 > does not exist for the copilot. Related: [AI_ARCHITECTURE.md](AI_ARCHITECTURE.md), ADR-0010.
 >
@@ -645,3 +646,23 @@ the heaviest in the catalog; covered by the latency measurement in the evaluatio
 Adding a tool requires: a catalog entry here, a Pydantic schema, a permission test, a cross-store
 scope test, a size-cap test (T-071 acceptance), evaluation cases, and a bump of the tools version
 in `prompt_version` (`PROMPT_DESIGN.md §8`).
+
+## 4. As implemented (T-071)
+
+The allowlist, guardrails and envelope of §1 are implemented as specified (`tools/registry.py`;
+tests in `tests/integration/test_ai_tools.py`: every tool has a permission test and a cross-store
+scope test, plus the size-cap, call-cap, read-only and timeout tests). Tools call the read functions
+behind the REST endpoints (`exceptions.service`, `orders.queries`, `catalog.queries`,
+`inventory.queries`, `analytics.service`). Differences from §2:
+
+| Tool | Difference |
+|---|---|
+| All | Every SUCCESS envelope also has `result_ref` (`aggregate:<ai_tool_call id>`), which owns envelope-level counts such as `total_available`. Nested references are objects `{"ref": {...}}` (for example `active_exceptions[]` and an overdue order's `exception`), never bare `type:id` strings. When a record's untrusted text looks like an instruction, `suspicious_text: true` is set and the reference labels carrying it fall back to the SKU or exception reference |
+| `list_exceptions` | Adds `query` (2–100 characters, reference or title contains, as the REST `q`), so "why is EXC-1042 critical?" can be resolved. Sorts are `-priority_score`, `due_at`, `-first_detected_at`, `-last_detected_at` (the exception service's sort fields); `deadline_at` and `-exposure_amount` sorts are not offered. `detected_since`, `resolved_since` and `due_before` were added to the exception service's filters for this tool only; `resolved_since` defaults the status filter to `RESOLVED` |
+| `get_exception` | `evidence` is the stored fact list (`key`, `label`, `value`, `unit`, `is_estimate`, `source`), plus `evidence_records` (the evidence record lists, 20 rows each) and `calculation` with its formulas and outputs. `priority_breakdown` has `S`, `A`, `E`, `D`, `T`, `score`, `band` and the component explanations |
+| `get_exception_history` | Returns `events` (newest first; the newest 200 are scanned for an `event_types` filter) and `notes`. There is no separate `assignments[]`: `ASSIGNED` and `UNASSIGNED` events carry the assignment history |
+| `get_related_orders` | Sorts are `-placed_at`, `placed_at`, `ship_by`. Records add `expected_total`, `total_difference` and `has_total_mismatch` (BR-205) and `line_count` |
+| `get_product` | A `search` result also returns `available` and `health` per product |
+| `get_inventory_position` | Velocity and days of cover are objects with `is_estimate: true` and a `basis`; `health` is `NOT_CLASSIFIED` for products that are not ACTIVE |
+| `get_import_errors` | `records` are the imports (at most 10, newest first), each with `summary` and `code_counts`; with `import_id` that record also has `issues`. Imports are read with plain SELECTs because the imports service's list functions do lazy preview housekeeping, a write a read-only transaction must not attempt |
+| `get_operational_trends` | Metrics are those of `analytics.service.get_trends`: `orders_placed`, `units`, `gmv`, `exceptions_detected`, `exceptions_resolved`, `shipped_on_time`, `shipped_late` (cancellations, auto- versus manual resolution, reopen and dismissal counts are not in the trend service yet) |

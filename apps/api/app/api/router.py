@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from app.api import health
+from app.domains.ai.router import router as copilot_router
 from app.domains.analytics.router import router as analytics_router
 from app.domains.audit.router import router as audit_router
 from app.domains.catalog.router import router as catalog_router
@@ -29,5 +30,6 @@ for module_router in (
     exceptions_router,
     analytics_router,
     audit_router,
+    copilot_router,
 ):
     api_router.include_router(module_router)

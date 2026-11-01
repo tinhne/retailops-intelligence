@@ -1,7 +1,10 @@
 # AI Safety and Limitations
 
-> **Status:** Design (v1), task T-070. Applies to the copilot, investigation summaries, and note
-> drafting. Related: [AI_ARCHITECTURE.md](AI_ARCHITECTURE.md), [TOOL_CATALOG.md](TOOL_CATALOG.md),
+> **Status:** v1, implemented with T-071..T-074 (API side). Applies to the copilot, investigation
+> summaries, and note drafting. The "Verified by" column names tests that now exist in
+> `apps/api/tests` (`test_ai_tools.py`, `test_ai_validation.py`, `test_ai_copilot_api.py`,
+> `test_ai_live_provider.py`, `test_ai_providers.py`) and the evaluation (`make ai-eval`); the UI
+> labels of §3 belong to the copilot UI, which is not built yet. Related: [AI_ARCHITECTURE.md](AI_ARCHITECTURE.md), [TOOL_CATALOG.md](TOOL_CATALOG.md),
 > [PROMPT_DESIGN.md](PROMPT_DESIGN.md), `SECURITY.md` (T-082).
 
 ## 1. Position

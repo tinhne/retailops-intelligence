@@ -31,7 +31,15 @@ SIGN_IN = {("POST", "/api/v1/auth/login"), ("POST", "/api/v1/auth/demo")}
 OWN_SESSION = {("POST", "/api/v1/auth/logout")}
 # Mutating routes a demo visitor may legitimately call because they only write the visitor's own,
 # session-scoped data (for example copilot conversations, ADR-0011). Every entry needs a reason.
-VISITOR_PRIVATE: set[tuple[str, str]] = set()
+VISITOR_PRIVATE: set[tuple[str, str]] = {
+    # Starts a copilot conversation private to the visitor's session (ai_conversation.session_id).
+    ("POST", "/api/v1/stores/{store_id}/copilot/conversations"),
+    # Asks a question in that conversation; the copilot reads through read-only tools and writes
+    # only the visitor's own ai_message and ai_tool_call rows.
+    ("POST", "/api/v1/stores/{store_id}/copilot/conversations/{conversation_id}/messages"),
+    # Investigation summary: read-only tools, stored in the visitor's own exception conversation.
+    ("POST", "/api/v1/stores/{store_id}/copilot/exception-summaries"),
+}
 
 # Session and audit rows are written by signing in and are not shared business data.
 UNSHARED_TABLES = {"user_session", "audit_log"}
@@ -110,6 +118,8 @@ def demo(db: Session) -> dict[str, uuid.UUID]:
         "import_id": import_id,
         "organization_id": organization_id,
         "membership_id": membership_id,
+        # Copilot conversation routes are visitor-private; anonymous calls stop at 401 first.
+        "conversation_id": uuid.uuid4(),
     }
 
 
