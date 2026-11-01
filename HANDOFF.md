@@ -24,7 +24,7 @@ vitest 265 passed. See `PROJECT_STATE.md` and `PROGRESS.md` (latest entry) for d
 manager, with no open findings (details in `PROGRESS.md`). The working tree is clean; `main` is
 ahead of `origin/main` and not pushed (the owner approves pushes).
 
-**Exact next step:** ask the owner to push `main`, confirm the GitHub Actions run, then start T-081
+**Exact next step:** `main` was pushed at 9a1e033 and CI passed (run 41271652506). Start T-081
 (Playwright journey), T-083 (accessibility) and T-100 (README, screenshots, release notes).
 
 **Notes for the next task:**

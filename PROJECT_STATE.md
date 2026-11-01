@@ -83,7 +83,7 @@
 | T-081 Playwright E2E | BACKLOG (P0). 12-step journey; run against the compose stack in CI |
 | T-083 Accessibility review | BACKLOG (P1). keyboard, contrast, 375 px across all screens |
 | T-100 README and release | BACKLOG (P0). README, real screenshots, demo guide, release notes |
-| Push | `main` is ahead of `origin/main` (check `git log origin/main..main`); the owner approves each push |
+| Push | Pushed 2026-11-01 at 9a1e033 (CI green); later commits wait for the owner's approval |
 
 ## Blocked
 
@@ -128,8 +128,8 @@
   include inactive), the ledger filtered from a product; 1440 and 375 px with no sideways page scroll.
   Imports as manager: upload, preview, strict block, valid-rows-only apply of a no-change test file,
   duplicate-file warning, discard, rejected file; as the demo viewer; 1440 and 375 px.
-- GitHub Actions run 41249634639 (imports, T-065, on f956f88): success. API, web, dependency audit
-  and Docker image jobs all passed.
+- GitHub Actions run 41271652506 (all merged work, the copilot UI and the test pass, on 9a1e033):
+  success. API, web, dependency audit and Docker image jobs all passed.
 
 ## Owner decisions log
 
@@ -142,6 +142,6 @@
 
 ## Next three highest-priority actions
 
-1. Ask the owner to push `main` and confirm the GitHub Actions run.
-2. T-081 Playwright journey and T-083 accessibility review.
+1. T-081 Playwright journey (12 steps, CI against the compose stack).
+2. T-083 accessibility review (keyboard, contrast, 375 px).
 3. T-100 README with real screenshots and release notes; T-093 once the owner picks a host.
