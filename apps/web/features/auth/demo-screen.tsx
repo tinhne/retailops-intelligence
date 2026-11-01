@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { useDemoLogin } from "@/lib/session/session";
+import { useAuthOptions, useDemoLogin } from "@/lib/session/session";
 
 import { AuthLayout } from "./auth-layout";
 
@@ -27,6 +27,7 @@ const FACTS: Array<[string, string]> = [
 export function DemoScreen() {
   const router = useRouter();
   const demo = useDemoLogin();
+  const unavailable = useAuthOptions().data?.demo_available === false;
 
   const start = () =>
     demo.mutate(undefined, {
@@ -51,22 +52,30 @@ export function DemoScreen() {
               </div>
             ))}
           </dl>
+          {unavailable ? (
+            <Alert tone="info" role="status">
+              <CircleAlert aria-hidden />
+              <AlertDescription>This installation does not offer the public demo. Sign in with your workspace account.</AlertDescription>
+            </Alert>
+          ) : null}
           {demo.isError ? (
             <Alert tone="danger" role="alert">
               <CircleAlert aria-hidden />
               <AlertDescription>The demo is temporarily unavailable. Try again in a few minutes.</AlertDescription>
             </Alert>
           ) : null}
-          <Button
-            type="button"
-            size="lg"
-            className="w-full sm:h-8"
-            pending={demo.isPending}
-            pendingLabel="Starting demo…"
-            onClick={start}
-          >
-            Start the demo
-          </Button>
+          {unavailable ? null : (
+            <Button
+              type="button"
+              size="lg"
+              className="w-full sm:h-8"
+              pending={demo.isPending}
+              pendingLabel="Starting demo…"
+              onClick={start}
+            >
+              Start the demo
+            </Button>
+          )}
           <Link href="/login" className="text-center text-body text-link hover:underline">
             Sign in with a workspace account
           </Link>

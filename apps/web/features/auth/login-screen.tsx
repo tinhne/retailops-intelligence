@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { isApiError } from "@/lib/api/errors";
 import { useCountdown } from "@/lib/hooks/use-countdown";
 import { safeNextPath } from "@/lib/session/navigation";
-import { hasSessionHint, useDemoLogin, useLogin, useMe } from "@/lib/session/session";
+import { hasSessionHint, useAuthOptions, useDemoLogin, useLogin, useMe } from "@/lib/session/session";
 
 import { AuthLayout } from "./auth-layout";
 import { loginSchema, type LoginValues } from "./schema";
@@ -68,6 +68,8 @@ export function LoginScreen() {
 
   const login = useLogin();
   const demo = useDemoLogin();
+  // No dead control: a customer installation without the demo never shows the demo card.
+  const demoAvailable = useAuthOptions().data?.demo_available === true;
   const busy = login.isPending || demo.isPending;
   const [showPassword, setShowPassword] = useState(false);
 
@@ -200,38 +202,42 @@ export function LoginScreen() {
         </CardContent>
       </Card>
 
-      <div className="flex items-center gap-3 text-xs text-muted-foreground" aria-hidden>
-        <span className="h-px flex-1 bg-border" />
-        or
-        <span className="h-px flex-1 bg-border" />
-      </div>
+      {demoAvailable ? (
+        <>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground" aria-hidden>
+            <span className="h-px flex-1 bg-border" />
+            or
+            <span className="h-px flex-1 bg-border" />
+          </div>
 
-      <Card>
-        <CardHeader>
-          <h2 className="text-title-sm">Explore the demo</h2>
-          <CardDescription>See a fictional store with generated data. Read-only, no sign-up.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          {demo.isError ? (
-            <Alert tone="danger" role="alert">
-              <CircleAlert aria-hidden />
-              <AlertDescription>{demoErrorMessage(demo.error, demoSecondsLeft)}</AlertDescription>
-            </Alert>
-          ) : null}
-          <Button
-            type="button"
-            variant="secondary"
-            size="lg"
-            className="w-full sm:h-8"
-            disabled={busy}
-            pending={demo.isPending}
-            pendingLabel="Starting demo…"
-            onClick={startDemo}
-          >
-            Explore the demo
-          </Button>
-        </CardContent>
-      </Card>
+          <Card>
+            <CardHeader>
+              <h2 className="text-title-sm">Explore the demo</h2>
+              <CardDescription>See a fictional store with generated data. Read-only, no sign-up.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              {demo.isError ? (
+                <Alert tone="danger" role="alert">
+                  <CircleAlert aria-hidden />
+                  <AlertDescription>{demoErrorMessage(demo.error, demoSecondsLeft)}</AlertDescription>
+                </Alert>
+              ) : null}
+              <Button
+                type="button"
+                variant="secondary"
+                size="lg"
+                className="w-full sm:h-8"
+                disabled={busy}
+                pending={demo.isPending}
+                pendingLabel="Starting demo…"
+                onClick={startDemo}
+              >
+                Explore the demo
+              </Button>
+            </CardContent>
+          </Card>
+        </>
+      ) : null}
     </AuthLayout>
   );
 }

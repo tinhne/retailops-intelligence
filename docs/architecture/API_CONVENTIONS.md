@@ -35,7 +35,7 @@ Versioning policy is in [§14](#14-versioning-and-deprecation).
 |---|---|
 | Session | `ro_session` cookie (opaque, `HttpOnly`, `Secure` in production, `SameSite=Lax`). No `Authorization` header and no bearer tokens |
 | CSRF | `X-CSRF-Token` header equal to the `ro_csrf` cookie on POST, PUT, PATCH and DELETE. Before login, get the cookie from `GET /api/v1/auth/csrf`; after login it is bound to the session (SECURITY_ARCHITECTURE §5) |
-| Public routes | `health/live`, `health/ready`, `meta`, `auth/csrf`, `auth/login`, `auth/demo` (demo mode only), and the OpenAPI documents. Everything else requires a session |
+| Public routes | `health/live`, `health/ready`, `meta`, `auth/csrf`, `auth/options` (whether the sign-in page may offer the demo), `auth/login`, `auth/demo` (demo mode only), and the OpenAPI documents. Everything else requires a session |
 | Order of checks | 401 authentication → 403 CSRF → 404 tenancy → 403 permission → 422 validation → 409 state → 403 actor rules |
 
 ## 4. Request and response format

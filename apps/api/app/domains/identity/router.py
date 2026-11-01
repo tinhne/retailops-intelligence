@@ -22,6 +22,7 @@ from app.domains.identity import service as identity
 from app.domains.identity.models import User, UserSession
 from app.domains.identity.permissions import ROLE_PERMISSIONS, Role, permissions_for
 from app.domains.identity.schemas import (
+    AuthOptionsOut,
     CsrfTokenOut,
     LoginRequest,
     MembershipOut,
@@ -116,6 +117,25 @@ def _start_session(
     me = _me(db, user, session, settings)
     _set_session_cookies(response, raw_token, me.csrf_token, settings)
     return me
+
+
+@router.get("/options", response_model=AuthOptionsOut)
+def auth_options(
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> AuthOptionsOut:
+    """Public sign-in options, so the sign-in page never offers a demo this installation lacks.
+
+    The demo is available when demo mode is on and the demo viewer account exists (a customer
+    installation started without the demo seed has none).
+    """
+    available = settings.demo_mode_enabled and (
+        db.scalar(
+            select(User.id).where(User.email == settings.demo_user_email, User.is_active.is_(True))
+        )
+        is not None
+    )
+    return AuthOptionsOut(demo_available=available)
 
 
 @router.get("/csrf", response_model=CsrfTokenOut)

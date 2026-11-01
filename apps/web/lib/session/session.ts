@@ -9,6 +9,17 @@ import { CSRF_COOKIE, readCookie } from "@/lib/api/client";
 import { loginPath } from "./navigation";
 
 export const meQueryKey = ["auth", "me"] as const;
+export const authOptionsKey = ["auth", "options"] as const;
+
+/** What this installation offers on the sign-in page: the public demo only where it exists. */
+export function useAuthOptions() {
+  return useQuery({
+    queryKey: authOptionsKey,
+    queryFn: ({ signal }) => authApi.options(signal),
+    staleTime: 5 * 60_000,
+    meta: { skipSessionExpiry: true },
+  });
+}
 
 /**
  * The current user and memberships. `probe` is for public pages, where a 401 just means

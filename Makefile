@@ -3,7 +3,7 @@ API_DIR := apps/api
 UV := uv --directory $(API_DIR)
 
 .DEFAULT_GOAL := help
-.PHONY: help setup db-up db-down migrate seed api-dev api-test api-lint api-typecheck ai-eval check test stack-up stack-demo-reset down reset
+.PHONY: stack-up-customer provision stack-provision help setup db-up db-down migrate seed api-dev api-test api-lint api-typecheck ai-eval check test stack-up stack-demo-reset down reset
 
 # Copilot evaluation (docs/ai/EVALUATION_STRATEGY.md §5). PROVIDER: deterministic (no key),
 # gemini, openai_compatible, or all. REPEATS=0 means 1 for deterministic and 3 for live providers.
@@ -50,6 +50,16 @@ test: api-test ## Run every test suite
 
 stack-up: ## Build and start db, api, worker and web (http://localhost:3000), seeding the demo once
 	docker compose up --build -d --wait db api worker web
+
+stack-up-customer: ## Start db, api, worker and web WITHOUT the demo organization (customer install)
+	docker compose up --build -d --wait db api
+	docker compose up --build -d --no-deps --wait worker web
+
+provision: ## Create a customer organization, store and owner: make provision ARGS='--org-name ...'
+	$(UV) run python -m app.provision $(ARGS)
+
+stack-provision: ## The same inside the running compose stack: make stack-provision ARGS='...'
+	docker compose run --rm --no-deps api python -m app.provision $(ARGS)
 
 stack-demo-reset: ## Reset the demo organization inside the running compose stack
 	docker compose run --rm --no-deps demo-seed python -m app.demo

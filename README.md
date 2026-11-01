@@ -211,6 +211,12 @@ story: `make stack-demo-reset`. Ports, health checks and troubleshooting:
 [`docs/operations/RUNBOOK.md`](docs/operations/RUNBOOK.md). A guided tour:
 [`docs/operations/DEMO_GUIDE.md`](docs/operations/DEMO_GUIDE.md).
 
+For a customer installation without the demo store, `make stack-up-customer` then
+`make stack-provision ARGS="..."` creates the organization, store and owner
+([RUNBOOK §2a](docs/operations/RUNBOOK.md#2a-customer-installation-no-demo-organization)). A Vietnamese
+walkthrough of every screen, the demo script and the customer setup is in
+[`docs/guides/HUONG_DAN_DEMO_VA_TRIEN_KHAI.md`](docs/guides/HUONG_DAN_DEMO_VA_TRIEN_KHAI.md).
+
 ## 15. Development workflow
 
 Requirements: Docker, [uv](https://docs.astral.sh/uv/), Node.js 22+ and pnpm.

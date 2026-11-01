@@ -34,6 +34,30 @@ sees the existing organization and exits without changing anything. Data lives i
 
 The database alone, for local development with hot reload: `make db-up` (only `db` starts).
 
+## 2a. Customer installation (no demo organization)
+
+A customer instance starts without `demo-seed`, so no fictional organization exists, and the
+sign-in page offers no demo (`GET /api/v1/auth/options` answers `demo_available: false`).
+
+```bash
+# .env: APP_ENV=production, SESSION_SECRET=$(openssl rand -hex 32), COOKIE_SECURE=true (HTTPS),
+#       DEMO_MODE_ENABLED=false, a strong POSTGRES_PASSWORD; leave DEMO_STAFF_PASSWORD empty
+make stack-up-customer
+make stack-provision ARGS="--org-name 'Lotus Home' --store-name 'Lotus Home Online' \
+  --currency VND --timezone Asia/Ho_Chi_Minh \
+  --owner-email owner@lotushome.vn --owner-name 'Nguyen Van An' --exposure-cap 100000000"
+```
+
+`stack-provision` creates the organization, its store with default settings and the owner account,
+writes the audit entry `organization.provision`, and prints the owner's temporary password once.
+Hand it over through a secure channel. The owner then signs in, adds the team under **Users &
+roles** (each new member also gets a one-time temporary password), reviews **Settings**, and imports
+the four CSV files in the order products → inventory adjustments → orders → order items.
+Outside the containers the same command is `make provision ARGS="..."`.
+
+`exposure_cap` is in store currency: the default 5000 suits USD; for VND use a value such as
+100000000. It can be changed later under Settings.
+
 ## 3. Configuration
 
 Compose reads variables from the shell or from `.env` in the repository root (see `.env.example`,

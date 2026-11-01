@@ -5,13 +5,18 @@ import { vi } from "vitest";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { Permission, Role } from "@/lib/api/auth";
 import { makeQueryClient } from "@/lib/query/query-client";
+import { authOptionsKey } from "@/lib/session/session";
 import { StoreProvider, type StoreContextValue } from "@/lib/store/store-context";
 
-/** Renders with a fresh query client (no retries) and the providers the app uses. */
-export function renderWithProviders(ui: React.ReactElement) {
+/**
+ * Renders with a fresh query client (no retries) and the providers the app uses. The public
+ * sign-in options are pre-filled (demo available) so screens that read them fire no request.
+ */
+export function renderWithProviders(ui: React.ReactElement, options: { demoAvailable?: boolean } = {}) {
   const onSessionExpired = vi.fn();
   const client = makeQueryClient({ onSessionExpired });
   client.setDefaultOptions({ queries: { retry: false }, mutations: { retry: false } });
+  client.setQueryData(authOptionsKey, { demo_available: options.demoAvailable ?? true });
   const result = render(
     <QueryClientProvider client={client}>
       <TooltipProvider>{ui}</TooltipProvider>
