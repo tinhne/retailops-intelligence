@@ -21,9 +21,17 @@ Start order: `db` healthy → `api` healthy (migrations applied) → `demo-seed`
 ## 2. Start the stack
 
 ```bash
+make demo                            # walkthrough: everything up, fresh demo data, staff sign-ins on
 docker compose up --build            # foreground, with logs
 make stack-up                        # the same, detached, waits for health checks
 ```
+
+`make demo` (`infra/scripts/demo.sh`) checks that Docker is running, starts `db` and `api`,
+regenerates the demo organization relative to the current time (`python -m app.demo`), starts
+`worker` and `web`, and prints the address, the accounts and the staff password. The password is
+`DEMO_STAFF_PASSWORD` from the environment or `.env`; on the first run it is generated and written
+to `.env` (git-ignored), so it stays the same between runs. The printed address uses `127.0.0.1`,
+which always reaches this stack even when another process listens on the same port over IPv6.
 
 Then open <http://localhost:3000> and choose **Explore the demo**. API docs are on
 <http://localhost:8000/api/docs> (and through the web origin at `/api/docs`).

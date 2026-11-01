@@ -202,12 +202,20 @@ a public demo that cannot change shared data. Threat model, controls and known l
 Requirements: Docker with Compose v2.
 
 ```bash
-docker compose up --build   # db, api (migrations on start), worker, web; seeds the demo once
+make demo
 ```
 
-Open <http://localhost:3000> and choose **Explore the demo**. The first start seeds the fictional
-store, its exception history and two CSV imports; later starts keep your data. To restore the demo
-story: `make stack-demo-reset`. Ports, health checks and troubleshooting:
+One command builds and starts the database, API, worker and web app, regenerates the fictional demo
+store relative to the current time, enables the staff sign-ins (a password generated once and kept in
+the git-ignored `.env`), and prints the address, accounts and password. Open
+<http://127.0.0.1:3000> and choose **Explore the demo** (read-only), or sign in as
+`manager@kestrel.example` to triage, resolve and import. `make down` stops it; run `make demo` again
+for fresh data.
+
+Without `make`: `docker compose up --build` starts the same stack and seeds the demo once (later
+starts keep your data; `make stack-demo-reset` restores the story). Only **Explore the demo** is
+available that way. A one-page walkthrough in Vietnamese:
+[`docs/guides/DEMO_NHANH.md`](docs/guides/DEMO_NHANH.md). Ports, health checks and troubleshooting:
 [`docs/operations/RUNBOOK.md`](docs/operations/RUNBOOK.md). A guided tour:
 [`docs/operations/DEMO_GUIDE.md`](docs/operations/DEMO_GUIDE.md).
 

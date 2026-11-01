@@ -3,7 +3,7 @@ API_DIR := apps/api
 UV := uv --directory $(API_DIR)
 
 .DEFAULT_GOAL := help
-.PHONY: sample-stores-csv load-sample-stores stack-load-sample-stores stack-up-customer provision stack-provision help setup db-up db-down migrate seed api-dev api-test api-lint api-typecheck ai-eval check test stack-up stack-demo-reset down reset
+.PHONY: demo sample-stores-csv load-sample-stores stack-load-sample-stores stack-up-customer provision stack-provision help setup db-up db-down migrate seed api-dev api-test api-lint api-typecheck ai-eval check test stack-up stack-demo-reset down reset
 
 # Copilot evaluation (docs/ai/EVALUATION_STRATEGY.md §5). PROVIDER: deterministic (no key),
 # gemini, openai_compatible, or all. REPEATS=0 means 1 for deterministic and 3 for live providers.
@@ -47,6 +47,9 @@ ai-eval: db-up ## Copilot evaluation into retailops_eval (PROVIDER=deterministic
 check: api-lint api-typecheck api-test ## All backend quality gates
 
 test: api-test ## Run every test suite
+
+demo: ## One command for a walkthrough: start everything, fresh demo data, staff sign-ins on
+	@infra/scripts/demo.sh
 
 stack-up: ## Build and start db, api, worker and web (http://localhost:3000), seeding the demo once
 	docker compose up --build -d --wait db api worker web

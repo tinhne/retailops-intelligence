@@ -402,3 +402,19 @@ add a correction entry instead.
   with `LLM_MODEL`). Live generation is still **unverified**; it needs a standard AI Studio key.
   The local `.env` keeps the key but uses the deterministic provider.
 - **Results:** backend `make check` 887 passed before this fix; provider unit tests 16 passed after it.
+
+## 2026-11-01 (UTC+7): Orchestrator: one-command walkthrough (`make demo`)
+
+- **Why:** showing the product meant two commands and a password chosen in advance; a demo seeded
+  weeks earlier kept its old dates (`--if-missing`); and on a machine where another app listens on
+  port 3000 over IPv6, `http://localhost:3000` opened that app instead.
+- **Added:** `make demo` (`infra/scripts/demo.sh`): checks Docker, starts `db` + `api`, regenerates
+  the demo organization relative to now, starts `worker` + `web`, prints `http://127.0.0.1:3000`, the
+  accounts and the staff password. The password comes from `DEMO_STAFF_PASSWORD` or `.env`;
+  generated once and written to the git-ignored `.env` (mode kept). One-page Vietnamese walkthrough:
+  `docs/guides/DEMO_NHANH.md`. README Quick start, RUNBOOK §2 and the Vietnamese guide §2.1–2.2 updated.
+- **Verified:** `make demo` exit 0 in 46 s (cached images), all four services healthy; Playwright
+  19/19 against that stack with the generated password (the 12-step manager journey included);
+  second `make demo` exit 0 in 46 s, same password, the demo organization recreated (114 products,
+  the end-to-end imports gone); shellcheck 0.10.0 clean. `localhost:3000` on this machine served
+  another app, `127.0.0.1:3000` served RetailOps.

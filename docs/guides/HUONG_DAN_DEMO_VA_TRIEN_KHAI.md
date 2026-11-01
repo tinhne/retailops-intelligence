@@ -62,23 +62,30 @@ khi có dữ liệu mới sẽ kiểm tra lại; nếu điều kiện vẫn còn
 
 ## 2. Chạy sản phẩm
 
-### 2.1 Cách nhanh nhất: Docker (dùng cho demo)
+### 2.1 Cách nhanh nhất: một lệnh (dùng cho demo)
 
 Yêu cầu: Docker Desktop (có Compose v2).
 
 ```bash
 cd retailops-intelligence
-docker compose up --build
+make demo
 ```
 
-Mở <http://localhost:3000> và bấm **Explore the demo**. Lần đầu khởi động, hệ thống tự tạo cửa hàng
+Lệnh này build và khởi động mọi thứ, tạo lại dữ liệu demo theo giờ hiện tại, bật đăng nhập cho tài
+khoản nhân viên (mục 2.2) rồi in ra địa chỉ, tài khoản và mật khẩu. Ghi chú một trang cho buổi demo:
+[`DEMO_NHANH.md`](DEMO_NHANH.md).
+
+Không có `make` thì dùng `docker compose up --build`: chỉ có chế độ xem (**Explore the demo**).
+
+Mở <http://127.0.0.1:3000> và bấm **Explore the demo**. Lần đầu khởi động, hệ thống tự tạo cửa hàng
 giả lập "Kestrel Home & Kitchen" (114 sản phẩm, khoảng 1.550 đơn trong 60 ngày, 8 nhà cung cấp, đủ 9
 loại ngoại lệ và lịch sử làm việc của một đội vận hành). Mọi dữ liệu đều là hư cấu.
 
 ### 2.2 Muốn demo các thao tác thay đổi dữ liệu (đăng nhập bằng tài khoản nhân viên)
 
 Chế độ **Explore the demo** chỉ cho xem. Để demo thao tác (giao việc, ghi chú, xử lý, nhập CSV),
-đặt mật khẩu cho các tài khoản nhân viên giả lập **trước khi** tạo dữ liệu:
+cần mật khẩu cho các tài khoản nhân viên giả lập. `make demo` tự tạo một mật khẩu ở lần chạy đầu,
+lưu trong `.env` và in ra màn hình. Muốn tự đặt mật khẩu, đặt nó **trước khi** tạo dữ liệu:
 
 ```bash
 DEMO_STAFF_PASSWORD='mat-khau-do-ban-chon' docker compose up --build
