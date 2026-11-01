@@ -91,7 +91,7 @@ B1_MANAGER = "manager@bravo-eval.example"
 
 
 def database_url() -> str:
-    return os.environ.get("EVAL_DATABASE_URL", DEFAULT_URL)
+    return os.environ.get("EVAL_DATABASE_URL") or DEFAULT_URL
 
 
 def ensure_database(url: str) -> None:

@@ -1,7 +1,8 @@
 # AI Architecture
 
-> **Status:** Design (v1), task T-070. Nothing in this document is implemented yet. Implementation
-> tasks: T-071 (tool registry), T-072 (providers), T-073 (copilot API and UI), T-074 (evaluation).
+> **Status:** v1, designed in T-070 and implemented in T-071 (tool registry), T-072 (providers),
+> the API half of T-073 and T-074 (evaluation). The copilot UI (rest of T-073) is not built yet.
+> Where the implementation differs from the design below, §12 records it.
 > Related: [TOOL_CATALOG.md](TOOL_CATALOG.md), [PROMPT_DESIGN.md](PROMPT_DESIGN.md),
 > [EVALUATION_STRATEGY.md](EVALUATION_STRATEGY.md), [SAFETY_AND_LIMITATIONS.md](SAFETY_AND_LIMITATIONS.md),
 > ADR-0003 (deterministic rule engine separated from the AI layer), ADR-0010 (AI provider
@@ -40,7 +41,7 @@ LLM usage per user and per instance (§4.2), (c) caches investigation summaries 
 The `ai` module lives in `apps/api/app/domains/ai/` and owns the tables `ai_conversation`,
 `ai_message`, and `ai_tool_call` (`DOMAIN_MODEL.md §1`). It writes only those tables.
 
-| Component | Location (planned) | Responsibility |
+| Component | Location | Responsibility |
 |---|---|---|
 | `ai.router` | `ai/router.py` | HTTP endpoints. Enforces authentication, `copilot.use` (plus feature permissions, §2.1), CSRF on POST, the copilot rate limit (20 requests/min per user), and the 2,000-character question limit |
 | `CopilotService` | `ai/service.py` | Orchestrates one turn: loads history, captures `as_of` once, selects the provider, runs the tool-use loop (§4), calls the validator, persists the turn, and handles fallback |
@@ -56,17 +57,22 @@ The `ai` module lives in `apps/api/app/domains/ai/` and owns the tables `ai_conv
 | Conversation store | `ai/repository.py` | Persists conversations, messages, and tool-call metadata (§9). Store- and user-scoped |
 | Prompt registry | `ai/prompts/` | Versioned prompt texts (`PROMPT_DESIGN.md`). The version is stored on each `ai_message` |
 
-### 2.1 Endpoints and permissions (proposed; final paths belong to the API conventions doc, T-022)
+### 2.1 Endpoints and permissions (as implemented; paths from API_CONVENTIONS.md §12.8)
 
 | Endpoint | Purpose | Permissions |
 |---|---|---|
-| `POST /api/v1/stores/{store_id}/copilot/conversations` | Start a conversation (`context_type` `GENERAL` or `EXCEPTION`, optional `context_id`) | `copilot.use` (+ `exceptions.read` for `EXCEPTION`) |
-| `GET /api/v1/stores/{store_id}/copilot/conversations` | List the caller's own conversations | `copilot.use` |
-| `GET /api/v1/stores/{store_id}/copilot/conversations/{id}` | Read one of the caller's conversations with messages | `copilot.use` |
-| `POST /api/v1/stores/{store_id}/copilot/conversations/{id}/messages` | Ask a question (one turn) | `copilot.use` |
-| `POST /api/v1/stores/{store_id}/exceptions/{exception_id}/ai/investigation-summary` | Generate an investigation summary | `copilot.use` + `exceptions.read` |
-| `POST /api/v1/stores/{store_id}/exceptions/{exception_id}/ai/note-draft` | Draft a note (not saved) | `copilot.use` + `exceptions.work` |
-| `POST /api/v1/stores/{store_id}/exceptions/{exception_id}/notes` | Save a note (existing exceptions endpoint). With `source = AI_DRAFT_ACCEPTED` when the body came from a draft | `exceptions.work` |
+| `POST /api/v1/stores/{store_id}/copilot/conversations` | Start a conversation (`context_type` `GENERAL` or `EXCEPTION`, `context_id` required for `EXCEPTION`). 201 | `copilot.use` (+ `exceptions.read` for `EXCEPTION`) |
+| `GET /api/v1/stores/{store_id}/copilot/conversations` | List the caller's own conversations (page envelope, most recently active first) | `copilot.use` |
+| `GET /api/v1/stores/{store_id}/copilot/conversations/{conversation_id}` | Read one of the caller's conversations with messages | `copilot.use` |
+| `POST /api/v1/stores/{store_id}/copilot/conversations/{conversation_id}/messages` | Ask a question (one turn): `{question}`, 1–2,000 characters. 201 | `copilot.use` |
+| `POST /api/v1/stores/{store_id}/copilot/exception-summaries` | Investigation summary: `{exception_id, refresh?}`. Cached per evidence version (§8.3) | `copilot.use` + `exceptions.read` |
+| `POST /api/v1/stores/{store_id}/copilot/note-drafts` | Draft a note, nothing saved: `{exception_id, user_hint?}` (hint ≤ 500 characters) | `copilot.use` + `exceptions.work` |
+| `POST /api/v1/stores/{store_id}/exceptions/{exception_id}/notes` | Save a note (exceptions endpoint). `source = AI_DRAFT_ACCEPTED` when the body came from an accepted draft | `exceptions.work` |
+
+Summaries and drafts are stored in the caller's latest `EXCEPTION` conversation about that
+exception (a new one is started when there is none or it is full), next to follow-up questions; the
+response carries its `conversation_id`. A conversation holds at most
+`AI_MAX_MESSAGES_PER_CONVERSATION` messages, then `409 CONVERSATION_FULL`.
 
 Note drafting requires `exceptions.work` because a draft that the caller cannot save would be a
 fake control (`AGENTS.md §4`). ANALYST and VIEWER can ask questions and read investigation
@@ -606,3 +612,29 @@ placeholders (`AGENTS.md §6`). Non-secret defaults are given where this design 
 4. Providers are limited to free tiers by product decision (ADR-0010): `gemini` (default live
    provider), `openai_compatible`, and `deterministic`, configured with `LLM_PROVIDER`,
    `GEMINI_API_KEY`, `LLM_MODEL`, `LLM_BASE_URL`, `LLM_API_KEY` (see `ENVIRONMENT_STATUS.md`).
+
+Status of these points after T-071..T-074: (1) the proposed fields of §9 exist since migration
+`0003_ai_copilot`; `DOMAIN_MODEL.md` still needs the architect's update. (2) Exceptions now carry a
+per-store reference (`EXC-1042`); the router resolves references, UUIDs and quoted titles. (3) Decided
+in ADR-0011 and implemented: the shared demo viewer's conversations and copilot rate limit are
+scoped by session.
+
+## 12. Implementation notes (T-071..T-074)
+
+Code: `apps/api/app/domains/ai/` (`router.py`, `service.py`, `engine.py`, `runtime.py`,
+`repository.py`, `cache.py`, `budget.py`, `ledger.py`, `validation.py`, `answer.py`, `prompts/`,
+`providers/`, `tools/`), migration `0003_ai_copilot`, evaluation in `apps/api/evals/`.
+
+| Topic | As implemented |
+|---|---|
+| Endpoints | The API conventions paths (§2.1): summaries and drafts are `POST …/copilot/exception-summaries` and `…/copilot/note-drafts` with `exception_id` in the body, not routes under `/exceptions/{id}/ai/` |
+| Provider selection | `runtime.CopilotRuntime` (one per process on `app.state`): configured provider, `LLMBudget`, one `CircuitBreaker` per provider, the copilot rate limiter and the shared `httpx` client. Live adapters use plain HTTPS through `httpx`; no provider SDK. Gemini's default model is `gemini-2.5-flash` (code default, **Needs validation** against the current free-tier list) |
+| Request timeout | `LLM_TIMEOUT_SECONDS` (the existing variable) is the per-request timeout called `AI_REQUEST_TIMEOUT_SECONDS` in §10 |
+| Deterministic provider | `providers/deterministic/`: `router.py` (§7.1), `plans.py` (staged plans and the ContextBuilder plans of §7.3), `templates.py` (§7.2). The engine runs the plan's stages through the registry and renders; when every call of a plan fails, the answer says the data could not be read instead of reporting an empty result |
+| Prefetch | Chat questions placed with high confidence, and every summary and draft, run the deterministic plan first and hand the results to the live model as already-executed calls (`origin` `ROUTER` / `CONTEXT_BUILDER`). After a fallback the deterministic plan reuses those results (identical calls are not executed twice in a turn) |
+| Evidence ledger | `ledger.py`. Every successful envelope also carries `result_ref` = `aggregate:<ai_tool_call id>`, which owns the envelope-level counts (`total_available`, `total_overdue`), so a count can be cited as a metric |
+| Injection hardening | Beyond PROMPT_DESIGN §4.3: when a record's untrusted text trips the heuristics, its reference labels fall back to the identifier part (SKU, exception reference), and the deterministic templates withhold that text and add a limitation |
+| Summary cache | `cache.py`. Keyed as in §8.3 (`evidence_hash`, `last_event_id`, permission-set hash, prompt version, provider, model), stored in `ai_message.cache_key`, looked up within the store and TTL. A hit is written as a new assistant message in the requester's own exception conversation with `cache_generated_at` set, and `meta.cache = {hit: true, generated_at}`; it costs no LLM request and no tool call |
+| Persistence | `ai_tool_call` also stores `sequence` and `result_refs` (the reference keys of the returned records, at most 50). `ai_conversation.session_id` scopes the demo viewer's conversations |
+| Tool-call log | Calls beyond twice the per-turn cap are not recorded, so a model flooding one round cannot grow the log without bound |
+| Not built | Deleting a conversation (§9 retention) and the `copilot_mode` field of `GET /meta` (platform endpoint) |

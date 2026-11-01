@@ -25,12 +25,15 @@
 | `LOG_LEVEL` | api, worker | no | default `INFO` |
 | `DEMO_MODE_ENABLED` | api | no | Enables the "Explore the demo" read-only sign-in |
 | `DEMO_STAFF_PASSWORD` | `make seed` | no | Password for the seeded staff accounts (`owner@`, `manager@`, `staff@`, `sofia@`, `analyst@kestrel.example`). Unset means a random password, so those accounts cannot sign in. Local and test use only |
-| `LLM_PROVIDER` | api | no | `deterministic` (default, no key) \| `gemini` \| `openai_compatible`. Free-tier providers only (ADR-0010) |
+| `LLM_PROVIDER` | api | no | `deterministic` \| `gemini` \| `openai_compatible`. Empty: `gemini` when `GEMINI_API_KEY` is set, otherwise `deterministic`. Free-tier providers only (ADR-0010) |
 | `GEMINI_API_KEY` | api | no | Free key from Google AI Studio. Server-side only, never exposed to the frontend |
-| `LLM_MODEL` | api | no | Model identifier (defaults to a Flash-class Gemini model) |
+| `LLM_MODEL` | api | no | Model identifier (gemini default: a Flash-class model; required for `openai_compatible`) |
 | `LLM_BASE_URL` / `LLM_API_KEY` | api | no | `openai_compatible` only (e.g. Groq, OpenRouter free models) |
-| `LLM_TIMEOUT_SECONDS` | api | no | Live-provider timeout before falling back to deterministic (default 20) |
-| `COPILOT_RATE_LIMIT_PER_MINUTE` | api | no | Per-user copilot limit to protect the free quota (default 20) |
+| `LLM_TIMEOUT_SECONDS` | api | no | Timeout of one live LLM request before falling back to deterministic (default 20) |
+| `COPILOT_RATE_LIMIT_PER_MINUTE` | api | no | Per-principal copilot limit to protect the free quota (default 20; per session for the demo viewer) |
+| `LLM_BUDGET_REQUESTS_PER_MINUTE` / `LLM_BUDGET_REQUESTS_PER_DAY` / `LLM_BUDGET_TOKENS_PER_DAY` | api | no | Per-instance live LLM budget below the free-tier quota (defaults 10 / 500 / 1000000); when spent, answers come from the deterministic provider |
+| `AI_TURN_DEADLINE_SECONDS`, `AI_MAX_TOOL_ITERATIONS`, `AI_MAX_TOOL_CALLS_PER_TURN`, `AI_TOOL_TIMEOUT_SECONDS`, `AI_TOOL_MAX_ROWS`, `AI_TOOL_MAX_RESULT_BYTES`, `AI_MAX_INPUT_TOKENS_PER_TURN`, `AI_MAX_OUTPUT_TOKENS`, `AI_HISTORY_TURNS`, `AI_MAX_MESSAGES_PER_CONVERSATION`, `AI_SUMMARY_CACHE_TTL_HOURS`, `AI_CIRCUIT_FAILURE_THRESHOLD`, `AI_CIRCUIT_OPEN_SECONDS` | api | no | Copilot limits; defaults in `docs/ai/AI_ARCHITECTURE.md` §10 |
+| `EVAL_DATABASE_URL` | `make ai-eval` | no | Evaluation database (default `retailops_eval` on the local container; created if missing and rebuilt on every run). Local/CI only |
 | `API_INTERNAL_URL` | web (build) | yes (deploy) | Where the Next.js server proxies `/api/*` (e.g. `http://api:8000`). Read when the web app is built, because rewrites are compiled. Defaults to `http://localhost:8000` for local development |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | db (compose) | yes (local) | Local database container only |
 

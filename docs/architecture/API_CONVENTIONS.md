@@ -137,6 +137,7 @@ benchmark in T-053); a cursor-based list is the fallback if it is not.
 | `IDEMPOTENCY_KEY_REUSED` | 422 | Key already used for a different resource or with a different body |
 | `IDEMPOTENT_REQUEST_IN_PROGRESS` | 409 | The first request with this key is still running |
 | `LAST_OWNER` | 409 | Demoting or deactivating the last OWNER |
+| `CONVERSATION_FULL` | 409 | A copilot conversation reached `AI_MAX_MESSAGES_PER_CONVERSATION`; start a new one |
 | `INTERNAL_ERROR` | 500 | Unexpected error |
 
 CSV row-level issue codes (`UNKNOWN_SKU`, `ORDER_TRANSITION_NOT_ALLOWED`, …) are **data**, returned in
@@ -322,9 +323,13 @@ Every exception command accepts `expected_version` ([§7](#7-optimistic-concurre
 | GET | `/stores/{store_id}/copilot/conversations` | `copilot.use` | The caller's own conversations |
 | POST | `/stores/{store_id}/copilot/conversations` | `copilot.use` | Start one; optional `context_type` `EXCEPTION` and `context_id` |
 | GET | `/stores/{store_id}/copilot/conversations/{conversation_id}` | `copilot.use` | Messages with structured answers; 404 for other users' conversations |
-| POST | `/stores/{store_id}/copilot/conversations/{conversation_id}/messages` | `copilot.use` | Ask a question; returns the structured answer with `generated_by` |
-| POST | `/stores/{store_id}/copilot/exception-summaries` | `copilot.use` | `exception_id`, optional `refresh`; cached investigation summary |
-| POST | `/stores/{store_id}/copilot/note-drafts` | `copilot.use` | Draft a note for an exception; returns text only, nothing is saved |
+| POST | `/stores/{store_id}/copilot/conversations/{conversation_id}/messages` | `copilot.use` | Ask a question; returns the structured answer with `generated_by`. `409 CONVERSATION_FULL` at the message cap |
+| POST | `/stores/{store_id}/copilot/exception-summaries` | `copilot.use` + `exceptions.read` | `exception_id`, optional `refresh`; cached investigation summary |
+| POST | `/stores/{store_id}/copilot/note-drafts` | `copilot.use` + `exceptions.work` | Draft a note for an exception (optional `user_hint`); returns the draft only, nothing is saved. Saving goes through the notes endpoint with `source = AI_DRAFT_ACCEPTED` |
+
+Conversations of the shared demo viewer are private to the browser session (ADR-0011). Response
+shapes are in the generated OpenAPI schema (`docs/ai/AI_ARCHITECTURE.md §5` explains the
+structured answer).
 
 ### 12.9 Audit
 
